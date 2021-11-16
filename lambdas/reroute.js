@@ -2,12 +2,14 @@ const axios = require('axios');
 
 exports.handler = async (event) => {
     console.log('Request event: ', event);
+    
     let response;
     let eventType = event.event.type;
     let eventSubtype = undefined;
     if(event.event.hasOwnProperty('subtype')){
         eventSubtype = event.event.subtype;
     }
+    
     switch(true) {
         case eventType === 'message' && eventSubtype === undefined:{
             
@@ -17,10 +19,27 @@ exports.handler = async (event) => {
             let messageText = messageEvent.text;
             let channelID = messageEvent.channel;
             let messageID = messageEvent.ts;
-            // Not sure what other data will be needed for the NLP endpoint
-            //
             
+            let params = {
+              messages: [{
+                  text:messageText,
+                  id: messageID,
+                  channelID: channelID
+              }],
+            };
             
+            let config = {
+              method: 'post',
+              url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/nlp',
+              data: params
+            };
+            
+            const res = await axios(config);
+            console.log('NLP: ', res)
+            if(res.data.body.length === 0){
+                // Send question to similiar question lambda
+                let question = res.data.body[0];
+            }
             break;
         }
         case eventType === 'message' && eventSubtype === 'channel_join':{
@@ -55,6 +74,21 @@ exports.handler = async (event) => {
                 }
             }
             
+            let params = {
+              messages: cleanedMessages,
+            };
+            
+            let nlpConfig = {
+              method: 'post',
+              url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/nlp',
+              data: params
+            };
+            const nlpRes = await axios(nlpConfig);
+            console.log('NLP: ', nlpRes)
+            if(nlpRes.data.body.length > 0){
+                let questions = nlpRes.data.body;
+                // Send each question (and the associated thread_ts and channelID) to the DB
+            }
             
             break;
         }
