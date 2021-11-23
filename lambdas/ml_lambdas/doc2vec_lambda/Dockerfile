@@ -2,6 +2,7 @@ FROM public.ecr.aws/lambda/python:3.8
 
 # Copy function code
 COPY doc2vec.py ${LAMBDA_TASK_ROOT}
+COPY model/so_top_100k_vec_50_win_5_min_2_ep_80.pkl ${LAMBDA_TASK_ROOT}
 
 # Install the function's dependencies using file requirements.txt
 # from your project folder.
