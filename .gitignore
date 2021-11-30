@@ -1,4 +1,7 @@
 node_modules/
 nodejs/
+ml/data
+ml/models
 package.json
 package-lock.json
+.DS_Store
