@@ -20,7 +20,8 @@ exports.handler = async (event, context, callback) => {
   
   let result = {};
   try{
-      let sql = event.queryStringParameters.query;
+      let sql = event.query;
+      console.log("SQL:",sql)
       result = await query(sql,0);
   }catch (err){
       throw new Error(err);

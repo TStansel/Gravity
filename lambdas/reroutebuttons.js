@@ -21,7 +21,7 @@ exports.handler = async (event, context) => {
         
         switch(true) {
           case actionID.includes('dismiss'):{
-            
+            // UX/ENG Question: Should we decrease upvotes when dismiss is pressed?
             let dismissParams = {
               delete_original: "true",
             };
@@ -35,6 +35,7 @@ exports.handler = async (event, context) => {
             const dismissRes = await axios(dismissConfig);
             console.log("Dismiss Result: ", dismissRes);
             
+            break;
           }
           case actionID.includes('nothelpful'):{
             let notHelpfulParams = {
@@ -51,44 +52,43 @@ exports.handler = async (event, context) => {
             const notHelpfulRes = await axios(notHelpfulConfig);
             console.log("Not Helpful Res: ", notHelpfulRes);
             
-            let qUUID = body.actions.value;
+            let qUUID = body.actions[0].value;
             
+            // Get Question from DB
             let getQConfig = {
-                method: 'get',
-                url: `https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls?query=
-                select AnswerID from Question
-                where QuestionID=`+qUUID,
+                method: 'post',
+                url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
+                data: {query:'select AnswerID from Question where QuestionID=\"'+qUUID+'\"'}
             };
                 
             const getQRes = await axios(getQConfig);
-            console.log('Get Q Call: ', getQRes)
+            console.log('Get Q Call: ', getQRes);
             
-            // Not sure how the data is going to look here
-            let answerID = getQRes.data[0]
+            // Get the answerUUID from Question
+            // Not sure how the data will look here
+            let answerID = getQRes.data[0].AnswerID;
             
+            // Get Upvotes from Answer
             let getUpvotesConfig = {
                 method: 'get',
-                url: `https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls?query=
-                select Upvotes from Answer
-                where AnswerID=`+answerID,
+                url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls?query=select Upvotes from Answer where AnswerID=\"'+answerID+'\"',
             };
                 
             const getUpvotesRes = await axios(getUpvotesConfig);
             console.log('Get Upvotes Call: ', getUpvotesRes)
             
+            //Decreasing the Upvotes count
             // Not Sure how the data is going to look here
-            let upvotes = getUpvotesRes.data[0] - 1 //Decreasing the Upvotes count
+            let upvotes = getUpvotesRes.data[0].Upvotes - 1 
             let updateUpvotesConfig = {
                 method: 'get',
-                url: `https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls?query=
-                update Answer
-                set Upvotes = `+upvotes+`
-                where AnswerID=`+answerID,
+                url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls?query=update Answer set Upvotes='+upvotes+'where AnswerID=\"'+answerID+'\"',
             };
                 
             const updateUpvotesRes = await axios(updateUpvotesConfig);
             console.log('Update Upvotes Call: ', updateUpvotesRes)
             
+            break;
           }
           case actionID.includes('helpful'):{
             
@@ -109,38 +109,39 @@ exports.handler = async (event, context) => {
             
             // TODO Mark question with some kind of emoji to denote it has been answered?
             
-            let qUUID = body.actions.value;
+            let qUUID = body.actions[0].value;
             
+            // Get question
             let getQConfig = {
-                method: 'get',
-                url: `https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls?query=
-                select * from Question
-                where QuestionID=`+qUUID,
+                method: 'post',
+                url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
+                data: {query: 'select * from Question where QuestionID=\"'+qUUID+'\"'}
             };
                 
             const getQRes = await axios(getQConfig);
             console.log('Get Q Call: ', getQRes)
           
             // Not sure how the data is going to look here
-            let answerID = getQRes.data[0].answerID
-            let questionTS = getQRes.data[0].ts
+            let answerID = getQRes.data[0].AnswerID
+            let questionTS = getQRes.data[0].Ts
           
             // Get the link to the Answer for the suggestion Question
             let getLinkConfig = {
-                method: 'get',
-                url: `https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls?query=
-                select AnswerLink from Answer
-                where AnswerID=`+answerID,
+                method: 'post',
+                url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
+                data: {query:'select AnswerLink from Answer where AnswerID=\"'+answerID+'\"'}
             };
                 
             const getLinkRes = await axios(getLinkConfig);
             console.log('Get Answer Link Call: ', getLinkRes)
           
+            let username = body.name.username;
+
             // Post answer in the thread
             let successfulParams = {
                 thread_ts: questionTS, // Not sure how this data will look here
                 channelID: body.channel.id, 
-                text: getLinkRes.data[0] // Not sure how the data will look here
+                text: "<@"+username+"> Marked "+getLinkRes.data[0].AnswerLink +"as helpful."// Not sure how the data will look here
               };
             
             // Posting the confirmed answer to the users question
@@ -156,33 +157,32 @@ exports.handler = async (event, context) => {
             
             const successfulRes = await axios(successfulConfig);
             console.log("Successful Res: ", successfulRes);
-          
+            
+            // Get Upvotes from the Answer
             let getUpvotesConfig = {
-                method: 'get',
-                url: `https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls?query=
-                select Upvotes from Answer
-                where AnswerID=`+answerID,
+                method: 'post',
+                url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
+                data: {query:'select Upvotes from Answer where AnswerID=\"'+answerID+'\"'}
             };
                 
             const getUpvotesRes = await axios(getUpvotesConfig);
             console.log('Get Upvotes Call: ', getUpvotesRes)
             
+            // Increasing the Upvotes count
             // Not Sure how the data is going to look here
-            let upvotes = getUpvotesRes.data[0] + 1 // Increasing the Upvotes count
+            let upvotes = getUpvotesRes.data[0].Upvotes + 1 
             let updateUpvotesConfig = {
-              method: 'get',
-              url: `https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls?query=
-                update Answer
-                set Upvotes = `+upvotes+`
-                where AnswerID=`+answerID,
+              method: 'post',
+              url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
+              data: {query:'update Answer set Upvotes='+upvotes+'where AnswerID=\"'+answerID+'\"'}
             };
                 
             const updateUpvotesRes = await axios(updateUpvotesConfig);
             console.log('Update Upvotes Call: ', updateUpvotesRes)
-            
             }
+
+            break;
         }
-        
         break;
       }
       case body.callback_id === answerPath:{
@@ -198,7 +198,9 @@ exports.handler = async (event, context) => {
           let parentTS = body.message.thread_ts;
           let channelID = body.channel.id;
           let messageTS = body.message.ts;
+          let userID = body.user.id;
           
+          // Get the Parent Message
           let getParentConfig = {
                 method: 'get',
                 url: 'https://slack.com/api/conversations.history?channel='+channelID+'&limit=1&latest='+parentTS,
@@ -227,8 +229,6 @@ exports.handler = async (event, context) => {
                 successfulAnswer = false;
                 break;
             }
-            
-            let userID = body.user.id;
           
             let msgParams = {
               channel: userID,
@@ -248,21 +248,18 @@ exports.handler = async (event, context) => {
             console.log("Answer Success: ", msgRes)
             
             let parentMessage = getParentRes.data.messages[0];
-            // TODO: Find parent message in db
+
+            //Find parent message in db
             let getQConfig = {
-                method: 'get',
-                url: `https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls?query=
-                select * from Question
-                inner join SlackChannel 
-                on Question.ChannelID = SlackChannel.SlackChannelID
-                where Question.ts=`+parentTS + ' and SlackChannel.ChannelID='+channelID,
-            }; // Join on the foreign key of the SlackChannelID in Slack and then grab the message
-            // with the timestamp in that channel (needed this way because TS are unique per channel)
+                method: 'post',
+                url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
+                data: {query:'select * from Question join SlackChannel on Question.SlackChannelID=SlackChannel.SlackChannelID where Question.Ts=\"'+parentTS + '\" and SlackChannel.ChannelID=\"'+channelID+'\"'}
+            };
                 
             const getQRes = await axios(getQConfig);
             console.log('Get Q Call: ', getQRes)
             
-            // TODO: Update the answer for the parent message with the messageTS and the channelID
+            // Update the answer for the parent message with the link
             let linkConfig = {
               method: 'get',
               url: 'https://slack.com/api/chat.getPermalink?channel='+channelID+'&message_ts='+messageTS,
@@ -276,23 +273,24 @@ exports.handler = async (event, context) => {
             console.log("link: ", linkRes);
             
             let aUUID = uuidv4();
-            
+            let newLink = linkRes.data.permalink;
+
             // Create the Answer 
             let createAnswerConfig = {
-                method: 'get',
-                url: `https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls?query=
-                insert into Answer (AnswerID, AnswerLink)
-                values (`+aUUID+','+linkRes.data+')' // Not sure how the data looks for this link
+                method: 'post', // link getting parsed
+                url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
+                data: {query: "insert into Answer (AnswerID, AnswerLink, Upvotes)values (\'"+aUUID+"\',\'"+newLink+"\',"+1+")"}
             }; 
             const createAnswerRes = await axios(createAnswerConfig);
             console.log('Create Answer Call: ', createAnswerRes)
             
+            let qUUID = getQRes.data[0].QuestionID;  // Not sure how the data will look here
+
+            // Update the Question's Answer ID
             let updateQConfig = {
-                method: 'get',
-                url: `https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls?query=
-                update Question
-                set AnswerID = `+aUUID+`
-                where QuestionID=`+getQRes.data[0] // Not sure how the data will look here
+                method: 'post',
+                url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
+                data: {query:'update Question set AnswerID=\"'+aUUID+'\"where QuestionID=\"'+qUUID+'\"'}
             }; 
             const updateQRes = await axios(updateQConfig);
             console.log('Create Answer Call: ', updateQRes)
@@ -323,9 +321,6 @@ exports.handler = async (event, context) => {
         break;
       }
     }
-    
-    
-
     return response;
 };
 

@@ -168,8 +168,9 @@ exports.handler = async (event) => {
             // Check if the Workspace is already in the DB
             let teamID = event.team_id;
             let getWorkspaceConfig = {
-                method: 'get',
-                url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls?query=select * from SlackWorkspace where WorkspaceID=\"'+teamID+"\"",
+                method: 'post',
+                url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
+                data: {query: 'select * from SlackWorkspace where WorkspaceID=\"'+teamID+'\"'}
             };
                 
             const getWorkspaceRes = await axios(getWorkspaceConfig);
@@ -195,8 +196,9 @@ exports.handler = async (event) => {
                 
                 // Insert workspace into DB
                 let createWorkspaceConfig = {
-                    method: 'get',
-                    url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls?query=insert into SlackWorkspace (SlackWorkspaceID, WorkspaceID, Name)values (\"'+wUUID+'\",\"'+teamID+'\",\"'+teamName+'\")',
+                    method: 'post',
+                    url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
+                    data: {query: 'insert into SlackWorkspace (SlackWorkspaceID, WorkspaceID, Name)values (\"'+wUUID+'\",\"'+teamID+'\",\"'+teamName+'\")'}
                 };
                 
                 const createWorkspaceRes = await axios(createWorkspaceConfig);
@@ -210,8 +212,9 @@ exports.handler = async (event) => {
             let channelID = messageEvent.channel;
 
             let getChannelConfig = {
-                method: 'get',
-                url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls?query=select * from SlackChannel where SlackWorkspaceID=\"'+wUUID+'\" and ChannelID=\"'+channelID+"\"",
+                method: 'post',
+                url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
+                data: {query:'select * from SlackChannel where SlackWorkspaceID=\"'+wUUID+'\" and ChannelID=\"'+channelID+'\"'}
             };
                 
             const getChannelRes = await axios(getChannelConfig);
@@ -237,8 +240,9 @@ exports.handler = async (event) => {
 
                 // Insert channel into DB
                 let createChannelConfig = {
-                    method: 'get',
-                    url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls?query=insert into SlackChannel (SlackChannelID, SlackWorkspaceID, ChannelID, Name)values (\"'+cUUID+'\",\"'+wUUID+'\",\"'+channelID+'\",\"'+channelName+'\")',
+                    method: 'post',
+                    url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
+                    data: {query: 'insert into SlackChannel (SlackChannelID, SlackWorkspaceID, ChannelID, Name)values (\"'+cUUID+'\",\"'+wUUID+'\",\"'+channelID+'\",\"'+channelName+'\")'}
                 };
                 
                 const createChannelRes = await axios(createChannelConfig);
@@ -312,15 +316,7 @@ exports.handler = async (event) => {
                     };
                     
                     const linkRes = await axios(linkConfig);
-                    console.log("link: ", linkRes);
-                    
-                    let config = {
-                        method: 'get',
-                        url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls?query=show tables',
-                    };
-                
-                    const dbRes = await axios(config);
-                    console.log('Db Call: ', dbRes)
+                    console.log("link: ", linkRes); 
                     
                 }
             }
