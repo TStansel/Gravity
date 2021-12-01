@@ -77,7 +77,13 @@ exports.handler = async (event) => {
                     console.log("link: ", linkRes);
                     */
                     
-                    let msgParams = {
+                    /* Message is now Broken down to just one row of buttons
+                        TODO: Update the First Text key -> This is the text for the notification
+                        TODO: Update the Text in the first block -> This is the header text that appears in each msg
+                        TODO: Update the value of each button block to contain the UUID of the question
+                        TODO: Update the text in the 3rd block to be hyperlinked text
+                    */
+                    let msg1Params = {
                         "channel": "C02K2H9SWG6",
                         "user": "U02FK8XA2RX",
                         "text": "Hello World",
@@ -96,7 +102,7 @@ exports.handler = async (event) => {
                                 "type": "section",
                                 "text": {
                                     "type": "mrkdwn",
-                                    "text": "Suggestion 1"
+                                    "text": "<https://osmosix.slack.com/archives/C02K2H9SWG6/p1638381142005300?thread_ts=1638381114.005100&cid=C02K2H9SWG6|Example Suggestion>"
                                 }
                             },
                             {
@@ -109,7 +115,7 @@ exports.handler = async (event) => {
                                             "text": "Helpful"
                                         },
                                         "value": "helpful",
-                                        "action_id": "1_helpful"
+                                        "action_id": "helpful"
                                     },
                                     {
                                         "type": "button",
@@ -118,7 +124,7 @@ exports.handler = async (event) => {
                                             "text": "Not Helpful"
                                         },
                                     "value": "notHelpful",
-                                    "action_id": "1_nothelpful"
+                                    "action_id": "nothelpful"
                                     },
                                     {
                                         "type": "button",
@@ -128,103 +134,23 @@ exports.handler = async (event) => {
                                             "text": "Dismiss"
                                         },
                                         "value": "dismiss",
-                                        "action_id": "1_dismiss"
+                                        "action_id": "dismiss"
                                     }
                                 ]
                             },
-                            {
-                                "type": "section",
-                                "text": {
-                                    "type": "mrkdwn",
-                                    "text": "Suggestion 2"
-                                }
-                            },
-                            {
-                                "type": "actions",
-                                "elements": [
-                                    {
-                                        "type": "button",
-                                        "text": {
-                                            "type": "plain_text",
-                                            "text": "Helpful"
-                                        },
-                                        "value": "helpful",
-                                        "action_id": "2_helpful"
-                                    },
-                                    {
-                                        "type": "button",
-                                        "text": {
-                                            "type": "plain_text",
-                                            "text": "Not Helpful"
-                                        },
-                                        "value": "notHelpful",
-                                        "action_id": "2_nothelpful"
-                                    },
-                                    {
-                                        "type": "button",
-                                        "style": "danger",
-                                        "text": {
-                                            "type": "plain_text",
-                                            "text": "Dismiss"
-                                        },
-                                        "value": "dismiss",
-                                        "action_id": "2_dismiss"
-                                    }
-                                ]
-                            },
-                            {
-                                "type": "section",
-                                "text": {
-                                    "type": "mrkdwn",
-                                    "text": "Suggestion 3"
-                                }
-                            },
-                            {
-                                "type": "actions",
-                                "elements": [
-                                    {
-                                        "type": "button",
-                                        "text": {
-                                            "type": "plain_text",
-                                            "text": "Helpful"
-                                        },
-                                        "value": "helpful",
-                                        "action_id": "3_helpful"
-                                    },
-                                    {
-                                        "type": "button",
-                                        "text": {
-                                            "type": "plain_text",
-                                            "text": "Not Helpful"
-                                        },
-                                        "value": "notHelpful",
-                                        "action_id": "3_nothelpful"
-                                    },
-                                    {
-                                        "type": "button",
-                                        "style": "danger",
-                                        "text": {
-                                            "type": "plain_text",
-                                            "text": "Dismiss"
-                                        },
-                                        "value": "dismiss",
-                                        "action_id": "3_dismiss"
-                                    }
-                                ]
-                            }
                         ]
                     }
-                    let msgConfig = {
+                    let msg1Config = {
                         method: 'post',
                         url: 'https://slack.com/api/chat.postEphemeral',
                         headers: {
                             'Authorization': 'Bearer xoxb-2516673192850-2728955403541-DIAuQAWa2QhauF13bgerQYnK',
                             'Content-Type': 'application/json'
                         },
-                        data: msgParams
+                        data: msg1Params
                     };
-                    const msgRes = await axios(msgConfig);
-                    console.log("Message Sent: ",msgRes);
+                    const msg1Res = await axios(msg1Config);
+                    console.log("Message One Sent: ",msg1Res);
                 
                 }
                 
