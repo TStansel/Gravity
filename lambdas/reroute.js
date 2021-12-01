@@ -252,6 +252,7 @@ exports.handler = async (event) => {
             let wUUID;
 
             if(getWorkspaceRes.data.length === 0){ // Workspace does not exist in the DB
+                // Get needed info about workspace
                 let teamConfig = {
                     method: 'get',
                     url: 'https://slack.com/api/team.info?team='+teamID,
@@ -265,7 +266,8 @@ exports.handler = async (event) => {
 
                 let teamName = teamRes.data.team.name;
                 wUUID = uuidv4();
-            
+                
+                // Insert workspace into DB
                 let createWorkspaceConfig = {
                     method: 'get',
                     url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls?query=insert into SlackWorkspace (SlackWorkspaceID, WorkspaceID, Name)values (\"'+wUUID+'\",\"'+teamID+'\",\"'+teamName+'\")',
@@ -291,6 +293,8 @@ exports.handler = async (event) => {
             
             if(getChannelRes.data.length === 0){ // Channel does not exist in the DB
                 let cUUID = uuidv4();
+
+                // Get needed info about Channel
                 let getChannelInfoConfig = {
                     method: 'get',
                     url: 'https://slack.com/api/conversations.info?channel='+channelID,
@@ -300,11 +304,12 @@ exports.handler = async (event) => {
                     },
                 };
                 
-                // Get name from Channel
                 const getChannelInfoRes = await axios(getChannelInfoConfig);
                 console.log("Get Channel Info Call:",getChannelInfoRes);
 
                 let channelName = getChannelInfoRes.data.channel.name;
+
+                // Insert channel into DB
                 let createChannelConfig = {
                     method: 'get',
                     url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls?query=insert into SlackChannel (SlackChannelID, SlackWorkspaceID, ChannelID, Name)values (\"'+cUUID+'\",\"'+wUUID+'\",\"'+channelID+'\",\"'+channelName+'\")',
@@ -314,7 +319,7 @@ exports.handler = async (event) => {
                 console.log('Create Channel Call: ', createChannelRes)
             }
             
-            
+            // Grab the 100,000 most recent messages
             let getHistoryConfig = {
                 method: 'get',
                 url: 'https://slack.com/api/conversations.history?channel='+channelID+'&limit=100000',
@@ -324,7 +329,6 @@ exports.handler = async (event) => {
                 },
             };
             
-            // Grab the 100,000 most recent messages
             const getHistoryRes = await axios(getHistoryConfig);
             
             let messages = getHistoryRes.data.messages;
