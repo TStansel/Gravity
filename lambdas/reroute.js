@@ -178,7 +178,7 @@ exports.handler = async (event) => {
             
             let wUUID;
 
-            if(getWorkspaceRes.data.length === 0){ // Workspace does not exist in the DB
+            if(getWorkspaceRes.data.body.length === 0){ // Workspace does not exist in the DB
                 // Get needed info about workspace
                 let teamConfig = {
                     method: 'get',
@@ -204,7 +204,7 @@ exports.handler = async (event) => {
                 const createWorkspaceRes = await axios(createWorkspaceConfig);
                 console.log('Create Workspace Call: ', createWorkspaceRes)
             }else{
-                wUUID = getWorkspaceRes.data[0].SlackWorkspaceID; // get UUID from get Call to be used in SlackChannel Creation
+                wUUID = getWorkspaceRes.data.body[0].SlackWorkspaceID; // get UUID from get Call to be used in SlackChannel Creation
             }
 
             // Check if channel exists in Db
@@ -219,8 +219,7 @@ exports.handler = async (event) => {
                 
             const getChannelRes = await axios(getChannelConfig);
             console.log('Get Channel Call: ', getChannelRes);
-            
-            if(getChannelRes.data.length === 0){ // Channel does not exist in the DB
+            if(getChannelRes.data.body.length === 0){ // Channel does not exist in the DB
                 let cUUID = uuidv4();
 
                 // Get needed info about Channel
@@ -316,7 +315,7 @@ exports.handler = async (event) => {
                     };
                     
                     const linkRes = await axios(linkConfig);
-                    console.log("link: ", linkRes); 
+                    console.log("link: ", linkRes);
                     
                 }
             }

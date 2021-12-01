@@ -66,7 +66,7 @@ exports.handler = async (event, context) => {
             
             // Get the answerUUID from Question
             // Not sure how the data will look here
-            let answerID = getQRes.data[0].AnswerID;
+            let answerID = getQRes.data.body[0].AnswerID;
             
             // Get Upvotes from Answer
             let getUpvotesConfig = {
@@ -79,7 +79,7 @@ exports.handler = async (event, context) => {
             
             //Decreasing the Upvotes count
             // Not Sure how the data is going to look here
-            let upvotes = getUpvotesRes.data[0].Upvotes - 1 
+            let upvotes = getUpvotesRes.data.body[0].Upvotes - 1 
             let updateUpvotesConfig = {
                 method: 'get',
                 url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls?query=update Answer set Upvotes='+upvotes+'where AnswerID=\"'+answerID+'\"',
@@ -122,8 +122,8 @@ exports.handler = async (event, context) => {
             console.log('Get Q Call: ', getQRes)
           
             // Not sure how the data is going to look here
-            let answerID = getQRes.data[0].AnswerID
-            let questionTS = getQRes.data[0].Ts
+            let answerID = getQRes.data.body[0].AnswerID
+            let questionTS = getQRes.data.body[0].Ts
           
             // Get the link to the Answer for the suggestion Question
             let getLinkConfig = {
@@ -141,7 +141,7 @@ exports.handler = async (event, context) => {
             let successfulParams = {
                 thread_ts: questionTS, // Not sure how this data will look here
                 channelID: body.channel.id, 
-                text: "<@"+username+"> Marked "+getLinkRes.data[0].AnswerLink +"as helpful."// Not sure how the data will look here
+                text: "<@"+username+"> Marked "+getLinkRes.data.body[0].AnswerLink +"as helpful."// Not sure how the data will look here
               };
             
             // Posting the confirmed answer to the users question
@@ -170,7 +170,7 @@ exports.handler = async (event, context) => {
             
             // Increasing the Upvotes count
             // Not Sure how the data is going to look here
-            let upvotes = getUpvotesRes.data[0].Upvotes + 1 
+            let upvotes = getUpvotesRes.data.body[0].Upvotes + 1 
             let updateUpvotesConfig = {
               method: 'post',
               url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
@@ -277,14 +277,14 @@ exports.handler = async (event, context) => {
 
             // Create the Answer 
             let createAnswerConfig = {
-                method: 'post', // link getting parsed
+                method: 'post', // need to pass in the ? as a parameter otherwise it gets parsed out
                 url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
                 data: {query: "insert into Answer (AnswerID, AnswerLink, Upvotes)values (\'"+aUUID+"\',\'"+newLink+"\',"+1+")"}
             }; 
             const createAnswerRes = await axios(createAnswerConfig);
             console.log('Create Answer Call: ', createAnswerRes)
             
-            let qUUID = getQRes.data[0].QuestionID;  // Not sure how the data will look here
+            let qUUID = getQRes.data.body[0].QuestionID;  // Not sure how the data will look here
 
             // Update the Question's Answer ID
             let updateQConfig = {
@@ -296,10 +296,10 @@ exports.handler = async (event, context) => {
             console.log('Create Answer Call: ', updateQRes)
           
         } 
-        
+        let userID = body.user.id;
+
         if(!successfulAnswer){
           // Send dm to user saying you can only mark messages that are in a thread as an answer
-          let userID = body.user.id;
           
           let msgParams = {
             channel: userID,
@@ -317,6 +317,25 @@ exports.handler = async (event, context) => {
           };
           const msgRes = await axios(msgConfig);
           console.log("Answer Failure: ", msgRes)
+        }else{
+            let msgParams = {
+                thread_ts: body.message.message_ts, 
+                channelID: body.channel.id, 
+                text: "<@"+userID+"> Marked "+body.message.text +"as the answer."
+              };
+            
+            // Posting the confirmed answer to the users question
+            let msgConfig = {
+              method: 'post',
+              url: 'https://slack.com/api/chat.postMessage',
+              headers: {
+                'Authorization': 'Bearer xoxb-2516673192850-2728955403541-DIAuQAWa2QhauF13bgerQYnK',
+                'Content-Type': 'application/json'
+              },
+              data: msgParams
+            };
+            let msgRes = await axios(msgConfig);
+            console.log("Answer Success: ", msgRes)
         }
         break;
       }
