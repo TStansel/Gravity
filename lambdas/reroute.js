@@ -1,5 +1,5 @@
 const axios = require('axios');
-import {v4 as uuidv4} from 'uuid';
+const {v4: uuidv4} = require("uuid");
 
 exports.handler = async (event) => {
     console.log('Request event: ', event);
@@ -234,53 +234,88 @@ exports.handler = async (event) => {
             break;
         }
         case eventType === 'message' && eventSubtype === 'channel_join':{
+            // TODO: Add something about only going in if the App Id matches?
+            
             // Bot was added to a channel
             response = buildResponse(200,event);
             
             // Check if the Workspace is already in the DB
-            let teamID = event.authorizations.team_id;
-            let db1Config = {
+            let teamID = event.team_id;
+            let getWorkspaceConfig = {
                 method: 'get',
-                url: `https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls?query=
-                select * from SlackWorkspace 
-                where WorkspaceID =`+teamID,
+                url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls?query=select * from SlackWorkspace where WorkspaceID=\"'+teamID+"\"",
             };
                 
-            const dbRes = await axios(db1Config);
-            if(dbRes.data.length > 0){
+            const getWorkspaceRes = await axios(getWorkspaceConfig);
+            console.log('Get Workspace Call: ', getWorkspaceRes)
+            
+            let wUUID;
+
+            if(getWorkspaceRes.data.length === 0){ // Workspace does not exist in the DB
+                let teamConfig = {
+                    method: 'get',
+                    url: 'https://slack.com/api/team.info?team='+teamID,
+                    headers: {
+                        'Authorization': 'Bearer xoxb-2516673192850-2728955403541-DIAuQAWa2QhauF13bgerQYnK',
+                        'Content-Type': 'application/json'
+                    },
+                }
+                const teamRes = await axios(teamConfig);
+                console.log("Get Team Call:", teamRes)
+
+                let teamName = teamRes.data.team.name;
+                wUUID = uuidv4();
+            
+                let createWorkspaceConfig = {
+                    method: 'get',
+                    url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls?query=insert into SlackWorkspace (SlackWorkspaceID, WorkspaceID, Name)values (\"'+wUUID+'\",\"'+teamID+'\",\"'+teamName+'\")',
+                };
                 
+                const createWorkspaceRes = await axios(createWorkspaceConfig);
+                console.log('Create Workspace Call: ', createWorkspaceRes)
+            }else{
+                wUUID = getWorkspaceRes.data[0].SlackWorkspaceID; // get UUID from get Call to be used in SlackChannel Creation
             }
-            console.log('Db Call: ', dbRes)
-            // Start Adding new workspace
-            
-            
-            let teamConfig = {
-                method: 'get',
-                url: 'https://slack.com/api/team.info?team='+teamID,
-                headers: {
-                    'Authorization': 'Bearer xoxb-2516673192850-2728955403541-DIAuQAWa2QhauF13bgerQYnK',
-                    'Content-Type': 'application/json'
-                },
-            }
-            const teamRes = await axios(config);
-            let teamName = teamRes.team.name;
-            
-            let uuid = uuidv4();
-            
-            let dbConfig = {
-                method: 'get',
-                url: `https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls?query=
-                insert into SlackWorkspace (SlackWorkspaceID, WorkspaceID, Name)
-                values (`+uuid+','+teamID+','+teamName+')',
-            };
-                
-            const dbRes = await axios(dbConfig);
-            console.log('Db Call: ', dbRes)
-            
+
+            // Check if channel exists in Db
             let messageEvent = event.event;
             let channelID = messageEvent.channel;
+
+            let getChannelConfig = {
+                method: 'get',
+                url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls?query=select * from SlackChannel where SlackWorkspaceID=\"'+wUUID+'\" and ChannelID=\"'+channelID+"\"",
+            };
+                
+            const getChannelRes = await axios(getChannelConfig);
+            console.log('Get Channel Call: ', getChannelRes);
             
-            let config = {
+            if(getChannelRes.data.length === 0){ // Channel does not exist in the DB
+                let cUUID = uuidv4();
+                let getChannelInfoConfig = {
+                    method: 'get',
+                    url: 'https://slack.com/api/conversations.info?channel='+channelID,
+                    headers: {
+                        'Authorization': 'Bearer xoxb-2516673192850-2728955403541-DIAuQAWa2QhauF13bgerQYnK',
+                        'Content-Type': 'application/json'
+                    },
+                };
+                
+                // Get name from Channel
+                const getChannelInfoRes = await axios(getChannelInfoConfig);
+                console.log("Get Channel Info Call:",getChannelInfoRes);
+
+                let channelName = getChannelInfoRes.data.channel.name;
+                let createChannelConfig = {
+                    method: 'get',
+                    url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls?query=insert into SlackChannel (SlackChannelID, SlackWorkspaceID, ChannelID, Name)values (\"'+cUUID+'\",\"'+wUUID+'\",\"'+channelID+'\",\"'+channelName+'\")',
+                };
+                
+                const createChannelRes = await axios(createChannelConfig);
+                console.log('Create Channel Call: ', createChannelRes)
+            }
+            
+            
+            let getHistoryConfig = {
                 method: 'get',
                 url: 'https://slack.com/api/conversations.history?channel='+channelID+'&limit=100000',
                 headers: {
@@ -290,11 +325,11 @@ exports.handler = async (event) => {
             };
             
             // Grab the 100,000 most recent messages
-            const res = await axios(config);
+            const getHistoryRes = await axios(getHistoryConfig);
             
-            let messages = res.data.messages;
+            let messages = getHistoryRes.data.messages;
             // let hasMoreMessages = res.data.has_more;
-            console.log('Result: ', res.data);
+            console.log('Get History Call: ', getHistoryRes.data);
             
             let cleanedMessages = []; // Messages that have a thread and do not have a file attached
             
