@@ -283,7 +283,7 @@ exports.handler = async (event, context) => {
 
             // Create the Answer 
             let createAnswerConfig = {
-                method: 'post', // need to pass in the ? as a parameter otherwise it gets parsed out
+                method: 'post', 
                 url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
                 data: createAnswerParams
             }; 
