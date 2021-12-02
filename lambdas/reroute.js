@@ -1,5 +1,5 @@
 const axios = require('axios');
-import {v4 as uuidv4} from 'uuid';
+const {v4: uuidv4} = require("uuid");
 
 exports.handler = async (event) => {
     console.log('Request event: ', event);
@@ -497,6 +497,21 @@ exports.handler = async (event) => {
                     let qUUID = uuidv4();
                     let ts = nlpRes.data.body[i].ts;
                     let text = nlpRes.data.body[i].text;
+
+                    let vectorParams = {
+                        raw_text : text
+                    }
+
+                    // Get the TextVector
+                    let vectorConfig = {
+                        method: 'post',
+                        url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/questiontovec',
+                        raw_text: text
+                    }
+
+                    const vectorRes = await axios(vectorConfig);
+                    console.log("Question To Vec Call: ", vectorRes);
+
                     let vector = {}; // Get the actual vector here
 
                     // Insert Question into DB
