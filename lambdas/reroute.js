@@ -53,15 +53,14 @@ exports.handler = async (event) => {
                 
                     const dbRes = await axios(config);
                     console.log('Db Call: ', dbRes)*/
+
+
                     // TODO: query database to find top n recently asked questions in that channel
                     console.log("trying to query database to get recent questions asked in this channel")
                     let dbConfig = {
                         method: 'post',
                         url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
-                        data: {query: `select QuestionID, TextVector
-                        from Question
-                        inner join SlackChannel on Question.SlackChannelID=SlackChannel.SlackChannelID
-                        where SlackChannel.ChannelID = `+channelID}
+                        data: {query: "select QuestionID, TextVector from Question inner join SlackChannel on Question.SlackChannelID=SlackChannel.SlackChannelID where SlackChannel.ChannelID = \'"+channelID+"\'"}
                     };
                  
                         
@@ -290,104 +289,8 @@ exports.handler = async (event) => {
                 values (`+uuid+','+teamID+','+teamName+')',
             };
                 
-            const getChannelRes = await axios(getChannelConfig);
-            console.log('Get Channel Call: ', getChannelRes);
-
-            let cUUID;
-
-            if(getChannelRes.data.body.length === 0){ // Channel does not exist in the DB
-                cUUID = uuidv4();
-
-                // Get needed info about Channel
-                let getChannelInfoConfig = {
-                    method: 'get',
-                    url: 'https://slack.com/api/conversations.info?channel='+channelID,
-                    headers: {
-                        'Authorization': 'Bearer xoxb-2516673192850-2728955403541-DIAuQAWa2QhauF13bgerQYnK',
-                        'Content-Type': 'application/json'
-                    },
-                };
-                
-                const getChannelInfoRes = await axios(getChannelInfoConfig);
-                console.log("Get Channel Info Call:",getChannelInfoRes);
-
-                let channelName = getChannelInfoRes.data.channel.name;
-
-                // Insert channel into DB
-                let createChannelConfig = {
-                    method: 'post',
-                    url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
-                    data: {query: 'insert into SlackChannel (SlackChannelID, SlackWorkspaceID, ChannelID, Name)values (\"'+cUUID+'\",\"'+wUUID+'\",\"'+channelID+'\",\"'+channelName+'\")'}
-                };
-                
-                const createChannelRes = await axios(createChannelConfig);
-                console.log('Create Channel Call: ', createChannelRes)
-
-                // Because this is a new channel we need to add all users into the DB if they dont exist
-
-                // Get 100,000 users from the Channel (should be all?)
-                let getChannelUsersConfig = {
-                    method: 'get',
-                    url: 'https://slack.com/api/conversations.members?channel='+channelID+'&limit=100000',
-                    headers: {
-                        'Authorization': 'Bearer xoxb-2516673192850-2728955403541-DIAuQAWa2QhauF13bgerQYnK',
-                        'Content-Type': 'application/json'
-                    },
-                };
-                
-                const getChannelUsersRes = await axios(getChannelUsersConfig);
-                console.log("Get Channel Users Call:",getChannelUsersRes);
-
-                let members = getChannelUsersRes.data.members;
-
-                for(let i = 0; i < members.length; i++){
-                    let slackUID = members[i];
-                    // Get User from DB if they exist
-                    let getUserConfig = {
-                        method: 'post',
-                        url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
-                        data: {query:'select * from SlackUser where SlackWorkspaceID=\"'+wUUID+'\" and SlackID=\"'+slackUID+'\"'}
-                    };
-                        
-                    const getUserRes = await axios(getUserConfig);
-                    console.log('Get User Call: ', getUserRes);
-
-                    if(getUserRes.data.body.length === 0){ // User does not exist in DB
-
-                        // Get needed info about user
-                        let getUsersInfoConfig = {
-                            method: 'get',
-                            url: 'https://slack.com/api/users.info?user='+slackUID,
-                            headers: {
-                                'Authorization': 'Bearer xoxb-2516673192850-2728955403541-DIAuQAWa2QhauF13bgerQYnK',
-                                'Content-Type': 'application/json'
-                            },
-                        };
-                        
-                        const getUsersInfoRes = await axios(getUsersInfoConfig);
-                        console.log("Get Users Info Call:",getUsersInfoRes);
-
-                        let name = getUsersInfoRes.data.user.real_name;
-                        let uUUID = uuidv4();
-
-                        // Insert user into DB
-                        let createUserConfig = {
-                            method: 'post',
-                            url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
-                            data: {query: 'insert into SlackUser (SlackUserID, SlackWorkspaceID, Name, SlackID)values (\"'+uUUID+'\",\"'+wUUID+'\",\"'+name+'\",\"'+slackUID+'\")'}
-                        };
-                
-                        const createUserRes = await axios(createUserConfig);
-                        console.log('Create User Call: ', createUserRes)
-                    }
-
-                }
-
-            } else {
-                cUUID = getChannelRes.data.body[0].SlackChannelID
-            }
-
-            
+            const dbRes = await axios(dbConfig);
+            console.log('Db Call: ', dbRes)
             
             let messageEvent = event.event;
             let channelID = messageEvent.channel;
@@ -435,7 +338,6 @@ exports.handler = async (event) => {
                 console.log("nlpRes app added: ",nlpRes.data.body)
                 for (let i = 0; i < nlpRes.data.body.length; i++){
                     let messageTS = nlpRes.data.body[i].thread_ts;
-                    // Get the Link to the Answer Message
                     let answerConfig = {
                         method: 'get',
                         url: 'https://slack.com/api/conversations.replies?channel='+channelID+'&ts='+messageTS,
@@ -462,6 +364,7 @@ exports.handler = async (event) => {
                     const linkRes = await axios(linkConfig);
                     console.log("link: ", linkRes);
                     
+<<<<<<< HEAD
                     let aUUID = uuidv4();
                     let newLink = linkRes.data.permalink;
 
@@ -519,11 +422,15 @@ exports.handler = async (event) => {
                         method: 'post',
                         url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
                         data: {query: 'insert into Question (QuestionID, AnswerID, SlackChannelID, UserID, Ts, RawText, TextVector)values (\"'+qUUID+'\",\"'+aUUID+'\",\"'+cUUID+'\",\"'+uUUID+'\",\"'+ts+'\",\"'+text+'\",\"'+vector+'\")'}
+=======
+                    let config = {
+                        method: 'get',
+                        url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls?query=show tables',
+>>>>>>> 37aad8c3d40ee97c07e2ca26c33b75bc09a53788
                     };
-            
-                    const createQuestionRes = await axios(createQuestionConfig);
-                    console.log('Create Question Call: ', createQuestionRes);
-
+                
+                    const dbRes = await axios(config);
+                    console.log('Db Call: ', dbRes)
                     
                 }
             }
