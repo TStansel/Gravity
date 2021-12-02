@@ -469,8 +469,6 @@ exports.handler = async (event) => {
                     let vectorRes = await axios(vectorConfig);
                     console.log('Question To Vec Call', vectorRes);
 
-                    console.log("JSON TEST: ", parseJson(vectorRes.data))
-                    console.log("STRING TEST:", vectorRes.data);
                     let vector = "{\\\"vector\\\": ["+parseJson(vectorRes.data).vector.toString() + "]}";
 
                     // Insert Question into DB
