@@ -42,7 +42,6 @@ let query = async (sql, params) => {
         if (params != 0){
           sqlQ = sql + connection.escape(params[0]) + params[1]
         }
-        console.log("SQLQ:",sqlQ)
         connection.query(sqlQ, (err, results) => {
           if (err){
             reject(err);
