@@ -364,7 +364,6 @@ exports.handler = async (event) => {
                     const linkRes = await axios(linkConfig);
                     console.log("link: ", linkRes);
                     
-<<<<<<< HEAD
                     let aUUID = uuidv4();
                     let newLink = linkRes.data.permalink;
 
@@ -422,11 +421,6 @@ exports.handler = async (event) => {
                         method: 'post',
                         url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
                         data: {query: 'insert into Question (QuestionID, AnswerID, SlackChannelID, UserID, Ts, RawText, TextVector)values (\"'+qUUID+'\",\"'+aUUID+'\",\"'+cUUID+'\",\"'+uUUID+'\",\"'+ts+'\",\"'+text+'\",\"'+vector+'\")'}
-=======
-                    let config = {
-                        method: 'get',
-                        url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls?query=show tables',
->>>>>>> 37aad8c3d40ee97c07e2ca26c33b75bc09a53788
                     };
                 
                     const dbRes = await axios(config);
