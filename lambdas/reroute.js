@@ -453,13 +453,13 @@ exports.handler = async (event) => {
                     let vectorConfig = {
                         method: 'post',
                         url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/doc2vec',
-                        raw_text: text
+                        data: {raw_text: text}
                     }
 
                     let vectorRes = await axios(vectorConfig);
                     console.log('Question To Vec Call', vectorRes);
 
-                    let vector = {}; // Get the actual vector here
+                    let vector = JSON.parse(vectorRes.data);
 
                     // Insert Question into DB
                     let createQuestionConfig = {
