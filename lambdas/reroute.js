@@ -53,6 +53,17 @@ exports.handler = async (event) => {
                 
                     const dbRes = await axios(config);
                     console.log('Db Call: ', dbRes)*/
+                    // TODO: query database to find top n recently asked questions in that channel
+                    console.log("trying to query database to get recent questions asked in this channel")
+                    let dbConfig = {
+                        method: 'post',
+                        url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
+                        data: {query: "select QuestionID, TextVector from Question inner join SlackChannel on Question.SlackChannelID=SlackChannel.SlackChannelID where SlackChannel.ChannelID =\'"+channelID+"\'"}
+                    };
+                 
+                        
+                    const dbRes = await axios(dbConfig);
+                    console.log('Db Call: ', dbRes)
                     
                     // TODO: Send question to similiar question lambda
 
