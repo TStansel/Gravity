@@ -67,10 +67,7 @@ exports.handler = async (event) => {
 
                     let object = {
                         "new_question": [1,2 ,3, 4],
-                        "old_questions": [
-                            {"id": 1, "vec": [1, 2, 3, 6]},
-                            {"id": 2, "vec": [1, 34, 4, 4]}
-                        ]
+                        "old_questions": dbRes.data.body
                     }
 
                     let getSimilarQuestionsConfig = {
