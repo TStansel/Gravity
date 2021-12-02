@@ -53,24 +53,9 @@ exports.handler = async (event) => {
                 
                     const dbRes = await axios(config);
                     console.log('Db Call: ', dbRes)*/
-
-
-                    // TODO: query database to find top n recently asked questions in that channel
-                    console.log("trying to query database to get recent questions asked in this channel")
-                    let dbConfig = {
-                        method: 'post',
-                        url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
-                        data: {query: "select QuestionID, TextVector from Question inner join SlackChannel on Question.SlackChannelID=SlackChannel.SlackChannelID where SlackChannel.ChannelID = \'"+channelID+"\'"}
-                    };
-                 
-                        
-                    const dbRes = await axios(dbConfig);
-                    console.log('Db Call: ', dbRes)
-
-
+                    
                     // TODO: Send question to similiar question lambda
 
-                    
                     // TODO: Use result of similiar question lambda to build message to send to user
                 
                     // Probably better to build 3 messages and send them so we can delete them if the dismiss button is pressed
@@ -92,7 +77,13 @@ exports.handler = async (event) => {
                     console.log("link: ", linkRes);
                     */
                     
-                    let msgParams = {
+                    /* Message is now Broken down to just one row of buttons
+                        TODO: Update the First Text key -> This is the text for the notification
+                        TODO: Update the Text in the first block -> This is the header text that appears in each msg
+                        TODO: Update the value of each button block to contain the UUID of the question
+                        TODO: Update the text in the 3rd block to be hyperlinked text
+                    */
+                    let msg1Params = {
                         "channel": "C02K2H9SWG6",
                         "user": "U02FK8XA2RX",
                         "text": "Hello World",
@@ -111,7 +102,7 @@ exports.handler = async (event) => {
                                 "type": "section",
                                 "text": {
                                     "type": "mrkdwn",
-                                    "text": "Suggestion 1"
+                                    "text": "<https://osmosix.slack.com/archives/C02K2H9SWG6/p1638381142005300?thread_ts=1638381114.005100&cid=C02K2H9SWG6|Example Suggestion>"
                                 }
                             },
                             {
@@ -124,7 +115,7 @@ exports.handler = async (event) => {
                                             "text": "Helpful"
                                         },
                                         "value": "helpful",
-                                        "action_id": "1_helpful"
+                                        "action_id": "helpful"
                                     },
                                     {
                                         "type": "button",
@@ -133,7 +124,7 @@ exports.handler = async (event) => {
                                             "text": "Not Helpful"
                                         },
                                     "value": "notHelpful",
-                                    "action_id": "1_nothelpful"
+                                    "action_id": "nothelpful"
                                     },
                                     {
                                         "type": "button",
@@ -143,103 +134,23 @@ exports.handler = async (event) => {
                                             "text": "Dismiss"
                                         },
                                         "value": "dismiss",
-                                        "action_id": "1_dismiss"
+                                        "action_id": "dismiss"
                                     }
                                 ]
                             },
-                            {
-                                "type": "section",
-                                "text": {
-                                    "type": "mrkdwn",
-                                    "text": "Suggestion 2"
-                                }
-                            },
-                            {
-                                "type": "actions",
-                                "elements": [
-                                    {
-                                        "type": "button",
-                                        "text": {
-                                            "type": "plain_text",
-                                            "text": "Helpful"
-                                        },
-                                        "value": "helpful",
-                                        "action_id": "2_helpful"
-                                    },
-                                    {
-                                        "type": "button",
-                                        "text": {
-                                            "type": "plain_text",
-                                            "text": "Not Helpful"
-                                        },
-                                        "value": "notHelpful",
-                                        "action_id": "2_nothelpful"
-                                    },
-                                    {
-                                        "type": "button",
-                                        "style": "danger",
-                                        "text": {
-                                            "type": "plain_text",
-                                            "text": "Dismiss"
-                                        },
-                                        "value": "dismiss",
-                                        "action_id": "2_dismiss"
-                                    }
-                                ]
-                            },
-                            {
-                                "type": "section",
-                                "text": {
-                                    "type": "mrkdwn",
-                                    "text": "Suggestion 3"
-                                }
-                            },
-                            {
-                                "type": "actions",
-                                "elements": [
-                                    {
-                                        "type": "button",
-                                        "text": {
-                                            "type": "plain_text",
-                                            "text": "Helpful"
-                                        },
-                                        "value": "helpful",
-                                        "action_id": "3_helpful"
-                                    },
-                                    {
-                                        "type": "button",
-                                        "text": {
-                                            "type": "plain_text",
-                                            "text": "Not Helpful"
-                                        },
-                                        "value": "notHelpful",
-                                        "action_id": "3_nothelpful"
-                                    },
-                                    {
-                                        "type": "button",
-                                        "style": "danger",
-                                        "text": {
-                                            "type": "plain_text",
-                                            "text": "Dismiss"
-                                        },
-                                        "value": "dismiss",
-                                        "action_id": "3_dismiss"
-                                    }
-                                ]
-                            }
                         ]
                     }
-                    let msgConfig = {
+                    let msg1Config = {
                         method: 'post',
                         url: 'https://slack.com/api/chat.postEphemeral',
                         headers: {
                             'Authorization': 'Bearer xoxb-2516673192850-2728955403541-DIAuQAWa2QhauF13bgerQYnK',
                             'Content-Type': 'application/json'
                         },
-                        data: msgParams
+                        data: msg1Params
                     };
-                    const msgRes = await axios(msgConfig);
-                    console.log("Message Sent: ",msgRes);
+                    const msg1Res = await axios(msg1Config);
+                    console.log("Message One Sent: ",msg1Res);
                 
                 }
                 
@@ -249,53 +160,164 @@ exports.handler = async (event) => {
             break;
         }
         case eventType === 'message' && eventSubtype === 'channel_join':{
+            // TODO: Add something about only going in if the App Id matches?
+            
             // Bot was added to a channel
             response = buildResponse(200,event);
             
             // Check if the Workspace is already in the DB
-            let teamID = event.authorizations.team_id;
-            let db1Config = {
-                method: 'get',
-                url: `https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls?query=
-                select * from SlackWorkspace 
-                where WorkspaceID =`+teamID,
+            let teamID = event.team_id;
+            let getWorkspaceConfig = {
+                method: 'post',
+                url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
+                data: {query: 'select * from SlackWorkspace where WorkspaceID=\"'+teamID+'\"'}
             };
                 
-            const dbRes = await axios(db1Config);
-            if(dbRes.data.length > 0){
+            const getWorkspaceRes = await axios(getWorkspaceConfig);
+            console.log('Get Workspace Call: ', getWorkspaceRes)
+            
+            let wUUID;
+
+            if(getWorkspaceRes.data.body.length === 0){ // Workspace does not exist in the DB
+                // Get needed info about workspace
+                let teamConfig = {
+                    method: 'get',
+                    url: 'https://slack.com/api/team.info?team='+teamID,
+                    headers: {
+                        'Authorization': 'Bearer xoxb-2516673192850-2728955403541-DIAuQAWa2QhauF13bgerQYnK',
+                        'Content-Type': 'application/json'
+                    },
+                }
+                const teamRes = await axios(teamConfig);
+                console.log("Get Team Call:", teamRes)
+
+                let teamName = teamRes.data.team.name;
+                wUUID = uuidv4();
                 
-            }
-            console.log('Db Call: ', dbRes)
-            // Start Adding new workspace
-            
-            
-            let teamConfig = {
-                method: 'get',
-                url: 'https://slack.com/api/team.info?team='+teamID,
-                headers: {
-                    'Authorization': 'Bearer xoxb-2516673192850-2728955403541-DIAuQAWa2QhauF13bgerQYnK',
-                    'Content-Type': 'application/json'
-                },
-            }
-            const teamRes = await axios(config);
-            let teamName = teamRes.team.name;
-            
-            let uuid = uuidv4();
-            
-            let dbConfig = {
-                method: 'get',
-                url: `https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls?query=
-                insert into SlackWorkspace (SlackWorkspaceID, WorkspaceID, Name)
-                values (`+uuid+','+teamID+','+teamName+')',
-            };
+                // Insert workspace into DB
+                let createWorkspaceConfig = {
+                    method: 'post',
+                    url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
+                    data: {query: 'insert into SlackWorkspace (SlackWorkspaceID, WorkspaceID, Name)values (\"'+wUUID+'\",\"'+teamID+'\",\"'+teamName+'\")'}
+                };
                 
-            const dbRes = await axios(dbConfig);
-            console.log('Db Call: ', dbRes)
-            
+                const createWorkspaceRes = await axios(createWorkspaceConfig);
+                console.log('Create Workspace Call: ', createWorkspaceRes)
+            }else{
+                wUUID = getWorkspaceRes.data.body[0].SlackWorkspaceID; // get UUID from get Call to be used in SlackChannel Creation
+            }
+
+            // Check if channel exists in Db
             let messageEvent = event.event;
             let channelID = messageEvent.channel;
+
+            let getChannelConfig = {
+                method: 'post',
+                url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
+                data: {query:'select * from SlackChannel where SlackWorkspaceID=\"'+wUUID+'\" and ChannelID=\"'+channelID+'\"'}
+            };
+                
+            const getChannelRes = await axios(getChannelConfig);
+            console.log('Get Channel Call: ', getChannelRes);
+
+            let cUUID;
+
+            if(getChannelRes.data.body.length === 0){ // Channel does not exist in the DB
+                cUUID = uuidv4();
+
+                // Get needed info about Channel
+                let getChannelInfoConfig = {
+                    method: 'get',
+                    url: 'https://slack.com/api/conversations.info?channel='+channelID,
+                    headers: {
+                        'Authorization': 'Bearer xoxb-2516673192850-2728955403541-DIAuQAWa2QhauF13bgerQYnK',
+                        'Content-Type': 'application/json'
+                    },
+                };
+                
+                const getChannelInfoRes = await axios(getChannelInfoConfig);
+                console.log("Get Channel Info Call:",getChannelInfoRes);
+
+                let channelName = getChannelInfoRes.data.channel.name;
+
+                // Insert channel into DB
+                let createChannelConfig = {
+                    method: 'post',
+                    url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
+                    data: {query: 'insert into SlackChannel (SlackChannelID, SlackWorkspaceID, ChannelID, Name)values (\"'+cUUID+'\",\"'+wUUID+'\",\"'+channelID+'\",\"'+channelName+'\")'}
+                };
+                
+                const createChannelRes = await axios(createChannelConfig);
+                console.log('Create Channel Call: ', createChannelRes)
+
+                // Because this is a new channel we need to add all users into the DB if they dont exist
+
+                // Get 100,000 users from the Channel (should be all?)
+                let getChannelUsersConfig = {
+                    method: 'get',
+                    url: 'https://slack.com/api/conversations.members?channel='+channelID+'&limit=100000',
+                    headers: {
+                        'Authorization': 'Bearer xoxb-2516673192850-2728955403541-DIAuQAWa2QhauF13bgerQYnK',
+                        'Content-Type': 'application/json'
+                    },
+                };
+                
+                const getChannelUsersRes = await axios(getChannelUsersConfig);
+                console.log("Get Channel Users Call:",getChannelUsersRes);
+
+                let members = getChannelUsersRes.data.members;
+
+                for(let i = 0; i < members.length; i++){
+                    let slackUID = members[i];
+                    // Get User from DB if they exist
+                    let getUserConfig = {
+                        method: 'post',
+                        url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
+                        data: {query:'select * from SlackUser where SlackWorkspaceID=\"'+wUUID+'\" and SlackID=\"'+slackUID+'\"'}
+                    };
+                        
+                    const getUserRes = await axios(getUserConfig);
+                    console.log('Get User Call: ', getUserRes);
+
+                    if(getUserRes.data.body.length === 0){ // User does not exist in DB
+
+                        // Get needed info about user
+                        let getUsersInfoConfig = {
+                            method: 'get',
+                            url: 'https://slack.com/api/users.info?user='+slackUID,
+                            headers: {
+                                'Authorization': 'Bearer xoxb-2516673192850-2728955403541-DIAuQAWa2QhauF13bgerQYnK',
+                                'Content-Type': 'application/json'
+                            },
+                        };
+                        
+                        const getUsersInfoRes = await axios(getUsersInfoConfig);
+                        console.log("Get Users Info Call:",getUsersInfoRes);
+
+                        let name = getUsersInfoRes.data.user.real_name;
+                        let uUUID = uuidv4();
+
+                        // Insert user into DB
+                        let createUserConfig = {
+                            method: 'post',
+                            url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
+                            data: {query: 'insert into SlackUser (SlackUserID, SlackWorkspaceID, Name, SlackID)values (\"'+uUUID+'\",\"'+wUUID+'\",\"'+name+'\",\"'+slackUID+'\")'}
+                        };
+                
+                        const createUserRes = await axios(createUserConfig);
+                        console.log('Create User Call: ', createUserRes)
+                    }
+
+                }
+
+            } else {
+                cUUID = getChannelRes.data.body[0].SlackChannelID
+            }
+
             
-            let config = {
+            
+            // Grab the 100,000 most recent messages
+            let getHistoryConfig = {
                 method: 'get',
                 url: 'https://slack.com/api/conversations.history?channel='+channelID+'&limit=100000',
                 headers: {
@@ -304,12 +326,11 @@ exports.handler = async (event) => {
                 },
             };
             
-            // Grab the 100,000 most recent messages
-            const res = await axios(config);
+            const getHistoryRes = await axios(getHistoryConfig);
             
-            let messages = res.data.messages;
+            let messages = getHistoryRes.data.messages;
             // let hasMoreMessages = res.data.has_more;
-            console.log('Result: ', res.data);
+            console.log('Get History Call: ', getHistoryRes.data);
             
             let cleanedMessages = []; // Messages that have a thread and do not have a file attached
             
@@ -338,6 +359,7 @@ exports.handler = async (event) => {
                 console.log("nlpRes app added: ",nlpRes.data.body)
                 for (let i = 0; i < nlpRes.data.body.length; i++){
                     let messageTS = nlpRes.data.body[i].thread_ts;
+                    // Get the Link to the Answer Message
                     let answerConfig = {
                         method: 'get',
                         url: 'https://slack.com/api/conversations.replies?channel='+channelID+'&ts='+messageTS,
@@ -399,21 +421,6 @@ exports.handler = async (event) => {
                     let qUUID = uuidv4();
                     let ts = nlpRes.data.body[i].ts;
                     let text = nlpRes.data.body[i].text;
-
-                    let vectorParams = {
-                        raw_text : text
-                    }
-
-                    // Get the TextVector
-                    let vectorConfig = {
-                        method: 'post',
-                        url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/questiontovec',
-                        raw_text: text
-                    }
-
-                    const vectorRes = await axios(vectorConfig);
-                    console.log("Question To Vec Call: ", vectorRes);
-
                     let vector = {}; // Get the actual vector here
 
                     // Insert Question into DB
@@ -422,9 +429,10 @@ exports.handler = async (event) => {
                         url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
                         data: {query: 'insert into Question (QuestionID, AnswerID, SlackChannelID, UserID, Ts, RawText, TextVector)values (\"'+qUUID+'\",\"'+aUUID+'\",\"'+cUUID+'\",\"'+uUUID+'\",\"'+ts+'\",\"'+text+'\",\"'+vector+'\")'}
                     };
-                
-                    const dbRes = await axios(config);
-                    console.log('Db Call: ', dbRes)
+            
+                    const createQuestionRes = await axios(createQuestionConfig);
+                    console.log('Create Question Call: ', createQuestionRes);
+
                     
                 }
             }
@@ -454,4 +462,3 @@ function buildResponse(statusCode, event) {
     }
   
 }
-
