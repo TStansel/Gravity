@@ -140,7 +140,7 @@ exports.handler = async (event, context) => {
             let successfulParams = {
                 thread_ts: messageTS,
                 channel: body.channel.id, 
-                text: "<@"+username+"> Marked "+getLinkRes.data.body[0].AnswerLink +" as helpful."
+                text: "<@"+username+"> Marked <"+getLinkRes.data.body[0].AnswerLink+"|this thread> as helpful."
               };
             
             // Posting the confirmed answer to the users question
