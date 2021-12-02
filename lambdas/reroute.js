@@ -22,6 +22,7 @@ exports.handler = async (event) => {
             let messageText = messageEvent.text;
             let channelID = messageEvent.channel;
             let messageID = messageEvent.ts;
+            let userID = messageEvent.user;
             
             // Check if the message is in a thread or has a file attached
             if(!messageEvent.hasOwnProperty('thread_ts') || messageEvent.ts === messageEvent.thread_ts){
@@ -91,6 +92,22 @@ exports.handler = async (event) => {
 
                     const getSimilarQuestionsRes = await axios(getSimilarQuestionsConfig);
                     console.log('Similar q log: ', getSimilarQuestionsRes)
+
+                    let mostSimilarQuestion = parseJson(getSimilarQuestionsRes.data)[0]
+
+                    // get answer thread link based off most similar questions
+                    console.log("getting answer link based off question uuid")
+                    let getAnswerLinkConfig = {
+                        method: 'post',
+                        url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
+                        data: {query: "select RawText, AnswerLink from Question join Answer on Question.AnswerID = Answer.AnswerID where QuestionID =\'"+mostSimilarQuestion.QuestionID+"\'"}
+                    };
+                 
+                    const getAnswerLinkRes = await axios(getAnswerLinkConfig);
+                    console.log('get answer link: ', getAnswerLinkRes)
+
+                    let answerLink = getAnswerLinkRes.data.body[0].AnswerLink;
+                    let similarityScore = mostSimilarQuestion.similarity;
                     
                     // TODO: Send question to similiar question lambda
 
@@ -122,15 +139,15 @@ exports.handler = async (event) => {
                         TODO: Update the text in the 3rd block to be hyperlinked text
                     */
                     let msg1Params = {
-                        "channel": "C02K2H9SWG6",
-                        "user": "U02FK8XA2RX",
-                        "text": "Hello World",
+                        "channel": channelID,
+                        "user": userID,
+                        "text": "I think I might have an answer for you!",
                         "blocks": [
                             {
                                 "type": "section",
                                 "text": {
                                     "type": "mrkdwn",
-                                    "text": "Hello"
+                                    "text": "I think I might have an answer for you!"
                                 }
                             },
                             {
@@ -140,7 +157,7 @@ exports.handler = async (event) => {
                                 "type": "section",
                                 "text": {
                                     "type": "mrkdwn",
-                                    "text": "<https://osmosix.slack.com/archives/C02K2H9SWG6/p1638381142005300?thread_ts=1638381114.005100&cid=C02K2H9SWG6|Example Suggestion>"
+                                    "text": "Similarity score: "+Math.round(similarityScore * 100) / 100+" <"+answerLink+"|View thread>"
                                 }
                             },
                             {
@@ -152,7 +169,7 @@ exports.handler = async (event) => {
                                             "type": "plain_text",
                                             "text": "Helpful"
                                         },
-                                        "value": "helpful",
+                                        "value": mostSimilarQuestion.QuestionID,
                                         "action_id": "helpful"
                                     },
                                     {
@@ -161,7 +178,7 @@ exports.handler = async (event) => {
                                             "type": "plain_text",
                                             "text": "Not Helpful"
                                         },
-                                    "value": "notHelpful",
+                                    "value": mostSimilarQuestion.QuestionID,
                                     "action_id": "nothelpful"
                                     },
                                     {
@@ -171,7 +188,7 @@ exports.handler = async (event) => {
                                             "type": "plain_text",
                                             "text": "Dismiss"
                                         },
-                                        "value": "dismiss",
+                                        "value": mostSimilarQuestion.QuestionID,
                                         "action_id": "dismiss"
                                     }
                                 ]
