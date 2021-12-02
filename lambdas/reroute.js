@@ -54,6 +54,7 @@ exports.handler = async (event) => {
                     const dbRes = await axios(config);
                     console.log('Db Call: ', dbRes)*/
                     
+                    // Get all questions asked in the channel the message was posted to
                     console.log("trying to query database to get recent questions asked in this channel")
                     let dbConfig = {
                         method: 'post',
@@ -65,8 +66,19 @@ exports.handler = async (event) => {
                     const dbRes = await axios(dbConfig);
                     console.log('Db Call: ', dbRes)
 
+                    // get question vector of the asked message
+                    let messageToVectorConfig = {
+                        method: 'post',
+                        url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/doc2vec',
+                        data: {raw_text: messageText}
+                    }
+
+                    let messageToVectorRes = await axios(messageToVectorConfig);
+                    console.log('Message To Vec Call', messageToVectorRes);
+
+                    // get most similar questions from database
                     let object = {
-                        "new_question": [1,2 ,3, 4],
+                        "new_question": parseJson(messageToVectorRes.data).vector,
                         "old_questions": dbRes.data.body
                     }
 
