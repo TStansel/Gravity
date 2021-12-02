@@ -169,7 +169,7 @@ exports.handler = async (event) => {
                                             "type": "plain_text",
                                             "text": "Helpful"
                                         },
-                                        "value": mostSimilarQuestion.QuestionID,
+                                        "value": mostSimilarQuestion.QuestionID + " " + messageID,
                                         "action_id": "helpful"
                                     },
                                     {
@@ -178,7 +178,7 @@ exports.handler = async (event) => {
                                             "type": "plain_text",
                                             "text": "Not Helpful"
                                         },
-                                    "value": mostSimilarQuestion.QuestionID,
+                                    "value": mostSimilarQuestion.QuestionID + " " + messageID,
                                     "action_id": "nothelpful"
                                     },
                                     {
@@ -188,7 +188,7 @@ exports.handler = async (event) => {
                                             "type": "plain_text",
                                             "text": "Dismiss"
                                         },
-                                        "value": mostSimilarQuestion.QuestionID,
+                                        "value": mostSimilarQuestion.QuestionID + " " + messageID,
                                         "action_id": "dismiss"
                                     }
                                 ]
