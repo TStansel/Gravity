@@ -327,10 +327,11 @@ exports.handler = async (event, context) => {
             let msgParams = {
                 thread_ts: body.message.message_ts, 
                 channelID: body.channel.id, 
-                text: "<@"+userID+"> Marked "+body.message.text +"as the answer."
+                text: "<@"+userID+"> Marked \""+body.message.text +"\" as the answer."
               };
             
             // Posting the confirmed answer to the users question
+            // TODO: Fix bug here
             let msgConfig = {
               method: 'post',
               url: 'https://slack.com/api/chat.postMessage',
