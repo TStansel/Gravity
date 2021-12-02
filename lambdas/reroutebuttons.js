@@ -53,8 +53,6 @@ exports.handler = async (event, context) => {
             console.log("Not Helpful Res: ", notHelpfulRes);
             
             let oldQUUID = body.actions[0].value.split(" a")[0];
-
-            'update Answer, Question inner join Answer.AnswerID = Question.AnswerID set Answer.Upvotes = (Answer.Upvotes - 1) where Question.QuestionID =\"'+oldQUUID+'\"'
             
             // Get Question from DB
             let updateAnswerUpvotesConfig = {
