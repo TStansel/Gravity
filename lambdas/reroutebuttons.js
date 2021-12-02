@@ -108,8 +108,9 @@ exports.handler = async (event, context) => {
             
             
             // TODO Mark question with some kind of emoji to denote it has been answered?
-            
-            let oldQUUID = body.actions[0].value;
+            let buttonValue = body.actions[0].value.split(' ');
+            let oldQUUID = buttonValue[0];
+            let messageTS = buttonValue[1];
             
             // Get question
             let getQConfig = {
@@ -122,7 +123,6 @@ exports.handler = async (event, context) => {
             console.log('Get Q Call: ', getQRes)
           
             let answerID = getQRes.data.body[0].AnswerID
-            let questionTS = getQRes.data.body[0].Ts
           
             // Get the link to the Answer for the suggestion Question
             let getLinkConfig = {
@@ -138,9 +138,9 @@ exports.handler = async (event, context) => {
 
             // Post answer in the thread
             let successfulParams = {
-                thread_ts: questionTS, // Not sure how this data will look here
-                channelID: body.channel.id, 
-                text: "<@"+username+"> Marked "+getLinkRes.data.body[0].AnswerLink +"as helpful."// Not sure how the data will look here
+                thread_ts: messageTS,
+                channel: body.channel.id, 
+                text: "<@"+username+"> Marked "+getLinkRes.data.body[0].AnswerLink +" as helpful."
               };
             
             // Posting the confirmed answer to the users question
@@ -168,12 +168,12 @@ exports.handler = async (event, context) => {
             console.log('Get Upvotes Call: ', getUpvotesRes)
             
             // Increasing the Upvotes count
-            // Not Sure how the data is going to look here
+  
             let upvotes = getUpvotesRes.data.body[0].Upvotes + 1 
             let updateUpvotesConfig = {
               method: 'post',
               url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
-              data: {query:'update Answer set Upvotes='+upvotes+'where AnswerID=\"'+answerID+'\"'}
+              data: {query:'update Answer set Upvotes='+upvotes+' where AnswerID=\"'+answerID+'\"'}
             };
                 
             const updateUpvotesRes = await axios(updateUpvotesConfig);
