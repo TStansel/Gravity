@@ -6,10 +6,10 @@ def lambda_handler(event=None, context=None):
   new_question = event["payload"]["new_question"]
   old_questions = event["payload"]["old_questions"]
   
-  similarities = np.array(list(map(lambda old_question: cosine_similarity(new_question, old_question["vec"]), old_questions)))
+  similarities = np.array(list(map(lambda old_question: cosine_similarity(new_question, old_question["TextVector"]), old_questions)))
   top_10_idx = similarities.argsort()[-10:][::-1]
 
-  return json.dumps(list(map(lambda idx: {"uuid": old_questions[idx]["id"], "similarity": similarities[idx]}, top_10_idx)))
+  return json.dumps(list(map(lambda idx: {"QuestionID": old_questions[idx]["QuestionID"], "similarity": similarities[idx]}, top_10_idx)))
 
 
 def cosine_similarity(v1, v2):
