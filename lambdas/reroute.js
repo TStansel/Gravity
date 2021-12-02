@@ -199,6 +199,7 @@ exports.handler = async (event) => {
         }
         case eventType === 'message' && eventSubtype === 'channel_join':{
             // TODO: Add something about only going in if the App Id matches?
+            // TODO: Send a message when this case starts and ends to let users know that the app is working on adding the history and when it is finished
             
             // Bot was added to a channel
             response = buildResponse(200,event);
@@ -361,7 +362,7 @@ exports.handler = async (event) => {
                 }
 
             } else {
-                cUUID = getChannelRes.data.body[0].SlackChannelID
+                cUUID = getChannelRes.data.body[0].SlackChannelID;
             }
 
             

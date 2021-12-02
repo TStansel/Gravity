@@ -52,13 +52,13 @@ exports.handler = async (event, context) => {
             const notHelpfulRes = await axios(notHelpfulConfig);
             console.log("Not Helpful Res: ", notHelpfulRes);
             
-            let qUUID = body.actions[0].value;
+            let oldQUUID = body.actions[0].value;
             
             // Get Question from DB
             let getQConfig = {
                 method: 'post',
                 url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
-                data: {query:'select AnswerID from Question where QuestionID=\"'+qUUID+'\"'}
+                data: {query:'select AnswerID from Question where QuestionID=\"'+oldQUUID+'\"'}
             };
                 
             const getQRes = await axios(getQConfig);
@@ -109,19 +109,18 @@ exports.handler = async (event, context) => {
             
             // TODO Mark question with some kind of emoji to denote it has been answered?
             
-            let qUUID = body.actions[0].value;
+            let oldQUUID = body.actions[0].value;
             
             // Get question
             let getQConfig = {
                 method: 'post',
                 url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
-                data: {query: 'select * from Question where QuestionID=\"'+qUUID+'\"'}
+                data: {query: 'select * from Question where QuestionID=\"'+oldQUUID+'\"'}
             };
                 
             const getQRes = await axios(getQConfig);
             console.log('Get Q Call: ', getQRes)
           
-            // Not sure how the data is going to look here
             let answerID = getQRes.data.body[0].AnswerID
             let questionTS = getQRes.data.body[0].Ts
           
@@ -135,7 +134,7 @@ exports.handler = async (event, context) => {
             const getLinkRes = await axios(getLinkConfig);
             console.log('Get Answer Link Call: ', getLinkRes)
           
-            let username = body.name.username;
+            let username = body.user.username;
 
             // Post answer in the thread
             let successfulParams = {
@@ -199,18 +198,22 @@ exports.handler = async (event, context) => {
           let channelID = body.channel.id;
           let messageTS = body.message.ts;
           let userID = body.user.id;
-          
+          let workspaceID = body.team.id;
+
           // Get the Parent Message
           let getParentConfig = {
                 method: 'get',
-                url: 'https://slack.com/api/conversations.history?channel='+channelID+'&limit=1&latest='+parentTS,
+                url: 'https://slack.com/api/conversations.history?channel='+channelID+'&limit=1&inclusive=true&latest='+parentTS,
                 headers: {
                     'Authorization': 'Bearer xoxb-2516673192850-2728955403541-DIAuQAWa2QhauF13bgerQYnK',
                     'Content-Type': 'application/json'
                 },
             };
             const getParentRes = await axios(getParentConfig);
-            console.log("Individual message: ", getParentRes.data.messages);
+            console.log("Individual Parent message: ", getParentRes.data.messages);
+
+            let parentMessage = getParentRes.data.messages[0];
+            let parentMsgText = parentMessage.text;
 
             // Make sure parent message is a question
             let params = {
@@ -246,20 +249,53 @@ exports.handler = async (event, context) => {
             };
             const msgRes = await axios(msgConfig);
             console.log("Answer Success: ", msgRes)
-            
-            let parentMessage = getParentRes.data.messages[0];
 
-            //Find parent message in db
-            let getQConfig = {
-                method: 'post',
-                url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
-                data: {query:'select * from Question join SlackChannel on Question.SlackChannelID=SlackChannel.SlackChannelID where Question.Ts=\"'+parentTS + '\" and SlackChannel.ChannelID=\"'+channelID+'\"'}
+            // Get the Workspace UUID
+            let getWorkspaceConfig = {
+              method: 'post',
+              url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
+              data: {query: 'select * from SlackWorkspace where WorkspaceID=\"'+workspaceID+'\"'}
             };
-                
-            const getQRes = await axios(getQConfig);
-            console.log('Get Q Call: ', getQRes)
-            
-            // Update the answer for the parent message with the link
+              
+            const getWorkspaceRes = await axios(getWorkspaceConfig);
+            console.log('Get Workspace Call: ', getWorkspaceRes)
+            let wUUID = getWorkspaceRes.data.body[0].SlackWorkspaceID;
+
+            // Get the Channel
+            let getChannelConfig = {
+              method: 'post',
+              url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
+              data: {query:'select * from SlackChannel where SlackWorkspaceID=\"'+wUUID+'\" and ChannelID=\"'+channelID+'\"'}
+            };
+              
+            const getChannelRes = await axios(getChannelConfig);
+            console.log('Get Channel Call: ', getChannelRes);
+            let cUUID = getChannelRes.data.body[0].SlackChannelID;
+
+            // Get the User 
+            let getUser2Config = {
+              method: 'post',
+              url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
+              data: {query:'select * from User join SlackUser on User.SlackUserID = SlackUser.SlackUserID where SlackUser.SlackWorkspaceID=\"'+wUUID+'\" and SlackUser.SlackID=\"'+userID+'\"'}
+            };
+              
+            const getUser2Res = await axios(getUser2Config);
+            console.log('Get User Call: ', getUser2Res);
+            let uUUID = getUser2Res.data.body[0].UserID;
+
+            // Get the Vector
+            let vectorConfig = {
+              method: 'post',
+              url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/doc2vec',
+              data: {raw_text: parentMsgText}
+            };
+
+            let vectorRes = await axios(vectorConfig);
+            console.log('Question To Vec Call', vectorRes);
+
+            let vector = "{\\\"vector\\\": ["+parseJson(vectorRes.data).vector.toString() + "]}";
+
+            // Get Answer Link
             let linkConfig = {
               method: 'get',
               url: 'https://slack.com/api/chat.getPermalink?channel='+channelID+'&message_ts='+messageTS,
@@ -289,18 +325,18 @@ exports.handler = async (event, context) => {
             }; 
             const createAnswerRes = await axios(createAnswerConfig);
             console.log('Create Answer Call: ', createAnswerRes)
-            
-            let qUUID = getQRes.data.body[0].QuestionID;  // Not sure how the data will look here
 
-            // Update the Question's Answer ID
-            let updateQConfig = {
-                method: 'post',
-                url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
-                data: {query:'update Question set AnswerID=\"'+aUUID+'\"where QuestionID=\"'+qUUID+'\"'}
-            }; 
-            const updateQRes = await axios(updateQConfig);
-            console.log('Update Question Call: ', updateQRes)
-          
+            let qUUID = uuidv4();
+
+            // Insert Question into DB
+            let createQuestionConfig = {
+              method: 'post',
+              url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
+              data: {query: 'insert into Question (QuestionID, AnswerID, SlackChannelID, UserID, Ts, RawText, TextVector)values (\"'+qUUID+'\",\"'+aUUID+'\",\"'+cUUID+'\",\"'+uUUID+'\",\"'+parentTS+'\",\"'+parentMsgText+'\",\"'+vector+'\")'}
+            };
+  
+            const createQuestionRes = await axios(createQuestionConfig);
+            console.log('Create Question Call: ', createQuestionRes);
         } 
         let userID = body.user.id;
 
