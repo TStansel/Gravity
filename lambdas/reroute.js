@@ -76,8 +76,11 @@ exports.handler = async (event) => {
                     let getSimilarQuestionsConfig = {
                         method: 'post',
                         url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/similarity',
-                        payload: object
+                        data: {payload: object}
                     }
+
+                    const getSimilarQuestionsRes = await axios(getSimilarQuestionsConfig);
+                    console.log('Similar q log: ', getSimilarQuestionsRes)
                     
                     // TODO: Send question to similiar question lambda
 
