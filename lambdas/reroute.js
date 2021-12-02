@@ -53,7 +53,7 @@ exports.handler = async (event) => {
                 
                     const dbRes = await axios(config);
                     console.log('Db Call: ', dbRes)*/
-                    // TODO: query database to find top n recently asked questions in that channel
+                    
                     console.log("trying to query database to get recent questions asked in this channel")
                     let dbConfig = {
                         method: 'post',
@@ -64,6 +64,20 @@ exports.handler = async (event) => {
                         
                     const dbRes = await axios(dbConfig);
                     console.log('Db Call: ', dbRes)
+
+                    let object = {
+                        "new_question": [1,2 ,3, 4],
+                        "old_questions": [
+                            {"id": 1, "vec": [1, 2, 3, 6]},
+                            {"id": 2, "vec": [1, 34, 4, 4]}
+                        ]
+                    }
+
+                    let getSimilarQuestionsConfig = {
+                        method: 'post',
+                        url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/similarity',
+                        payload: object
+                    }
                     
                     // TODO: Send question to similiar question lambda
 
