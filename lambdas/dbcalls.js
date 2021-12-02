@@ -21,8 +21,13 @@ exports.handler = async (event, context, callback) => {
   let result = {};
   try{
       let sql = event.query;
+      let params = 0;
+      if (event.hasOwnProperty('queryPt2')){
+        sql = event.queryPt1;
+        params = [event.link,event.queryPt2];
+      }
       console.log("SQL:",sql)
-      result = await query(sql,0);
+      result = await query(sql,params);
   }catch (err){
       throw new Error(err);
   }
@@ -33,7 +38,12 @@ exports.handler = async (event, context, callback) => {
 let query = async (sql, params) => {
     return new Promise((resolve, reject) => {
       pool.getConnection((err, connection) => {
-        connection.query(sql, params, (err, results) => {
+        let sqlQ = sql;
+        if (params != 0){
+          sqlQ = sql + connection.escape(params[0]) + params[1]
+        }
+        console.log("SQLQ:",sqlQ)
+        connection.query(sqlQ, (err, results) => {
           if (err){
             reject(err);
           }

@@ -275,11 +275,17 @@ exports.handler = async (event, context) => {
             let aUUID = uuidv4();
             let newLink = linkRes.data.permalink;
 
+            let createAnswerParams = {
+              queryPt1: "insert into Answer (AnswerID, AnswerLink, Upvotes)values (\'"+aUUID+"\',",
+              link: newLink,
+              queryPt2: ","+1+")"
+            }
+
             // Create the Answer 
             let createAnswerConfig = {
                 method: 'post', // need to pass in the ? as a parameter otherwise it gets parsed out
                 url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
-                data: {query: "insert into Answer (AnswerID, AnswerLink, Upvotes)values (\'"+aUUID+"\',\'"+newLink+"\',"+1+")"}
+                data: createAnswerParams
             }; 
             const createAnswerRes = await axios(createAnswerConfig);
             console.log('Create Answer Call: ', createAnswerRes)
@@ -293,7 +299,7 @@ exports.handler = async (event, context) => {
                 data: {query:'update Question set AnswerID=\"'+aUUID+'\"where QuestionID=\"'+qUUID+'\"'}
             }; 
             const updateQRes = await axios(updateQConfig);
-            console.log('Create Answer Call: ', updateQRes)
+            console.log('Update Question Call: ', updateQRes)
           
         } 
         let userID = body.user.id;
