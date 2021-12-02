@@ -1,5 +1,6 @@
 const axios = require('axios');
 const {v4: uuidv4} = require("uuid");
+const parseJson = require('parse-json')
 
 exports.handler = async (event) => {
     console.log('Request event: ', event);
@@ -334,11 +335,23 @@ exports.handler = async (event) => {
                         let name = getUsersInfoRes.data.user.real_name;
                         let uUUID = uuidv4();
 
-                        // Insert user into DB
-                        let createUserConfig = {
+                        // Insert slack user into DB
+                        let createSlackUserConfig = {
                             method: 'post',
                             url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
                             data: {query: 'insert into SlackUser (SlackUserID, SlackWorkspaceID, Name, SlackID)values (\"'+uUUID+'\",\"'+wUUID+'\",\"'+name+'\",\"'+slackUID+'\")'}
+                        };
+                
+                        const createSlackUserRes = await axios(createSlackUserConfig);
+                        console.log('Create Slack User Call: ', createSlackUserRes)
+
+                        uuUUID = uuidv4();
+
+                        // insert user into DB
+                        let createUserConfig = {
+                            method: 'post',
+                            url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
+                            data: {query: 'insert into User (UserID, SlackUserID)values (\"'+uuUUID+'\",\"'+uUUID+'\")'}
                         };
                 
                         const createUserRes = await axios(createUserConfig);
@@ -448,13 +461,13 @@ exports.handler = async (event) => {
                     let getUser2Config = {
                         method: 'post',
                         url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
-                        data: {query:'select * from SlackUser where SlackWorkspaceID=\"'+wUUID+'\" and SlackID=\"'+slackUserID+'\"'}
+                        data: {query:'select * from User join SlackUser on User.SlackUserID = SlackUser.SlackUserID where SlackUser.SlackWorkspaceID=\"'+wUUID+'\" and SlackUser.SlackID=\"'+slackUserID+'\"'}
                     };
                         
                     const getUser2Res = await axios(getUser2Config);
                     console.log('Get User Call: ', getUser2Res);
 
-                    let uUUID = getUser2Res.data.body[0].SlackUserID;
+                    let uUUID = getUser2Res.data.body[0].UserID;
                     let qUUID = uuidv4();
                     let ts = nlpRes.data.body[i].ts;
                     let text = nlpRes.data.body[i].text;
@@ -468,7 +481,7 @@ exports.handler = async (event) => {
                     let vectorRes = await axios(vectorConfig);
                     console.log('Question To Vec Call', vectorRes);
 
-                    let vector = JSON.parse(vectorRes.data);
+                    let vector = "{\\\"vector\\\": ["+parseJson(vectorRes.data).vector.toString() + "]}";
 
                     // Insert Question into DB
                     let createQuestionConfig = {
