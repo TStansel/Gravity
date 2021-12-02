@@ -2,6 +2,7 @@ import numpy as np
 import json
 
 def lambda_handler(event=None, context=None):
+  print(event)
   new_question = event["payload"]["new_question"]
   old_questions = event["payload"]["old_questions"]
   
