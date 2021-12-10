@@ -52,41 +52,18 @@ exports.handler = async (event, context) => {
             const notHelpfulRes = await axios(notHelpfulConfig);
             console.log("Not Helpful Res: ", notHelpfulRes);
             
-            let oldQUUID = body.actions[0].value.split(" a")[0];
+            let oldQUUID = body.actions[0].value.split(" ")[0];
             
             // Get Question from DB
             let updateAnswerUpvotesConfig = {
                 method: 'post',
                 url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
-                data: {query:'update Answer, Question inner join Answer.AnswerID = Question.AnswerID set Answer.Upvotes = (Answer.Upvotes - 1) where Question.QuestionID =\"'+oldQUUID+'\"'}
+                data: {query:'update Answer inner join Question On Answer.AnswerID = Question.AnswerID set Answer.Upvotes = (Answer.Upvotes - 1) where Question.QuestionID =\"'+oldQUUID+'\"'}
             };
                 
             const updateAnswerUpvotesRes = await axios(updateAnswerUpvotesConfig);
             console.log('Update answer upvotes: ', updateAnswerUpvotesRes);
             
-            // // Get the answerUUID from Question
-            // // Not sure how the data will look here
-            // let answerID = getQRes.data.body[0].AnswerID;
-            
-            // // Get Upvotes from Answer
-            // let getUpvotesConfig = {
-            //     method: 'get',
-            //     url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls?query=select Upvotes from Answer where AnswerID=\"'+answerID+'\"',
-            // };
-                
-            // const getUpvotesRes = await axios(getUpvotesConfig);
-            // console.log('Get Upvotes Call: ', getUpvotesRes)
-            
-            // //Decreasing the Upvotes count
-            // // Not Sure how the data is going to look here
-            // let upvotes = getUpvotesRes.data.body[0].Upvotes - 1 
-            // let updateUpvotesConfig = {
-            //     method: 'get',
-            //     url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls?query=update Answer set Upvotes='+upvotes+'where AnswerID=\"'+answerID+'\"',
-            // };
-                
-            // const updateUpvotesRes = await axios(updateUpvotesConfig);
-            // console.log('Update Upvotes Call: ', updateUpvotesRes)
             
             break;
           }
@@ -156,28 +133,17 @@ exports.handler = async (event, context) => {
             
             const successfulRes = await axios(successfulConfig);
             console.log("Successful Res: ", successfulRes);
-            
-            // Get Upvotes from the Answer
-            let getUpvotesConfig = {
-                method: 'post',
-                url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
-                data: {query:'select Upvotes from Answer where AnswerID=\"'+answerID+'\"'}
-            };
-                
-            const getUpvotesRes = await axios(getUpvotesConfig);
-            console.log('Get Upvotes Call: ', getUpvotesRes)
-            
-            // Increasing the Upvotes count
-  
-            let upvotes = getUpvotesRes.data.body[0].Upvotes + 1 
-            let updateUpvotesConfig = {
+
+            let incrementAnswerUpvotesConfig = {
               method: 'post',
               url: 'https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/Staging/dbcalls',
-              data: {query:'update Answer set Upvotes='+upvotes+' where AnswerID=\"'+answerID+'\"'}
+              data: {query:'update Answer inner join Question On Answer.AnswerID = Question.AnswerID set Answer.Upvotes = (Answer.Upvotes + 1) where Question.QuestionID =\"'+oldQUUID+'\"'}
             };
                 
-            const updateUpvotesRes = await axios(updateUpvotesConfig);
-            console.log('Update Upvotes Call: ', updateUpvotesRes)
+            const incrementAnswerUpvotesRes = await axios(incrementAnswerUpvotesConfig);
+            console.log('Increment answer upvotes: ', incrementAnswerUpvotesRes);
+            
+      
             }
 
             break;
