@@ -6,9 +6,9 @@ model = gensim.models.doc2vec.Doc2Vec.load(
 
 
 def lambda_handler(event=None, context=None):
-  print("Request Event", event)
-  return json.dumps({"vector": model.infer_vector(string_to_tokens(event["text"])).tolist()})
+    print("Request Event", event)
+    return json.dumps({"vector": model.infer_vector(string_to_tokens(event["text"])).tolist()})
+
 
 def string_to_tokens(string):
     return gensim.utils.simple_preprocess(string)
-
