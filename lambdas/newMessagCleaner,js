@@ -12,21 +12,24 @@ exports.handler = async (event) => {
         let messageID = messageEvent.ts;
         let userID = messageEvent.user;
         
-        let neededParams = {
-            messageText: messageText,
-            channelID: channelID,
-            messageID: messageID,
-            userID: userID
+        let payload = {
+            data: {
+                text: messageText,
+                channelID: channelID,
+                messageID: messageID,
+                userID: userID,
+            },
+            passed:true
         }
         
-        return buildResponse(200,neededParams,true);
+        return buildResponse(payload);
     }
-    return buildResponse(200,event,false);
+    event["passed"] = false
+    return buildResponse(event);
 };
 
-function buildResponse(statusCode, event, passed) {
+function buildResponse(payload) {
     return {
-        statusCode: statusCode,
-        payload: { event: event, passed:passed }
+        payload: payload
     }
 }
