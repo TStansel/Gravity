@@ -120,14 +120,115 @@ exports.handler = async (event) => {
   let insertChannelSql =
     "insert into SlackChannel (SlackChannelID, SlackWorkspaceID, ChannelID, Name) values (:channelUUID, :workspaceUUID, :channelID, :channelName)";
 
-  let insertWorkspaceResult = await data.query(insertChannelSql, {
+  let insertChannelResult = await data.query(insertChannelSql, {
     channelUUID: channelUUID,
     workspaceUUID: workspaceUUID,
     channelID: channelID,
     channelName: channelName,
   });
 
-  console.log("insertWorkspaceResult: ", insertWorkspaceResult);
+  console.log("insertChannelResult: ", insertChannelResult);
+
+  // Because this is a new channel we need to add all users into the DB if they dont exist
+  console.log("start getting all users in channel by pagination");
+  let cursor = null;
+  let channelMembers = [];
+
+  do {
+    let cursorParam;
+
+    // Logic to send no cursor paramater the first call
+    if (cursor !== null) {
+      cursorParam = "&cursor=" + cursor;
+    } else {
+      cursorParam = "";
+    }
+
+    let getChannelUsersConfig = {
+      method: "get",
+      url:
+        "https://slack.com/api/conversations.members?channel=" +
+        channelID +
+        "&limit=200" +
+        cursorParam,
+      headers: {
+        Authorization:
+          "Bearer xoxb-2516673192850-2728955403541-DIAuQAWa2QhauF13bgerQYnK", // TODO: don't hardcode
+        "Content-Type": "application/json",
+      },
+    };
+
+    const getChannelUsersResult = await axios(getChannelUsersConfig);
+
+    console.log("Get Channel Users Call:", getChannelUsersResult);
+
+    channelMembers.concat(getChannelUsersResult.data.members);
+
+    // Logic to decide if need to continue paginating
+    if (
+      !getChannelUsersResult.data.hasOwnProperty("response_metadata") ||
+      getChannelUsersResult.data.response_metadata === ""
+    ) {
+      // Response has no next_cursor property set so we are done paginating!
+      console.log("no cursor in response, done paginating");
+      cursor = null;
+    } else {
+      cursor = getChannelUsersResult.data.response_metadata.next_cursor.replace(
+        /=/g,
+        "%3D"
+      );
+      console.log("cursor found in result, encoding and paginating");
+    }
+  } while (cursor !== null); // When done paginating cursor will be set to null
+
+  // Now get all users from the workspace in the DB in order to add new users
+  console.log("Get all users in workspace");
+
+  let getWorkspaceUsersSql =
+    "select UserID, SlackUserID from User where SlackWorkspaceID = :workspaceUUID";
+
+  let getWorkspaceUsersResult = await data.query(getWorkspaceUsersSql, {
+    workspaceUUID: workspaceUUID,
+  });
+
+  console.log("getWorkspaceUsersResult: ", getWorkspaceUsersResult);
+
+  let slackUserIdDict = {}
+  for (let row of getWorkspaceUsersResult.records) {
+    slackUserIdDict[row.SlackUserID] = row.UserID;
+  }
+
+  membersNotInDB = channelMembers.filter(slackID => slackUserIdDict[slackID] === undefined);
+
+  // Now add these new users to SlackUser in DB
+  console.log("trying to add new SlackUsers");
+
+  let batchInsertNewSlackUserSql =
+    "insert into SlackUser (SlackUserID, SlackWorkspaceID, SlackID) values (:slackUserUUID, :workspaceUUID, :slackID)";
+
+  // Prepare list of users to insert
+  batchInsertSlackUsersParams = membersNotInDB.map(slackID => [{slackUserUUID: uuidv4(), workspaceUUID: workspaceUUID, slackID: slackID}])
+
+  let batchInsertNewSlackUserResult = await data.query(batchInsertNewSlackUserSql, batchInsertSlackUsersParams);
+
+  console.log("batchInsertNewSlackUserResult: ", batchInsertNewSlackUserResult);
+
+  // Now add these new users to User in DB
+  console.log("trying to add new Users");
+
+  let batchInsertNewUserSql =
+    "insert into SlackUser (SlackUserID, SlackWorkspaceID, SlackID) values (:slackUserUUID, :workspaceUUID, :slackID)";
+
+  // Prepare list of users to insert
+  batchInsertSlackUsersParams = membersNotInDB.map(slackID => [{slackUserUUID: uuidv4(), workspaceUUID: workspaceUUID, slackID: slackID}])
+
+  let batchInsertNewSlackUserResult = await data.query(batchInsertNewSlackUserSql, batchInsertSlackUsersParams);
+
+  console.log("batchInsertNewSlackUserResult: ", batchInsertNewSlackUserResult);
+
+  
+
+
 
   // let teamID = event.team_id;
   // let getWorkspaceConfig = {
