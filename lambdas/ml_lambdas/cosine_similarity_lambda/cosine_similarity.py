@@ -26,8 +26,8 @@ def callRds(channelID):
   rdsData = boto3.client('rds-data')
 
   sqlStatement = """
-                  select QuestionID, TextVector from Question 
-                  inner join SlackChannel on Question.SlackChannelID=SlackChannel.SlackChannelID 
+                  select QuestionUUID, TextVector from SlackQuestion 
+                  inner join SlackChannel on SlackQuestion.SlackChannelUUID=SlackChannel.SlackChannelUUID 
                   where SlackChannel.ChannelID = :channelID
                  """
   
