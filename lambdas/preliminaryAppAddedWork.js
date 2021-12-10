@@ -19,7 +19,7 @@ exports.handler = async (event) => {
 
   let getWorkspaceSql =
     "select * from SlackWorkspace where WorkspaceID = :workspaceID";
-  let workspaceID = event.team_id;
+  let workspaceID = event.payload.workspaceID;
 
   let getWorkspaceResult = await data.query(getWorkspaceSql, {
     workspaceID: workspaceID,
@@ -74,7 +74,7 @@ exports.handler = async (event) => {
   // Check if slack channel exists in DB
   console.log("check if slack channel is in DB");
 
-  let channelID = event.event.channel;
+  let channelID = event.payload.channelID;
 
   let getChannelSql =
     "select * from SlackChannel where SlackWorkspaceUUID = :workspaceUUID and ChannelID = :channelID";
