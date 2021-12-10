@@ -1,0 +1,32 @@
+exports.handler = async (event) => {
+    event = event.payload
+    console.log("Request Event:",event)
+    
+    let messageEvent = event.event;
+    console.log("MessageE",messageEvent)
+    
+    if(!messageEvent.hasOwnProperty('thread_ts') || messageEvent.ts === messageEvent.thread_ts){
+        
+        let messageText = messageEvent.text;
+        let channelID = messageEvent.channel;
+        let messageID = messageEvent.ts;
+        let userID = messageEvent.user;
+        
+        let neededParams = {
+            messageText: messageText,
+            channelID: channelID,
+            messageID: messageID,
+            userID: userID
+        }
+        
+        return buildResponse(200,neededParams,true);
+    }
+    return buildResponse(200,event,false);
+};
+
+function buildResponse(statusCode, event, passed) {
+    return {
+        statusCode: statusCode,
+        payload: { event: event, passed:passed }
+    }
+}
