@@ -32,7 +32,7 @@ exports.handler = async (event, context, callback) => {
       throw new Error(err);
   }
   console.log("Data: ", result);
-  return callback(null, {body: JSON.stringify(result),statusCode:200});
+  return callback(null, {body: result,statusCode:200});
 }
 
 let query = async (sql, params) => {
