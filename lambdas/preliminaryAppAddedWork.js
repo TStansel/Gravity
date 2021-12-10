@@ -8,7 +8,7 @@ const data = require("data-api-client")({
 });
 
 exports.handler = async (event) => {
-  // TODO: Add something about only going in if the App Id matches?
+  // TODO: Add auth for axios slack calls
   // TODO: Send a message when this case starts and ends to let users know that the app is working on adding the history and when it is finished
 
   // Bot was added to a channel
