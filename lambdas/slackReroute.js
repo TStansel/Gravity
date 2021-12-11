@@ -34,39 +34,6 @@ exports.handler = async (event) => {
 
     if (eventType === "message" && eventSubtype === undefined) {
       // New message posted in Slack
-      
-      let params = {
-        stateMachineArn:
-          "arn:aws:states:us-east-2:579534454884:stateMachine:New-Message-Posted",
-        name: uuidv4(),
-        input: JSON.stringify({
-          workspaceID: event.team_id,
-          channelID: event.event.channel,
-        }),
-      };
-      
-      stepfunctions.startExecution(params, (err, data) => {
-        if (err) {
-          console.log(err);
-          const response = {
-            statusCode: 500,
-            body: JSON.stringify({
-              message: "There was an error",
-            }),
-          };
-          callback(null, response);
-        } else {
-          console.log(data);
-          const response = {
-            statusCode: 200,
-            body: JSON.stringify({
-              message: "Step function worked",
-            }),
-          };
-          callback(null, response);
-        }
-      });
-      
     } else {
       // App added to channel
       console.log("app added to channel!");
@@ -80,40 +47,11 @@ exports.handler = async (event) => {
         }),
       };
       console.log("try to execute step function");
-      stepfunctions.startExecution(params, (err, data) => {
-        if (err) {
-          console.log(err);
-          const response = {
-            statusCode: 500,
-            body: JSON.stringify({
-              message: "There was an error",
-            }),
-          };
-          callback(null, response);
-        } else {
-          console.log(data);
-          const response = {
-            statusCode: 200,
-            body: JSON.stringify({
-              message: "Step function worked",
-            }),
-          };
-          callback(null, response);
-        }
-      });
+
 
       
-      // let res = await stepfunctions
-      //   .startExecution(params, (err, data) => {
-      //     if (err) {
-      //       console.log("error starting step function");
-      //       console.log(err);
-      //     } else {
-      //       console.log("step function started");
-      //     }
-      //   })
-      //   .send();
-      // console.log(res);
+      let res = await stepfunctions.startExecution(params).promise();
+      console.log(res);
     }
   } else {
     // Not coming from Slack events API
