@@ -9,13 +9,13 @@ resourceArn = 'arn:aws:rds:us-east-2:579534454884:cluster:osmosix-db-cluster'
 def lambda_handler(event=None, context=None):
   print("Request Event: ",event)
 
-  new_question = event["payload"]["new_question"]
+  new_question = json.loads(event["payload"]["vector"])["vector"]
   old_questions = callRds(event["payload"]["channelID"])
-  
+
   similarities = np.array(list(map(lambda old_question: cosine_similarity(new_question, json.loads(old_question["TextVector"])["vector"]), old_questions)))
   top_10_idx = similarities.argsort()[-10:][::-1]
 
-  return json.dumps(list(map(lambda idx: {"QuestionID": old_questions[idx]["QuestionID"], "similarity": similarities[idx]}, top_10_idx)))
+  return json.dumps(list(map(lambda idx: {"SlackQuestionID": old_questions[idx]["SlackQuestionID"], "similarity": similarities[idx]}, top_10_idx)))
 
 
 def cosine_similarity(v1, v2):
@@ -26,7 +26,7 @@ def callRds(channelID):
   rdsData = boto3.client('rds-data')
 
   sqlStatement = """
-                  select QuestionUUID, TextVector from SlackQuestion 
+                  select SlackQuestionUUID, TextVector from SlackQuestion 
                   inner join SlackChannel on SlackQuestion.SlackChannelUUID=SlackChannel.SlackChannelUUID 
                   where SlackChannel.ChannelID = :channelID
                  """
