@@ -1,7 +1,7 @@
 const qs = require("qs");
 const parseJson = require("parse-json");
-const AWS = require("aws-sdk");
 const { v4: uuidv4 } = require("uuid");
+const { SFNClient, StartExecutionCommand } = require("@aws-sdk/client-sfn");
 
 exports.handler = async (event) => {
   console.log("Request event: ", event);
@@ -17,12 +17,12 @@ exports.handler = async (event) => {
     };
   }
 
+  const client = new SFNClient(); // Used to start Step Function workflows
   let eventType = event.event.type;
   let eventSubtype = undefined;
   if (event.event.hasOwnProperty("subtype")) {
     eventSubtype = event.event.subtype;
   }
-  var stepfunctions = new AWS.StepFunctions({ apiVersion: "2016-11-23" });
 
   if (event.hasOwnProperty("event")) {
     // Coming from Slack events API
@@ -34,10 +34,20 @@ exports.handler = async (event) => {
 
     if (eventType === "message" && eventSubtype === undefined) {
       // New message posted in Slack
+      let input = {
+        stateMachineArn:
+          "arn:aws:states:us-east-2:579534454884:stateMachine:New-Message-Posted",
+        name: uuidv4(),
+        input: JSON.stringify({
+          payload: event,
+        }),
+      };
+      const command = new StartExecutionCommand(input);
+      const response = await client.send(command);
+      console.log(response);
     } else {
       // App added to channel
-      console.log("app added to channel!");
-      let params = {
+      let input = {
         stateMachineArn:
           "arn:aws:states:us-east-2:579534454884:stateMachine:App-Added-Flow",
         name: uuidv4(),
@@ -46,12 +56,9 @@ exports.handler = async (event) => {
           channelID: event.event.channel,
         }),
       };
-      console.log("try to execute step function");
-
-
-      
-      let res = await stepfunctions.startExecution(params).promise();
-      console.log(res);
+      const command = new StartExecutionCommand(input);
+      const response = await client.send(command);
+      console.log(response);
     }
   } else {
     // Not coming from Slack events API
