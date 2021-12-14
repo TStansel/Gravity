@@ -13,7 +13,7 @@ exports.handler = async (event) => {
     event = event.payload;
     
     let mostSimilarQuestion = parseJson(event.questions)[0];
-    let mostSimilarQuestionUUID = mostSimilarQuestionUUID.SlackQuestionUUID;
+    let mostSimilarQuestionUUID = mostSimilarQuestion.SlackQuestionUUID;
     let channelID = event.channelID;
     let messageTS = mostSimilarQuestion.SlackQuestionTs;
     
@@ -26,12 +26,11 @@ exports.handler = async (event) => {
         },
     };
     const repliesRes = await axios(repliesConfig);
-    
-    const answerTs = repliesRes.data.messages[1].ts;
+    let answerTs = repliesRes.data.messages[1].ts;
     
     let getLinkConfig = {
         method: 'get',
-        url: 'https://slack.com/api/chat.getPermalink?channel='+channelID+'&message_ts='+answerTS,
+        url: 'https://slack.com/api/chat.getPermalink?channel='+channelID+'&message_ts='+answerTs,
         headers: {
             'Authorization': 'Bearer xoxb-2516673192850-2728955403541-DIAuQAWa2QhauF13bgerQYnK',
             'Content-Type': 'application/json'
@@ -111,7 +110,7 @@ exports.handler = async (event) => {
         data: msgParams
     };
     const msgRes = await axios(msgConfig);
-    console.log("Message One Sent: ",msgRes);
+    //console.log("Message Sent: ",msgRes);
     
     let insertAnswerSql =
       "insert into SlackAnswer (SlackAnswerUUID, AnswerLink, Upvotes) values (:SlackAnswerUUID, :AnswerLink, :Upvotes)";

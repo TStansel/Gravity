@@ -28,5 +28,5 @@ exports.handler = async (event) => {
 function buildResponse(payload) {
     return {
         payload: payload
-    }
+    };
 }

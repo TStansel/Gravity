@@ -44,6 +44,7 @@ def callRds(channelID):
   for row in response["records"]:
     qUUID = row[0]["stringValue"]
     vector = row[1]["stringValue"]
-    oldQuestions.append({"QuestionID":qUUID, "TextVector":vector})
+    ts = row[2]["stringValue"]
+    oldQuestions.append({"SlackQuestionID":qUUID, "Ts":ts, "TextVector":vector})
   
   return oldQuestions
