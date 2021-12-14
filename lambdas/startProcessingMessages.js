@@ -53,7 +53,7 @@ exports.handler = async (event) => {
       // Response has no next_cursor property set so we are done paginating!
       console.log("no cursor in response, done paginating");
       cursor = null;
-    } else if (
+    } else if ( // TODO: check to make sure this condition works
       Date.now() / 1000 - channelMessages[channelMessages.length - 1].ts >
       60 * 60 * 24 * 365
     ) {
@@ -83,7 +83,11 @@ exports.handler = async (event) => {
     let sqsSendBatchMessageEntries = channelMessagesBatch.map(
       (message, index) => ({
         Id: index,
-        MessageBody: JSON.stringify(message),
+        MessageBody: JSON.stringify({
+          message: message,
+          channelID: channelID,
+          channelUUID: channelUUID,
+        }),
       })
     );
 
