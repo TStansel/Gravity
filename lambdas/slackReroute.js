@@ -34,12 +34,20 @@ exports.handler = async (event) => {
 
     if (eventType === "message" && eventSubtype === undefined) {
       // New message posted in Slack
+      
+      let data = {
+        text: event.event.text,
+        channelID: event.event.channel,
+        messageID: event.event.ts,
+        userID: event.event.user
+      };
+      
       let input = {
         stateMachineArn:
           "arn:aws:states:us-east-2:579534454884:stateMachine:New-Message-Posted",
         name: uuidv4(),
         input: JSON.stringify({
-          payload: event,
+          payload: data,
         }),
       };
       const command = new StartExecutionCommand(input);
