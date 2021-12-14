@@ -5,6 +5,9 @@ const { SFNClient, StartExecutionCommand } = require("@aws-sdk/client-sfn");
 
 exports.handler = async (event) => {
   console.log("Request event: ", event);
+  event = parseJson(event.body);
+  console.log(event);
+
 
   if(event.hasOwnProperty("type")){
     let type = event.type;

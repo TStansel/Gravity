@@ -5,8 +5,8 @@ const client = new SQSClient();
 exports.handler = async (event) => {
   // TODO implement
 
-  const channelID = event.payload.channelID;
-  const channelUUID = event.payload.channelUUID;
+  const channelID = event.channelID;
+  const channelUUID = event.channelUUID;
 
   // Because this is a new channel we need to add all messages into the DB
   console.log("start getting all messages in channel by pagination");
@@ -54,7 +54,7 @@ exports.handler = async (event) => {
       console.log("no cursor in response, done paginating");
       cursor = null;
     } else if (
-      Date.now() / 1000 - channelMessages.at(-1).ts >
+      Date.now() / 1000 - channelMessages[channelMessages.length - 1].ts >
       60 * 60 * 24 * 365
     ) {
       // Oldest message in response is more than 1 year old, stop paginating!
@@ -72,15 +72,22 @@ exports.handler = async (event) => {
     }
   } while (cursor !== null); // When done paginating cursor will be set to null
 
+  console.log(channelMessages.length);
+  console.log("about to enter for loop");
   let batch_size = 5;
   for (let i = 0; i < channelMessages.length; i += batch_size) {
-    console.log("slicing from i: " + i + " to i: " + i + batch_size - 1);
-    let sqsSendBatchMessageEntries = channelMessages
-      .slice(i, i + batch_size - 1)
-      .map((message) => {
-        Id: message.ts;
-        MessageBody: JSON.stringify(message);
-      });
+    console.log("hit for loop");
+    console.log("slicing from i: " + i + " to i: " + (i + batch_size - 1));
+    let channelMessagesBatch = channelMessages.slice(i, i + batch_size - 1);
+    console.log(channelMessagesBatch);
+    let sqsSendBatchMessageEntries = channelMessagesBatch.map(
+      (message, index) => ({
+        Id: index,
+        MessageBody: JSON.stringify(message),
+      })
+    );
+
+    console.log(sqsSendBatchMessageEntries);
     let sqsSendBatchMessageInput = {
       Entries: sqsSendBatchMessageEntries,
       QueueUrl:
