@@ -15,7 +15,7 @@ def lambda_handler(event=None, context=None):
   similarities = np.array(list(map(lambda old_question: cosine_similarity(new_question, json.loads(old_question["TextVector"])["vector"]), old_questions)))
   top_10_idx = similarities.argsort()[-10:][::-1]
 
-  return json.dumps(list(map(lambda idx: {"SlackQuestionID": old_questions[idx]["SlackQuestionID"], "similarity": similarities[idx]}, top_10_idx)))
+  return json.dumps(list(map(lambda idx: {"SlackQuestionTs": old_questions[idx]["Ts"], "SlackQuestionID": old_questions[idx]["SlackQuestionID"], "similarity": similarities[idx]}, top_10_idx)))
 
 
 def cosine_similarity(v1, v2):
@@ -26,7 +26,7 @@ def callRds(channelID):
   rdsData = boto3.client('rds-data')
 
   sqlStatement = """
-                  select SlackQuestionUUID, TextVector from SlackQuestion 
+                  select SlackQuestionUUID, TextVector, Ts from SlackQuestion 
                   inner join SlackChannel on SlackQuestion.SlackChannelUUID=SlackChannel.SlackChannelUUID 
                   where SlackChannel.ChannelID = :channelID
                  """

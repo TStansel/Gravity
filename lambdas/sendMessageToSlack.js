@@ -14,17 +14,32 @@ exports.handler = async (event) => {
     
     let mostSimilarQuestion = parseJson(event.questions)[0];
     let mostSimilarQuestionUUID = mostSimilarQuestionUUID.SlackQuestionUUID;
+    let channelID = event.channelID;
+    let messageTS = mostSimilarQuestion.SlackQuestionTs;
     
-    let getAnswerLinkConfig =
-        "select RawText, AnswerLink from SlackQuestion join SlackAnswer on SlackQuestion.SlackAnswerUUID = SlackAnswer.SlackAnswerUUID where SlackQuestionUUID = :mostSimilarQuestionUUID";
-
-    let getAnswerLinkRes = await data.query(getAnswerLinkConfig, {
-        mostSimilarQuestionUUID: mostSimilarQuestionUUID,
-    });
+    let repliesConfig = {
+        method: 'get',
+        url: 'https://slack.com/api/conversations.replies?channel='+channelID+'&ts='+messageTS,
+        headers: {
+            'Authorization': 'Bearer xoxb-2516673192850-2728955403541-DIAuQAWa2QhauF13bgerQYnK',
+            'Content-Type': 'application/json'
+        },
+    };
+    const repliesRes = await axios(repliesConfig);
     
-    console.log("Get Answer Link Result",getAnswerLinkRes);
+    const answerTs = repliesRes.data.messages[1].ts;
     
-    let answerLink = "";
+    let getLinkConfig = {
+        method: 'get',
+        url: 'https://slack.com/api/chat.getPermalink?channel='+channelID+'&message_ts='+answerTS,
+        headers: {
+            'Authorization': 'Bearer xoxb-2516673192850-2728955403541-DIAuQAWa2QhauF13bgerQYnK',
+            'Content-Type': 'application/json'
+        },
+    };
+    const getLinkRes = await axios(getLinkConfig);
+    
+    let answerLink = getLinkRes.data.permalink;
     let similarityScore = mostSimilarQuestion.similarity;
     
     // Send Slack Message
@@ -97,4 +112,15 @@ exports.handler = async (event) => {
     };
     const msgRes = await axios(msgConfig);
     console.log("Message One Sent: ",msgRes);
+    
+    let insertAnswerSql =
+      "insert into SlackAnswer (SlackAnswerUUID, AnswerLink, Upvotes) values (:SlackAnswerUUID, :AnswerLink, :Upvotes)";
+    let answerUUID = uuidv4();
+    
+    let insertAnswerResult = await data.query(insertAnswerSql, {
+      SlackAnswerUUID: answerUUID,
+      AnswerLink: answerLink,
+      Upvotes: 0,
+    });
+    
 };
