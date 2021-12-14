@@ -6,23 +6,20 @@ const { SFNClient, StartExecutionCommand } = require("@aws-sdk/client-sfn");
 exports.handler = async (event) => {
   console.log("Request event: ", event);
 
-  let type = event.type;
-  if (type === "url_verification") {
-    return {
-      statusCode: 200,
-      headers: {
-        "Content-Type": "application/json",
-      },
-      challenge: event.challenge,
-    };
+  if(event.hasOwnProperty("type")){
+    let type = event.type;
+    if (type === "url_verification") {
+      return {
+        statusCode: 200,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        challenge: event.challenge,
+      };
+    }
   }
 
   const client = new SFNClient(); // Used to start Step Function workflows
-  let eventType = event.event.type;
-  let eventSubtype = undefined;
-  if (event.event.hasOwnProperty("subtype")) {
-    eventSubtype = event.event.subtype;
-  }
 
   if (event.hasOwnProperty("event")) {
     // Coming from Slack events API
@@ -52,7 +49,7 @@ exports.handler = async (event) => {
       };
       const command = new StartExecutionCommand(input);
       const response = await client.send(command);
-      console.log(response);
+      console.log("New Message:",response);
     } else {
       // App added to channel
       let input = {
@@ -66,7 +63,7 @@ exports.handler = async (event) => {
       };
       const command = new StartExecutionCommand(input);
       const response = await client.send(command);
-      console.log(response);
+      console.log("App Added:",response);
     }
   } else {
     // Not coming from Slack events API
@@ -84,6 +81,18 @@ exports.handler = async (event) => {
       }
     } else {
       // Answer was marked
+      
+      let input = {
+        stateMachineArn:
+          "arn:aws:states:us-east-2:579534454884:stateMachine:Marked-Answer-Flow",
+        name: uuidv4(),
+        input: JSON.stringify({
+          payload: body.message,
+        }),
+      };
+      const command = new StartExecutionCommand(input);
+      const response = await client.send(command);
+      console.log("New Message:",response);
     }
   }
   console.log("about to return");
