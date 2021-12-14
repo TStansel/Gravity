@@ -78,6 +78,19 @@ exports.handler = async (event) => {
 
       if (actionID.includes("dismiss")) {
         // Dismiss button pressed
+        
+        let input = {
+          stateMachineArn:
+            "arn:aws:states:us-east-2:579534454884:stateMachine:Dismiss-Button-Flow",
+          name: uuidv4(),
+          input: JSON.stringify({
+            responseURL: body.response_url,
+          }),
+        };
+        const command = new StartExecutionCommand(input);
+        const response = await client.send(command);
+        console.log("Dismiss Button:",response);
+        
       } else if (actionID.includes("nothelpful")) {
         // Not Helpful button pressed
       } else {
@@ -96,7 +109,7 @@ exports.handler = async (event) => {
       };
       const command = new StartExecutionCommand(input);
       const response = await client.send(command);
-      console.log("New Message:",response);
+      console.log("Answer Marked:",response);
     }
   }
   console.log("about to return");

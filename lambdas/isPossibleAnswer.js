@@ -37,7 +37,7 @@ exports.handler = async (event) => {
     } else {
         let payload = {
             data: {
-
+                userID: event.user.id,
             },
             passed: false
         }
