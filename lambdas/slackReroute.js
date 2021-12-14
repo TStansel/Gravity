@@ -5,6 +5,10 @@ const { SFNClient, StartExecutionCommand } = require("@aws-sdk/client-sfn");
 
 exports.handler = async (event) => {
   console.log("Request event: ", event);
+  
+  if(event.headers["Content-Type"] === 'application/json'){
+    event = parseJson(event.body);
+  }// else if(event.headers["Content-Type"] === 'application/x-www-form-urlencoded')
 
   if(event.hasOwnProperty("type")){
     let type = event.type;
@@ -87,7 +91,7 @@ exports.handler = async (event) => {
           "arn:aws:states:us-east-2:579534454884:stateMachine:Marked-Answer-Flow",
         name: uuidv4(),
         input: JSON.stringify({
-          payload: body.message,
+          payload: body,
         }),
       };
       const command = new StartExecutionCommand(input);
