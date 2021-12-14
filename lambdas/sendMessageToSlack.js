@@ -9,14 +9,14 @@ const data = require("data-api-client")({
 });
 
 exports.handler = async (event) => {
-    
+
     event = event.payload;
     
     let mostSimilarQuestion = parseJson(event.questions)[0];
     let mostSimilarQuestionUUID = mostSimilarQuestion.SlackQuestionUUID;
     let channelID = event.channelID;
     let messageTS = mostSimilarQuestion.SlackQuestionTs;
-    
+
     let repliesConfig = {
         method: 'get',
         url: 'https://slack.com/api/conversations.replies?channel='+channelID+'&ts='+messageTS,
@@ -26,7 +26,7 @@ exports.handler = async (event) => {
         },
     };
     const repliesRes = await axios(repliesConfig);
-    let answerTs = repliesRes.data.messages[1].ts;
+    let answerTs = repliesRes.data.messages[0].ts;
     
     let getLinkConfig = {
         method: 'get',
