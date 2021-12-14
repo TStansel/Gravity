@@ -28,7 +28,7 @@ exports.handler = async (event) => {
                 channelID: channelID,
                 messageTS: event.message.ts,
                 userID: event.user.id,
-                worksapceID: event.team.id,
+                workspaceID: event.team.id,
                 text: parentMsgText
             },
             passed: true
