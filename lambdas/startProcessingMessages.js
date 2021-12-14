@@ -3,7 +3,6 @@ const axios = require("axios");
 const client = new SQSClient();
 
 exports.handler = async (event) => {
-  // TODO implement
 
   const channelID = event.channelID;
   const channelUUID = event.channelUUID;
