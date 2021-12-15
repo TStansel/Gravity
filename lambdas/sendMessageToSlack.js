@@ -56,7 +56,7 @@ exports.handler = async (event) => {
         isAnswerInDb = true;
         
         let getAnswerLinkSql =
-            "select AnswerLink SlackAnswer where SlackQuestionUUID = :SlackQuestionUUID";
+            "select AnswerLink from SlackAnswer where SlackQuestionUUID = :SlackQuestionUUID";
     
         let getAnswerLinkResult = await data.query(getAnswerLinkSql, {
             SlackQuestionUUID: mostSimilarQuestionUUID,
