@@ -6,13 +6,24 @@ const client = new SFNClient();
 exports.handler = async (event) => {
   console.log(event);
   let sqsMessage = parseJson(event.Records[0].body);
+  
+  let data;
 
-  let data = {
-    text: sqsMessage.message.text,
-    channelID: sqsMessage.channelID,
-    messageID: sqsMessage.message.ts,
-    userID: sqsMessage.message.user,
+  if(sqsMessage.message.hasOwnProperty("thread_ts")){
+    data = {
+      text: sqsMessage.message.text,
+      channelID: sqsMessage.channelID,
+      messageID: sqsMessage.message.ts,
+      userID: sqsMessage.message.user,
+      thread_ts: sqsMessage.message.thread_ts
+    };
+  }else{
+      return {
+    statusCode: 200,
+    body: JSON.stringify("Slack message did not have thread_ts"),
   };
+  }
+
 
   let input = {
     stateMachineArn:
