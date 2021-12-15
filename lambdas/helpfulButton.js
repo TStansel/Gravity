@@ -61,5 +61,7 @@ exports.handler = async (event) => {
     let increamentUpvotesResult = await data.query(increamentUpvotesSql, {
         SlackQuestionUUID: event.oldQuestionUUID,
     });
+
+    return { msg: "Successful Helpful Button Press" }
     
 };

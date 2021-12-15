@@ -93,6 +93,25 @@ exports.handler = async (event) => {
         
       } else if (actionID.includes("nothelpful")) {
         // Not Helpful button pressed
+
+        let payload = {
+          responseURL: body.response_url,
+          oldQuestionUUID: body.actions[0].value.split(' ')[0],
+          messageTS: body.actions[0].value.split(' ')[1],
+        }
+        
+        let input = {
+          stateMachineArn:
+            "arn:aws:states:us-east-2:579534454884:stateMachine:Not-Helpful-Flow",
+          name: uuidv4(),
+          input: JSON.stringify({
+            payload: payload,
+          }),
+        };
+        const command = new StartExecutionCommand(input);
+        const response = await client.send(command);
+        console.log("Not Helpful Button:",response);
+
       } else {
         // Helpful button pressed
         
@@ -114,7 +133,7 @@ exports.handler = async (event) => {
         };
         const command = new StartExecutionCommand(input);
         const response = await client.send(command);
-        console.log("Dismiss Button:",response);
+        console.log("Helpful Button:",response);
       }
     } else {
       // Answer was marked
