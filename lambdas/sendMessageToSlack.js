@@ -98,7 +98,7 @@ exports.handler = async (event) => {
                             "type": "plain_text",
                             "text": "Helpful"
                         },
-                        "value": mostSimilarQuestion.SlackQuestionUUID + " " + event.messageID,
+                        "value": mostSimilarQuestionUUID + " " + event.messageID,
                         "action_id": "helpful"
                     },
                     {
@@ -107,7 +107,7 @@ exports.handler = async (event) => {
                             "type": "plain_text",
                             "text": "Not Helpful"
                         },
-                        "value": mostSimilarQuestion.SlackQuestionUUID + " " + event.messageID,
+                        "value": mostSimilarQuestionUUID + " " + event.messageID,
                         "action_id": "nothelpful"
                     },
                     {
@@ -117,7 +117,7 @@ exports.handler = async (event) => {
                             "type": "plain_text",
                             "text": "Dismiss"
                         },
-                        "value": mostSimilarQuestion.SlackQuestionUUID + " " + event.messageID,
+                        "value": mostSimilarQuestionUUID + " " + event.messageID,
                         "action_id": "dismiss"
                     }
                 ]

@@ -95,6 +95,26 @@ exports.handler = async (event) => {
         // Not Helpful button pressed
       } else {
         // Helpful button pressed
+        
+        let payload = {
+          responseURL: body.response_url,
+          oldQuestionUUID: body.actions[0].value.split(' ')[0],
+          messageTS: body.actions[0].value.split(' ')[1],
+          userID: body.user.id,
+          channelID: body.channel.id
+        }
+        
+        let input = {
+          stateMachineArn:
+            "arn:aws:states:us-east-2:579534454884:stateMachine:Helpful-Button-Flow",
+          name: uuidv4(),
+          input: JSON.stringify({
+            payload: payload,
+          }),
+        };
+        const command = new StartExecutionCommand(input);
+        const response = await client.send(command);
+        console.log("Dismiss Button:",response);
       }
     } else {
       // Answer was marked
