@@ -9,7 +9,7 @@ const data = require("data-api-client")({
 exports.handler = async (event) => {
     
     event = event.payload;
-    console.log("Request Event",event)
+    //console.log("Request Event",event)
     
     let helpfulParams = {
         replace_original: "true",
@@ -61,7 +61,5 @@ exports.handler = async (event) => {
     let increamentUpvotesResult = await data.query(increamentUpvotesSql, {
         SlackQuestionUUID: event.oldQuestionUUID,
     });
-
-    return { msg: "Successful Helpful Button Press" }
     
 };
