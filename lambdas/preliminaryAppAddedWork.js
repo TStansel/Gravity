@@ -185,7 +185,7 @@ exports.handler = async (event) => {
   console.log("Get all users in workspace");
 
   let getWorkspaceUsersSql =
-    "select SlackUserUUID from SlackUser where SlackWorkspaceUUID = :workspaceUUID";
+    "select SlackID from SlackUser where SlackWorkspaceUUID = :workspaceUUID";
 
   let getWorkspaceUsersResult = await data.query(getWorkspaceUsersSql, {
     workspaceUUID: workspaceUUID,
@@ -193,15 +193,26 @@ exports.handler = async (event) => {
 
   console.log("getWorkspaceUsersResult: ", getWorkspaceUsersResult);
 
-  let slackUserIdDict = {}
+  let slackUserIdSet = new Set();
   for (let row of getWorkspaceUsersResult.records) {
-    slackUserIdDict[row.SlackUserID] = row.UserID;
+    slackUserIdSet.add(row.SlackID);
   }
+  console.log(slackUserIdSet);
 
-  let membersNotInDB = channelMembers.filter(slackID => slackUserIdDict[slackID] === undefined);
+  let membersNotInDB = [];
+  for (let slackID of channelMembers) {
+    if (!slackUserIdSet.has(slackID)) {
+      membersNotInDB.push(slackID);
+    }
+  }
 
   console.log("channelMembers: ", channelMembers);
   console.log("membersNotInDB: ", membersNotInDB);
+
+  if (membersNotInDB.length === 0) {
+    console.log("no new users to add to DB, returning");
+    return { channelID: channelID, channelUUID: channelUUID };
+  }
 
   // Now add these new users to SlackUser in DB
   console.log("trying to add new SlackUsers");
@@ -210,14 +221,18 @@ exports.handler = async (event) => {
     "insert into SlackUser (SlackUserUUID, SlackWorkspaceUUID, SlackID) values (:slackUserUUID, :workspaceUUID, :slackID)";
 
   // Prepare list of users to insert
-  let batchInsertSlackUsersParams = membersNotInDB.map(slackID => [{slackUserUUID: uuidv4(), workspaceUUID: workspaceUUID, slackID: slackID}])
+  let batchInsertSlackUsersParams = membersNotInDB.map((slackID) => [
+    { slackUserUUID: uuidv4(), workspaceUUID: workspaceUUID, slackID: slackID },
+  ]);
 
   console.log("batchInsertSlackUsersParams: ", batchInsertSlackUsersParams);
 
-  let batchInsertNewSlackUserResult = await data.query(batchInsertNewSlackUserSql, batchInsertSlackUsersParams);
+  let batchInsertNewSlackUserResult = await data.query(
+    batchInsertNewSlackUserSql,
+    batchInsertSlackUsersParams
+  );
 
   console.log("batchInsertNewSlackUserResult: ", batchInsertNewSlackUserResult);
 
   return { channelID: channelID, channelUUID: channelUUID };
 };
-
