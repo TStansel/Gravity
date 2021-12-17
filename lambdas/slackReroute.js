@@ -54,7 +54,7 @@ exports.handler = async (event) => {
       const command = new StartExecutionCommand(input);
       const response = await client.send(command);
       console.log("New Message:",response);
-    } else {
+    } else if (eventSubtype === "channel_join") {
       // App added to channel
       let input = {
         stateMachineArn:
