@@ -32,7 +32,7 @@ exports.handler = async (event) => {
     let getBotTokenResult = await data.query(getBotTokenSql, {
         workspaceID: event.workspaceID,
     });
-    console.log(getBotTokenResult)
+
     let botToken = getBotTokenResult.records[0].BotToken;
     
     // Get Answer Link

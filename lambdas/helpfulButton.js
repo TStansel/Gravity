@@ -38,13 +38,24 @@ exports.handler = async (event) => {
         channel: event.channelID, 
         text: "<@"+event.userID+"> Marked <"+getLinkResult.records[0].AnswerLink+"|this thread> as helpful."
     };
+
+    let getBotTokenSql =
+        `select SlackToken.BotToken from SlackToken 
+            join SlackChannel on SlackToken.SlackWorkspaceUUID = SlackChannel.SlackWorkspaceUUID 
+            where SlackChannel.ChannelID = :channelID`;
+
+    let getBotTokenResult = await data.query(getBotTokenSql, {
+        channelID: event.channelID,
+    });
+
+    let botToken = getBotTokenResult.records[0].BotToken;
     
     // Posting the confirmed answer to the users question
     let successfulConfig = {
       method: 'post',
       url: 'https://slack.com/api/chat.postMessage',
       headers: {
-        'Authorization': 'Bearer xoxb-2516673192850-2728955403541-DIAuQAWa2QhauF13bgerQYnK',
+        'Authorization': 'Bearer ' + botToken,
         'Content-Type': 'application/json'
       },
       data: successfulParams
