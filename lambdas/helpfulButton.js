@@ -41,8 +41,8 @@ exports.handler = async (event) => {
 
     let getBotTokenSql =
         `select SlackToken.BotToken from SlackToken 
-            join SlackChannel on SlackToken.SlackWorkspaceUUID = SlackChannel.SlackWorkspaceUUID 
-            where SlackChannel.ChannelID = :channelID`;
+          join SlackChannel on SlackToken.SlackWorkspaceUUID = SlackChannel.SlackWorkspaceUUID 
+          where SlackChannel.ChannelID = :channelID`;
 
     let getBotTokenResult = await data.query(getBotTokenSql, {
         channelID: event.channelID,

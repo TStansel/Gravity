@@ -21,6 +21,17 @@ exports.handler = async (event) => {
     let getQuestionResult = await data.query(getQuestionSql, {
       SlackQuestionUUID: mostSimilarQuestionUUID,
     });
+
+    let getBotTokenSql =
+        `select SlackToken.BotToken from SlackToken 
+          join SlackChannel on SlackToken.SlackWorkspaceUUID = SlackChannel.SlackWorkspaceUUID 
+          where SlackChannel.ChannelID = :channelID`;
+
+    let getBotTokenResult = await data.query(getBotTokenSql, {
+        channelID: event.channelID,
+    });
+
+    let botToken = getBotTokenResult.records[0].BotToken;
     
     let answerLink;
     let isAnswerInDb = false;
@@ -33,7 +44,7 @@ exports.handler = async (event) => {
          method: 'get',
             url: 'https://slack.com/api/conversations.replies?channel='+channelID+'&ts='+messageTS,
             headers: {
-                'Authorization': 'Bearer xoxb-2516673192850-2728955403541-DIAuQAWa2QhauF13bgerQYnK',
+                'Authorization': 'Bearer ' + botToken,
                 'Content-Type': 'application/json'
             },
         };
@@ -45,7 +56,7 @@ exports.handler = async (event) => {
             method: 'get',
             url: 'https://slack.com/api/chat.getPermalink?channel='+channelID+'&message_ts='+answerTs,
             headers: {
-                'Authorization': 'Bearer xoxb-2516673192850-2728955403541-DIAuQAWa2QhauF13bgerQYnK',
+                'Authorization': 'Bearer ' + botToken,
                 'Content-Type': 'application/json'
             },
         };
@@ -129,7 +140,7 @@ exports.handler = async (event) => {
         method: 'post',
         url: 'https://slack.com/api/chat.postEphemeral',
         headers: {
-            'Authorization': 'Bearer xoxb-2516673192850-2728955403541-DIAuQAWa2QhauF13bgerQYnK',
+            'Authorization': 'Bearer ' + botToken,
             'Content-Type': 'application/json'
         },
         data: msgParams
