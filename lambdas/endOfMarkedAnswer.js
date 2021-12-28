@@ -21,15 +21,26 @@ exports.handler = async (event) => {
         channelID: event.channelID,
         userID: event.userID
     });
-    console.log(getUUIDsResult)
+    //console.log(getUUIDsResult)
     let UUIDs = getUUIDsResult.records[0];
+
+    let getBotTokenSql =
+        `select SlackToken.BotToken from SlackToken 
+            join SlackWorkspace on SlackToken.SlackWorkspaceUUID = SlackWorkspace.SlackWorkspaceUUID 
+            where SlackWorkspace.WorkspaceID = :workspaceID`;
+
+    let getBotTokenResult = await data.query(getBotTokenSql, {
+        workspaceID: event.workspaceID,
+    });
+    console.log(getBotTokenResult)
+    let botToken = getBotTokenResult.records[0].BotToken;
     
     // Get Answer Link
     let linkConfig = {
         method: 'get',
         url: 'https://slack.com/api/chat.getPermalink?channel='+event.channelID+'&message_ts='+event.messageTS,
         headers: {
-            'Authorization': 'Bearer xoxb-2516673192850-2728955403541-DIAuQAWa2QhauF13bgerQYnK',
+            'Authorization': 'Bearer ' + botToken,
             'Content-Type': 'application/json'
         },
     };
