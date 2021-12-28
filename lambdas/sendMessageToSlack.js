@@ -104,6 +104,8 @@ exports.handler = async (event) => {
     let msgParams = {
         "channel": event.channelID,
         "user": event.userID,
+        "as_user": true,
+        "username": "U02MEU3BVFX",
         "text": "I think I might have an answer for you!",
         "blocks": [
             {

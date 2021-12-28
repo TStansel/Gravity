@@ -13,7 +13,7 @@ exports.handler = async (event) => {
     
     let notHelpfulParams = {
         replace_original: "true",
-        text: "Thank you for making Osmosix more accurate!"
+        text: "Thank you for making Osmosix more accurate!",
     };
             
     let notHelpfulConfig = {
