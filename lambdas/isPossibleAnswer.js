@@ -55,6 +55,7 @@ exports.handler = async (event) => {
         let payload = {
             data: {
                 userID: event.user.id,
+                workspaceID: event.team.id
             },
             passed: false
         }

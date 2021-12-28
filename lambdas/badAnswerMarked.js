@@ -7,20 +7,32 @@ const data = require("data-api-client")({
 });
 
 exports.handler = async (event) => {
-    let msgParams = {
-            channel: event.userID,
-            text: "Uh oh! Thank you for marking an answer, but please make sure to only mark answers in threads where the parent message is a question."
-          };
+
+  let getBotTokenSql =
+    `select SlackToken.BotToken from SlackToken 
+      join SlackWorkspace on SlackToken.SlackWorkspaceUUID = SlackWorkspace.SlackWorkspaceUUID 
+      where SlackWorkspace.WorkspaceID = :workspaceID`;
+
+  let getBotTokenResult = await data.query(getBotTokenSql, {
+    workspaceID: event.workspaceID,
+  });
+
+  let botToken = getBotTokenResult.records[0].BotToken;
+
+  let msgParams = {
+    channel: event.userID,
+    text: "Uh oh! Thank you for marking an answer, but please make sure to only mark answers in threads where the parent message is a question."
+  };
           
-          let msgConfig = {
-              method: 'post',
-              url: 'https://slack.com/api/chat.postMessage',
-              headers: {
-                'Authorization': 'Bearer xoxb-2516673192850-2728955403541-DIAuQAWa2QhauF13bgerQYnK',
-                'Content-Type': 'application/json'
-            },
-            data: msgParams
-          };
-          const msgRes = await axios(msgConfig);
-          return msgRes
+  let msgConfig = {
+    method: 'post',
+    url: 'https://slack.com/api/chat.postMessage',
+    headers: {
+      'Authorization': 'Bearer ' + botToken,
+      'Content-Type': 'application/json'
+    },
+    data: msgParams
+  };
+  const msgRes = await axios(msgConfig);
+  return msgRes.data
 };
