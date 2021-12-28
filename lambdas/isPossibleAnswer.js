@@ -13,12 +13,23 @@ exports.handler = async (event) => {
         
         let channelID = event.channel.id;
         let parentTS = event.message.thread_ts;
+
+        let getBotTokenSql =
+            `select SlackToken.BotToken from SlackToken 
+                join SlackChannel on SlackToken.SlackWorkspaceUUID = SlackChannel.SlackWorkspaceUUID 
+                where SlackChannel.ChannelID = :channelID`;
+
+        let getBotTokenResult = await data.query(getBotTokenSql, {
+            channelID: channelID,
+        });
+
+        let botToken = getBotTokenResult.records[0].BotToken;
         
         let getParentConfig = {
                 method: 'get',
                 url: 'https://slack.com/api/conversations.history?channel='+channelID+'&limit=1&inclusive=true&latest='+parentTS,
                 headers: {
-                    'Authorization': 'Bearer xoxb-2516673192850-2728955403541-DIAuQAWa2QhauF13bgerQYnK',
+                    'Authorization': 'Bearer ' + botToken,
                     'Content-Type': 'application/json'
                 },
         };
