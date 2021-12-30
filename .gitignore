@@ -5,3 +5,4 @@ ml/models
 package.json
 package-lock.json
 .DS_Store
+osmosix/node_modules
