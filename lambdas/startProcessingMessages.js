@@ -93,8 +93,7 @@ exports.handler = async (event) => {
   let batch_size = 5;
   for (let i = 0; i < channelMessages.length; i += batch_size) {
     //console.log("hit for loop");
-    //console.log("slicing from i: " + i + " to i: " + (i + batch_size - 1));
-    let channelMessagesBatch = channelMessages.slice(i, i + batch_size - 1);
+    let channelMessagesBatch = channelMessages.slice(i, i + batch_size);
     //console.log(channelMessagesBatch);
     let sqsSendBatchMessageEntries = channelMessagesBatch.map(
       (message, index) => ({
