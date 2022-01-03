@@ -7,12 +7,12 @@ const data = require("data-api-client")({
   });
 
 exports.handler = async (event) => {
-    event = event.payload.payload
-    console.log("Request Event",event.message)
-    if(event.message.hasOwnProperty('thread_ts') && event.message.ts != event.message.thread_ts){
+    event = event.payload;
+    console.log("Request Event",event)
+    if(event.hasOwnProperty('parentTS') && event.messageID!= event.parentTS){
         
-        let channelID = event.channel.id;
-        let parentTS = event.message.thread_ts;
+        let channelID = event.channelID;
+        let parentTS = event.parentTS;
 
         let getBotTokenSql =
             `select SlackToken.BotToken from SlackToken 
@@ -43,9 +43,9 @@ exports.handler = async (event) => {
             data: {
                 parentTS: parentTS,
                 channelID: channelID,
-                messageTS: event.message.ts,
-                userID: event.user.id,
-                workspaceID: event.team.id,
+                messageTS: event.messageID,
+                userID: event.userID,
+                workspaceID: event.workspaceID,
                 text: parentMsgText
             },
             passed: true
@@ -54,8 +54,8 @@ exports.handler = async (event) => {
     } else {
         let payload = {
             data: {
-                userID: event.user.id,
-                workspaceID: event.team.id
+                userID: event.userID,
+                workspaceID: event.teamID
             },
             passed: false
         }

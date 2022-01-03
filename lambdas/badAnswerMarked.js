@@ -21,7 +21,7 @@ exports.handler = async (event) => {
 
   let msgParams = {
     channel: event.userID,
-    text: "Uh oh! Thank you for marking an answer, but please make sure to only mark answers in threads where the parent message is a question."
+    text: "Uh oh! Thank you for marking an answer, but please make sure to only mark answers in threads where the parent message is a question and in channels where the Osmosix app has been added."
   };
           
   let msgConfig = {

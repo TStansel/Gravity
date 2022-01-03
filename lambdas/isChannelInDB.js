@@ -28,6 +28,8 @@ const data = require("data-api-client")({
                 channelID: event.channelID,
                 messageID: event.messageID,
                 userID: event.userID,
+                parentTS: event.hasOwnProperty("parentTS") ? event.parentTS : undefined,
+                workspaceID: event.hasOwnProperty("workspaceID") ? event.workspaceID : undefined
             },
             passed:true
         };
@@ -38,6 +40,8 @@ const data = require("data-api-client")({
                 channelID: event.channelID,
                 messageID: event.messageID,
                 userID: event.userID,
+                parentTS: event.hasOwnProperty("parentTS") ? event.parentTS : undefined,
+                workspaceID: event.hasOwnProperty("workspaceID") ? event.workspaceID : undefined
             },
             passed:false
         };
