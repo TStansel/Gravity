@@ -18,6 +18,17 @@ exports.handler = async (event) => {
   let cursor = null;
   let channelMessages = [];
 
+  let getBotTokenSql =
+    `select SlackToken.BotToken from SlackToken 
+      join SlackChannel on SlackToken.SlackWorkspaceUUID = SlackChannel.SlackWorkspaceUUID 
+      where SlackChannel.ChannelID = :channelID`;
+
+  let getBotTokenResult = await data.query(getBotTokenSql, {
+    channelID: event.channelID,
+  });
+
+  let botToken = getBotTokenResult.records[0].BotToken;
+
   do {
     let cursorParam;
 
@@ -27,17 +38,6 @@ exports.handler = async (event) => {
     } else {
       cursorParam = "";
     }
-
-    let getBotTokenSql =
-      `select SlackToken.BotToken from SlackToken 
-        join SlackChannel on SlackToken.SlackWorkspaceUUID = SlackChannel.SlackWorkspaceUUID 
-        where SlackChannel.ChannelID = :channelID`;
-
-    let getBotTokenResult = await data.query(getBotTokenSql, {
-      channelID: event.channelID,
-    });
-
-    let botToken = getBotTokenResult.records[0].BotToken;
 
     let getChannelMessagesConfig = {
       method: "get",
@@ -116,6 +116,23 @@ exports.handler = async (event) => {
     let response = await client.send(command);
     //console.log(response);
   }
+
+  let msgParams = {
+    channel: channelID,
+    text: "Thank you for adding me to your channel! Feel free to start using me right away, but I will be more helpful after a minute or two."
+};
+      
+let msgConfig = {
+    method: 'post',
+    url: 'https://slack.com/api/chat.postMessage',
+        headers: {
+            'Authorization': 'Bearer xoxb-2516673192850-2728955403541-DIAuQAWa2QhauF13bgerQYnK',
+            'Content-Type': 'application/json'
+        },
+    data: msgParams
+    };
+const msgRes = await axios(msgConfig);
+
   return {
     statusCode: 200,
     body: JSON.stringify("Messages sent to SQS!"),
