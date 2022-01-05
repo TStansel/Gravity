@@ -33,22 +33,22 @@ exports.handler = async (event) => {
         SlackQuestionUUID: event.oldQuestionUUID,
     });
 
-    let successfulParams = {
-        thread_ts: event.messageTS,
-        channel: event.channelID, 
-        text: "<@"+event.userID+"> Marked <"+getLinkResult.records[0].AnswerLink+"|this thread> as helpful."
-    };
-
     let getBotTokenSql =
         `select SlackToken.BotToken from SlackToken 
-          join SlackChannel on SlackToken.SlackWorkspaceUUID = SlackChannel.SlackWorkspaceUUID 
-          where SlackChannel.ChannelID = :channelID`;
+            join SlackChannel on SlackToken.SlackWorkspaceUUID = SlackChannel.SlackWorkspaceUUID 
+            where SlackChannel.ChannelID = :channelID`;
 
     let getBotTokenResult = await data.query(getBotTokenSql, {
         channelID: event.channelID,
     });
 
     let botToken = getBotTokenResult.records[0].BotToken;
+    
+    let successfulParams = {
+        thread_ts: event.messageTS,
+        channel: event.channelID, 
+        text: "<@"+event.userID+"> Marked <"+getLinkResult.records[0].AnswerLink+"|this thread> as helpful."
+    };
     
     // Posting the confirmed answer to the users question
     let successfulConfig = {
@@ -60,8 +60,46 @@ exports.handler = async (event) => {
       },
       data: successfulParams
     };
-
+    
     const successfulRes = await axios(successfulConfig);
+    
+    // Updating the parent message with the check mark reaction
+    
+    let removeEmojiReactionParams = {
+        channel: event.channelID,
+        timestamp: event.messageTS,
+        name: "arrows_counterclockwise"
+    };
+    
+    let removeEmojiReactionConfig = {
+        method: 'post',
+        url: 'https://slack.com/api/reactions.remove',
+        headers: {
+            'Authorization': 'Bearer ' + botToken,
+            'Content-Type': 'application/json'
+        },
+        data: removeEmojiReactionParams
+    };
+    
+    const removeEmojiReactionRes = await axios(removeEmojiReactionConfig);
+    
+    let addEmojiReactionParams = {
+        channel: event.channelID,
+        timestamp: event.messageTS,
+        name: "white_check_mark"
+    };
+    
+    let addEmojiReactionConfig = {
+        method: 'post',
+        url: 'https://slack.com/api/reactions.add',
+        headers: {
+            'Authorization': 'Bearer ' + botToken,
+            'Content-Type': 'application/json'
+        },
+        data: addEmojiReactionParams
+    };
+    
+    const addEmojiReactionRes = await axios(addEmojiReactionConfig);
 
     let increamentUpvotesSql =
             `update SlackAnswer 

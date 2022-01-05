@@ -23,6 +23,55 @@ exports.handler = async (event) => {
     };
             
     const notHelpfulRes = await axios(notHelpfulConfig);
+
+    let getBotTokenSql =
+        `select SlackToken.BotToken from SlackToken 
+            join SlackChannel on SlackToken.SlackWorkspaceUUID = SlackChannel.SlackWorkspaceUUID 
+            where SlackChannel.ChannelID = :channelID`;
+
+    let getBotTokenResult = await data.query(getBotTokenSql, {
+        channelID: event.channelID,
+    });
+
+    let botToken = getBotTokenResult.records[0].BotToken;
+
+    // Updating the parent message with the question mark reaction
+    
+    let removeEmojiReactionParams = {
+        channel: event.channelID,
+        timestamp: event.messageTS,
+        name: "arrows_counterclockwise"
+    };
+    
+    let removeEmojiReactionConfig = {
+        method: 'post',
+        url: 'https://slack.com/api/reactions.remove',
+        headers: {
+            'Authorization': 'Bearer ' + botToken,
+            'Content-Type': 'application/json'
+        },
+        data: removeEmojiReactionParams
+    };
+    
+    const removeEmojiReactionRes = await axios(removeEmojiReactionConfig);
+    
+    let addEmojiReactionParams = {
+        channel: event.channelID,
+        timestamp: event.messageTS,
+        name: "question"
+    };
+    
+    let addEmojiReactionConfig = {
+        method: 'post',
+        url: 'https://slack.com/api/reactions.add',
+        headers: {
+            'Authorization': 'Bearer ' + botToken,
+            'Content-Type': 'application/json'
+        },
+        data: addEmojiReactionParams
+    };
+    
+    const addEmojiReactionRes = await axios(addEmojiReactionConfig);
     
     let increamentUpvotesSql =
         `update SlackAnswer 

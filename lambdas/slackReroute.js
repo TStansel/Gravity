@@ -107,6 +107,7 @@ exports.handler = async (event) => {
           responseURL: body.response_url,
           oldQuestionUUID: body.actions[0].value.split(" ")[0],
           messageTS: body.actions[0].value.split(" ")[1],
+          channelID: body.channel.id
         };
 
         let input = {
