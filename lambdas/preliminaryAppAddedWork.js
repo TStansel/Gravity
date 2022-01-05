@@ -103,7 +103,7 @@ exports.handler = async (event) => {
     //console.log("Channel already exists in DB (unexpected)");
 
     channelUUID = getChannelResult.records[0].SlackChannelUUID;
-    return { channelID: channelID, channelUUID: channelUUID };
+    return { channelID: channelID, channelUUID: channelUUID, workspaceID: workspaceID };
   }
 
   // Slack channel does not exist in DB
@@ -222,7 +222,7 @@ exports.handler = async (event) => {
 
   if (membersNotInDB.length === 0) {
     //console.log("no new users to add to DB, returning");
-    return { channelID: channelID, channelUUID: channelUUID };
+    return { channelID: channelID, channelUUID: channelUUID, workspaceID: workspaceID };
   }
 
   // Now add these new users to SlackUser in DB
@@ -245,5 +245,5 @@ exports.handler = async (event) => {
 
   //console.log("batchInsertNewSlackUserResult: ", batchInsertNewSlackUserResult);
 
-  return { channelID: channelID, channelUUID: channelUUID };
+  return { channelID: channelID, channelUUID: channelUUID, workspaceID: workspaceID };
 };

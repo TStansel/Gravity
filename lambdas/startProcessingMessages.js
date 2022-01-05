@@ -9,7 +9,8 @@ const data = require("data-api-client")({
 });
 
 exports.handler = async (event) => {
-
+  console.log(event)
+  event = event.payload;
   const channelID = event.channelID;
   const channelUUID = event.channelUUID;
 
@@ -119,19 +120,20 @@ exports.handler = async (event) => {
 
   let msgParams = {
     channel: channelID,
-    text: `Thank you for adding me to your channel!\n Here are some emoji's and their meanings you will see as you use me:\n\t:arrows_counterclockwise: means I'm working on finding an answer to that question\n\t:white_check_mark: means I helped answer that question\n\t:question: means I was unable to answer that question\nFeel free to start using me right away, but I will be more helpful after a minute or two.`
+    text: "Thank you for adding me to your channel!\n Here are some emoji's and their meanings you will see as you use me:\n\t:arrows_counterclockwise: means I'm working on finding an answer to that question\n\t:white_check_mark: means I helped answer that question\n\t:question: means I was unable to answer that question\nHere is my <slack://app?team={"+event.workspaceID+"}&id={A02M0KYRBN2}&tab=about|full guide> to help you get started too!\nFeel free to start using me right away, but I will be more helpful after a minute or two."
 };
       
 let msgConfig = {
     method: 'post',
     url: 'https://slack.com/api/chat.postMessage',
         headers: {
-            'Authorization': 'Bearer xoxb-2516673192850-2728955403541-DIAuQAWa2QhauF13bgerQYnK',
+            'Authorization': 'Bearer ' + botToken,
             'Content-Type': 'application/json'
         },
     data: msgParams
     };
 const msgRes = await axios(msgConfig);
+console.log(msgRes)
 
   return {
     statusCode: 200,
