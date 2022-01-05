@@ -89,12 +89,18 @@ exports.handler = async (event) => {
       if (actionID.includes("dismiss")) {
         // Dismiss button pressed
 
+        let payload = {
+          responseURL: body.response_url,
+          messageTS: body.actions[0].value.split(" ")[1],
+          channelID: body.channel.id
+        };
+
         let input = {
           stateMachineArn:
             "arn:aws:states:us-east-2:579534454884:stateMachine:Dismiss-Button-Flow",
           name: uuidv4(),
           input: JSON.stringify({
-            responseURL: body.response_url,
+            payload: payload,
           }),
         };
         const command = new StartExecutionCommand(input);
