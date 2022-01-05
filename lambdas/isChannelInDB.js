@@ -29,7 +29,8 @@ const data = require("data-api-client")({
                 messageID: event.messageID,
                 userID: event.userID,
                 parentTS: event.hasOwnProperty("parentTS") ? event.parentTS : undefined,
-                workspaceID: event.hasOwnProperty("workspaceID") ? event.workspaceID : undefined
+                workspaceID: event.hasOwnProperty("workspaceID") ? event.workspaceID : undefined,
+                isNewMessageFlow: event.hasOwnProperty("isNewMessageFlow") ? event.isNewMessageFlow : undefined
             },
             passed:true
         };

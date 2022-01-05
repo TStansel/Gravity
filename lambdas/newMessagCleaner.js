@@ -10,6 +10,7 @@ exports.handler = async (event) => {
                 channelID: messageEvent.channelID,
                 messageID: messageEvent.messageID,
                 userID: messageEvent.userID,
+                isNewMessageFlow: messageEvent.hasOwnProperty("isNewMessageFlow") ? messageEvent.isNewMessageFlow : undefined
             },
             passed:true
         };

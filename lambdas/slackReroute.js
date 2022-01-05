@@ -51,6 +51,7 @@ exports.handler = async (event) => {
         channelID: event.event.channel,
         messageID: event.event.ts,
         userID: event.event.user,
+        isNewMessageFlow: true
       };
 
       let input = {
