@@ -51,7 +51,7 @@ exports.handler = async (event) => {
         channelID: event.event.channel,
         messageID: event.event.ts,
         userID: event.event.user,
-        isNewMessageFlow: true
+        isNewMessageFlow: true,
       };
 
       let input = {
@@ -93,7 +93,7 @@ exports.handler = async (event) => {
         let payload = {
           responseURL: body.response_url,
           messageTS: body.actions[0].value.split(" ")[1],
-          channelID: body.channel.id
+          channelID: body.channel.id,
         };
 
         let input = {
@@ -114,7 +114,7 @@ exports.handler = async (event) => {
           responseURL: body.response_url,
           oldQuestionUUID: body.actions[0].value.split(" ")[0],
           messageTS: body.actions[0].value.split(" ")[1],
-          channelID: body.channel.id
+          channelID: body.channel.id,
         };
 
         let input = {
@@ -153,14 +153,16 @@ exports.handler = async (event) => {
       }
     } else {
       // Answer was marked
-      
+
       let data = {
-        parentTS: body.message.hasOwnProperty("thread_ts") ? body.message.thread_ts : undefined,
+        parentTS: body.message.hasOwnProperty("thread_ts")
+          ? body.message.thread_ts
+          : undefined,
         channelID: body.channel.id,
         messageID: body.message.ts,
         userID: body.user.id,
         workspaceID: body.team.id,
-        text: body.message.text
+        text: body.message.text,
       };
 
       let input = {
