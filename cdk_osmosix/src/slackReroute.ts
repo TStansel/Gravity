@@ -8,6 +8,7 @@ import * as crypto from "crypto";
 export const lambdaHandler = async (
   event: APIGatewayProxyEventV2
 ): Promise<APIGatewayProxyResultV2> => {
+  console.log("this is a change");
 
   // Inspect the event passed from API gateway to determine what action to perform
   // If the request did not constitute a valid action return null
@@ -138,7 +139,7 @@ function buildResponse(
   status: number,
   body: string
 ): APIGatewayProxyStructuredResultV2 {
-  return {
+  const response = {
     isBase64Encoded: false,
     statusCode: status,
     headers: {
@@ -146,4 +147,6 @@ function buildResponse(
     },
     body: body,
   };
+  console.log(response);
+  return response;
 }
