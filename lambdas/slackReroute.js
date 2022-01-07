@@ -43,7 +43,7 @@ exports.handler = async (event) => {
       eventSubtype = event.event.subtype;
     }
 
-    if (eventType === "message" && eventSubtype === undefined) {
+    if (eventType === "message" && eventSubtype === undefined && !event.event.hasOwnProperty("thread_ts")) {
       // New message posted in Slack
 
       let data = {
