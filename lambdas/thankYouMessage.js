@@ -19,6 +19,42 @@ exports.handler = async (event) => {
     });
 
     let botToken = getBotTokenResult.records[0].BotToken;
+
+    let removeEmojiReactionParams = {
+        channel: event.channelID,
+        timestamp: event.parentTS,
+        name: "question"
+    };
+    
+    let removeEmojiReactionConfig = {
+        method: 'post',
+        url: 'https://slack.com/api/reactions.remove',
+        headers: {
+            'Authorization': 'Bearer ' + botToken,
+            'Content-Type': 'application/json'
+        },
+        data: removeEmojiReactionParams
+    };
+    
+    const removeEmojiReactionRes = await axios(removeEmojiReactionConfig);
+    
+    let addEmojiReactionParams = {
+        channel: event.channelID,
+        timestamp: event.parentTS,
+        name: "white_check_mark"
+    };
+    
+    let addEmojiReactionConfig = {
+        method: 'post',
+        url: 'https://slack.com/api/reactions.add',
+        headers: {
+            'Authorization': 'Bearer ' + botToken,
+            'Content-Type': 'application/json'
+        },
+        data: addEmojiReactionParams
+    };
+    
+    const addEmojiReactionRes = await axios(addEmojiReactionConfig);
     
     let msgParams = {
         channel: event.userID,

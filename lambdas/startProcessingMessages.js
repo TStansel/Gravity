@@ -120,7 +120,7 @@ exports.handler = async (event) => {
 
   let msgParams = {
     channel: channelID,
-    text: "Thank you for adding me to your channel!\n Here are some emoji's and their meanings you will see as you use me:\n\t:arrows_counterclockwise: means I'm working on finding an answer to that question\n\t:white_check_mark: means I helped answer that question\n\t:question: means I was unable to answer that question\nHere is my <slack://app?team={"+event.workspaceID+"}&id={A02M0KYRBN2}&tab=about|full guide> to help you get started too!\nFeel free to start using me right away, but I will be more helpful after a minute or two."
+    text: "Thank you for adding me to your channel!\n Here are some emoji's and their meanings you will see as you use me:\n\t:arrows_counterclockwise: means I'm working on finding an answer to that question\n\t:white_check_mark: means I helped answer that question\n\t:question: means I was unable to answer that question\nCheck out the about section of my app to help you get started too!\nFeel free to start using me right away, but I will be more helpful after a minute or two."
 };
       
 let msgConfig = {
