@@ -36,6 +36,18 @@ exports.handler = async (event) => {
         
         const getParentRes = await axios(getParentConfig);
         
+        if(getParentRes.data.messages[0].user != event.userID){
+            // Only let's the owner of the parent message mark an answer for their question
+            let payload = {
+                data: {
+                    userID: event.userID,
+                    workspaceID: event.workspaceID
+                },
+                passed: false
+            }
+            return { payload: payload }
+        }
+        
         let parentMessage = getParentRes.data.messages[0];
         let parentMsgText = parentMessage.text;
         
@@ -55,7 +67,7 @@ exports.handler = async (event) => {
         let payload = {
             data: {
                 userID: event.userID,
-                workspaceID: event.teamID
+                workspaceID: event.workspaceID
             },
             passed: false
         }
