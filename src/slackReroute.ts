@@ -4,11 +4,16 @@ import {
   APIGatewayProxyStructuredResultV2,
 } from "aws-lambda";
 import * as crypto from "crypto";
+import { SecretsManagerClient } from "@aws-sdk/client-secrets-manager";
+
+const client = new SecretsManagerClient({ region: "REGION" });
+
+
 
 export const lambdaHandler = async (
   event: APIGatewayProxyEventV2
 ): Promise<APIGatewayProxyResultV2> => {
-
+  console.log(event);
   // Inspect the event passed from API gateway to determine what action to perform
   // If the request did not constitute a valid action return null
   const routeStrategy = determineRoute(event);
@@ -138,7 +143,7 @@ function buildResponse(
   status: number,
   body: string
 ): APIGatewayProxyStructuredResultV2 {
-  return {
+  const response = {
     isBase64Encoded: false,
     statusCode: status,
     headers: {
@@ -146,4 +151,6 @@ function buildResponse(
     },
     body: body,
   };
+  console.log(response);
+  return response;
 }
