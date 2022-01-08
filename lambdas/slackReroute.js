@@ -43,7 +43,7 @@ exports.handler = async (event) => {
       eventSubtype = event.event.subtype;
     }
 
-    if (eventType === "message" && eventSubtype === undefined) {
+    if (eventType === "message" && eventSubtype === undefined && !event.event.hasOwnProperty("thread_ts")) {
       // New message posted in Slack
 
       let data = {
@@ -65,7 +65,8 @@ exports.handler = async (event) => {
       const command = new StartExecutionCommand(input);
       const response = await client.send(command);
       console.log("New Message:", response);
-    } else if (eventSubtype === "channel_join") {
+    } else if (eventSubtype === "channel_join" && event.event.text === "<@U02MEU3BVFX> has joined the channel") {
+      // If another app joins a channel the 2nd half of above if statement prevents path from moving forward here
       // App added to channel
       let input = {
         stateMachineArn:

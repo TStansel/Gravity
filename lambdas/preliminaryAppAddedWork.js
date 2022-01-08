@@ -37,49 +37,7 @@ exports.handler = async (event) => {
 
   let botToken = getBotTokenResult.records[0].BotToken;
 
-  let workspaceUUID;
-
-  // Check if workspace was in database
-  if (getWorkspaceResult.records.length === 0) {
-    // Workspace does not exist, get slack channel
-
-    //console.log("calling slack api to get workspace name");
-
-    let getSlackWorkspaceNameConfig = {
-      method: "get",
-      url: "https://slack.com/api/team.info?team=" + workspaceID,
-      headers: {
-        Authorization:
-          "Bearer " + botToken,
-        "Content-Type": "application/json",
-      },
-    };
-
-    const getSlackWorkspaceNameResult = await axios(
-      getSlackWorkspaceNameConfig
-    );
-
-    //console.log("Get Workspace Name Call:", getSlackWorkspaceNameResult);
-
-    // Add workspace to DB
-
-    let workspaceName = getSlackWorkspaceNameResult.data.team.name;
-    workspaceUUID = uuidv4();
-
-    let insertWorkspaceSql =
-      "insert into SlackWorkspace (SlackWorkspaceUUID, WorkspaceID, Name) values (:SlackWorkspaceUUID, :WorkspaceID, :Name)";
-
-    let insertWorkspaceResult = await data.query(insertWorkspaceSql, {
-      SlackWorkspaceUUID: workspaceUUID,
-      WorkspaceID: workspaceID,
-      Name: workspaceName,
-    });
-
-    //console.log("insertWorkspaceResult: ", insertWorkspaceResult);
-  } else {
-    // get UUID from get Call to be used in SlackChannel Creation
-    workspaceUUID = getWorkspaceResult.records[0].SlackWorkspaceUUID;
-  }
+  let workspaceUUID = getWorkspaceResult.records[0].SlackWorkspaceUUID;
 
   // Check if slack channel exists in DB
   //console.log("check if slack channel is in DB");
