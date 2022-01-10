@@ -4,13 +4,6 @@ import {
   APIGatewayProxyStructuredResultV2,
 } from "aws-lambda";
 import * as crypto from "crypto";
-import {
-  SecretsManagerClient,
-  GetSecretValueCommand,
-} from "@aws-sdk/client-secrets-manager";
-
-const client = new SecretsManagerClient({ region: "us-east-2" });
-// TODO: see if it would be better to get secret here instead of in function
 
 export const lambdaHandler = async (
   event: APIGatewayProxyEventV2
@@ -20,7 +13,7 @@ export const lambdaHandler = async (
   // If the request did not constitute a valid action return null
   let routeStrategy: Routeable;
   try {
-    routeStrategy = await determineRoute(event);
+    routeStrategy = determineRoute(event);
   } catch (e) {
     // Invalid route
     console.log(e);
@@ -70,11 +63,9 @@ class UrlVerificationRouteStrategy implements Routeable {
   }
 }
 
-async function determineRoute(
-  event: APIGatewayProxyEventV2
-): Promise<Routeable> {
+function determineRoute(event: APIGatewayProxyEventV2): Routeable {
   console.log("determining route");
-  if (!(await verifyRequestIsFromSlack(event))) {
+  if (!verifyRequestIsFromSlack(event)) {
     throw new Error("Could not verify request");
   }
   console.log("request verified");
@@ -164,9 +155,7 @@ function fromSlackEventsApi(event: APIGatewayProxyEventV2): boolean {
   return false;
 }
 
-async function verifyRequestIsFromSlack(
-  event: APIGatewayProxyEventV2
-): Promise<boolean> {
+function verifyRequestIsFromSlack(event: APIGatewayProxyEventV2): boolean {
   if (
     !event.headers["X-Slack-Request-Timestamp"] ||
     !event.headers["X-Slack-Signature"] ||
@@ -193,12 +182,9 @@ async function verifyRequestIsFromSlack(
 
   const baseString = "v0:" + slackTimestamp + ":" + slackBody;
 
-  console.log("trying to get secret");
-  let slackSigningSecret: string;
-  try {
-    slackSigningSecret = await getSlackSigningSecret();
-  } catch (e) {
-    console.log(e);
+  const slackSigningSecret = process.env.SLACK_SIGNING_SECRET;
+  if (!slackSigningSecret) {
+    console.log("could not get slack signing secret");
     return false;
   }
 
@@ -220,27 +206,6 @@ async function verifyRequestIsFromSlack(
   }
 
   return true;
-}
-
-async function getSlackSigningSecret(): Promise<string> {
-  // TODO: this feels like a hacky way of doing the try/catch
-  try {
-    const command = new GetSecretValueCommand({
-      SecretId:
-        "arn:aws:secretsmanager:us-east-2:579534454884:secret:OSMOSIX_DEV_SIGNING_SECRET-5rg0ga",
-    });
-    const response = await client.send(command);
-    if (response.SecretString) {
-      // TODO: this feels hacky, fix later
-      return JSON.parse(response.SecretString)
-        .OSMOSIX_DEV_SIGNING_SECRET as string;
-    } else {
-      throw new Error("secret response has no secretString");
-    }
-  } catch (e) {
-    console.log(e);
-    throw new Error("error getting secret");
-  }
 }
 
 function buildResponse(
