@@ -16,9 +16,12 @@ export const lambdaHandler = async (
   console.log(event);
   // Inspect the event passed from API gateway to determine what action to perform
   // If the request did not constitute a valid action return null
-  const routeStrategy = determineRoute(event);
-  if (!routeStrategy) {
+  let routeStrategy: Routeable;
+  try {
+    routeStrategy = determineRoute(event);
+  } catch(e) {
     // Invalid route 
+    console.log(e);
     return buildResponse(401, "Access Denied");
   }
 
@@ -65,24 +68,83 @@ class UrlVerificationRouteStrategy implements Routeable {
   }
 }
 
-function determineRoute(event: APIGatewayProxyEventV2): Routeable | null {
+function determineRoute(event: APIGatewayProxyEventV2): Routeable {
+  console.log("determining route");
   if (!verifyRequestIsFromSlack(event)) {
-    return null;
+    throw new Error("Could not verify request");
   }
   console.log("request verified");
 
+  if (fromSlackEventsApi(event)) {
+    // Event is from Slack Events API
+    const slackEvent = JSON.parse(event.body!);
+    console.log(`slackEvent: ${slackEvent}`);
+    let type = slackEvent.type as string;
+    switch(type) {
+      case "url_verification": {
+        // URL for Events API subscription is being verified by Slack
+        if(slackEvent.challenge) {
+          return new UrlVerificationRouteStrategy(slackEvent.challenge as string);
+        } else {
+          throw new Error("type url_verification but no challenge!");
+        }
+      }
+      case "event_callback": {
+        // Most other events from Events API have this type
+      }
+    }
+  } else {
+    // Event not from Slack Events API
+  }
+
   if (event.headers["Content-Type"] === "application/json" && event.body) {
+    console.log("event has content type application/json and a body parameter");
     const body = JSON.parse(event.body);
 
     if (body.hasOwnProperty("type")) {
       let type = body.type as string;
       if (type === "url_verification") {
-        return new UrlVerificationRouteStrategy(body.challenge as string);
+        if(body.challenge) {
+          return new UrlVerificationRouteStrategy(body.challenge as string);
+        }
+      } else {
+        throw new Error("Body type is not url_verification");
       }
     }
+    
   }
 
-  return null;
+
+}
+
+class slackEventsApiSource {
+
+}
+
+function fromSlackEventsApi(event: APIGatewayProxyEventV2): boolean {
+  if(event.headers["Content-Type"] === "application/json" && event.body) {
+    const slackEvent = JSON.parse(event.body);
+    if(slackEvent.hasOwnProperty("token") && 
+    (typeof slackEvent.token === 'string') && 
+    slackEvent.hasOwnProperty("team_id") && 
+    (typeof slackEvent.team_id === 'string') &&
+    slackEvent.hasOwnProperty("api_app_id") &&
+    (typeof slackEvent.api_app_id === 'string') &&
+    slackEvent.hasOwnProperty("event") &&
+    slackEvent.hasOwnProperty("type") &&
+    (typeof slackEvent.type === 'string') &&
+    slackEvent.hasOwnProperty("authorizations") &&
+    (typeof slackEvent.authorizations === 'string') &&
+    slackEvent.hasOwnProperty("event_context") &&
+    (typeof slackEvent.event_context === 'string') &&
+    slackEvent.hasOwnProperty("event_id") &&
+    (typeof slackEvent.event_id === 'string') &&
+    slackEvent.hasOwnProperty("event_time") &&
+    (typeof slackEvent.event_time === 'number')) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function verifyRequestIsFromSlack(event: APIGatewayProxyEventV2): boolean {
