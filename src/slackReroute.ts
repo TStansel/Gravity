@@ -115,7 +115,6 @@ async function determineRoute(
   throw new Error("not from Slack Events API and not url_verification!");
 }
 
-class slackEventsApiSource {}
 function isUrlVerification(event: APIGatewayProxyEventV2): boolean {
   if (event.headers["Content-Type"] === "application/json" && event.body) {
     const slackEvent = JSON.parse(event.body);
@@ -148,7 +147,6 @@ function fromSlackEventsApi(event: APIGatewayProxyEventV2): boolean {
       slackEvent.hasOwnProperty("type") &&
       typeof slackEvent.type === "string" &&
       slackEvent.hasOwnProperty("authorizations") &&
-      typeof slackEvent.authorizations === "string" &&
       slackEvent.hasOwnProperty("event_context") &&
       typeof slackEvent.event_context === "string" &&
       slackEvent.hasOwnProperty("event_id") &&
