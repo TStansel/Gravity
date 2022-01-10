@@ -168,6 +168,8 @@ async function verifyRequestIsFromSlack(event: APIGatewayProxyEventV2): Promise<
     return false;
   }
 
+  console.log(slackSigningSecret);
+
   const mySignature =
     "v0=" +
     crypto
@@ -181,7 +183,7 @@ async function verifyRequestIsFromSlack(event: APIGatewayProxyEventV2): Promise<
       Buffer.from(slackSignature, "utf8")
     )
   ) {
-    console.log("Hashes do nor match");
+    console.log("Hashes do not match");
     return false;
   }
 
@@ -197,7 +199,8 @@ async function getSlackSigningSecret(): Promise<string> {
     });
     const response = await client.send(command);
     if (response.SecretString) {
-      return response.SecretString;
+      // TODO: this feels hacky, fix later
+      return JSON.parse(response.SecretString).OSMOSIX_DEV_SIGNING_SECRET as string;
     } else {
       throw new Error("secret response has no secretString");
     }
