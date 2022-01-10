@@ -16,9 +16,23 @@ exports.handler = async (event) => {
   // Check if the Workspace is already in the DB
   //console.log("check if workspace is in DB");
 
+  let workspaceID = event.payload.workspaceID;
+  let getUsernameSql =
+    `select SlackID from SlackUser 
+    join SlackWorkspace on SlackUser.SlackWorkspaceUUID = SlackWorkspace.SlackWorkspaceUUID
+    where WorkspaceID = :workspaceID`;
+
+  let getUsernameResult = await data.query(getUsernameSql, {
+    workspaceID: workspaceID,
+  });
+
+  if(getUsernameResult.records.length != 0){
+    return { passed: false };
+  }
+
+
   let getWorkspaceSql =
     "select * from SlackWorkspace where WorkspaceID = :workspaceID";
-  let workspaceID = event.payload.workspaceID;
 
   let getWorkspaceResult = await data.query(getWorkspaceSql, {
     workspaceID: workspaceID,
@@ -61,7 +75,7 @@ exports.handler = async (event) => {
     //console.log("Channel already exists in DB (unexpected)");
 
     channelUUID = getChannelResult.records[0].SlackChannelUUID;
-    return { channelID: channelID, channelUUID: channelUUID, workspaceID: workspaceID };
+    return { channelID: channelID, channelUUID: channelUUID, workspaceID: workspaceID, passed: true };
   }
 
   // Slack channel does not exist in DB
@@ -180,7 +194,7 @@ exports.handler = async (event) => {
 
   if (membersNotInDB.length === 0) {
     //console.log("no new users to add to DB, returning");
-    return { channelID: channelID, channelUUID: channelUUID, workspaceID: workspaceID };
+    return { channelID: channelID, channelUUID: channelUUID, workspaceID: workspaceID, passed: true };
   }
 
   // Now add these new users to SlackUser in DB
@@ -203,5 +217,5 @@ exports.handler = async (event) => {
 
   //console.log("batchInsertNewSlackUserResult: ", batchInsertNewSlackUserResult);
 
-  return { channelID: channelID, channelUUID: channelUUID, workspaceID: workspaceID };
+  return { channelID: channelID, channelUUID: channelUUID, workspaceID: workspaceID, passed: true };
 };
