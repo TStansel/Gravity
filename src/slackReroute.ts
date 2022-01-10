@@ -4,7 +4,10 @@ import {
   APIGatewayProxyStructuredResultV2,
 } from "aws-lambda";
 import * as crypto from "crypto";
-import { SecretsManagerClient, GetSecretValueCommand} from "@aws-sdk/client-secrets-manager";
+import {
+  SecretsManagerClient,
+  GetSecretValueCommand,
+} from "@aws-sdk/client-secrets-manager";
 
 const client = new SecretsManagerClient({ region: "us-east-2" });
 
@@ -156,12 +159,14 @@ function verifyRequestIsFromSlack(event: APIGatewayProxyEventV2): boolean {
 
   const baseString = "v0:" + slackTimestamp + ":" + slackBody;
 
-  if (!process.env.OSMOSIX_SLACK_SIGNING_SECRET) {
-    console.log("no slack signing secret");
+  console.log("trying to get secret");
+  let slackSigningSecret: string;
+  try {
+    slackSigningSecret = getSlackSigningSecret();
+  } catch (e) {
+    console.log(e);
     return false;
   }
-
-  const slackSigningSecret = getSlackSigningSecret();
 
   const mySignature =
     "v0=" +
@@ -186,14 +191,17 @@ function verifyRequestIsFromSlack(event: APIGatewayProxyEventV2): boolean {
 function getSlackSigningSecret(): string {
   // TODO: this feels like a hacky way of doing the try/catch
   try {
-    const command = new GetSecretValueCommand({SecretId: "arn:aws:secretsmanager:us-east-2:579534454884:secret:OSMOSIX_SLACK_SIGNING_SECRET-g0YuJ8"});
+    const command = new GetSecretValueCommand({
+      SecretId:
+        "arn:aws:secretsmanager:us-east-2:579534454884:secret:OSMOSIX_SLACK_SIGNING_SECRET-g0YuJ8",
+    });
     const response = await client.send(command);
-    if(response.SecretString){
+    if (response.SecretString) {
       return response.SecretString;
     } else {
       throw new Error("secret response has no secretString");
     }
-  } catch(e) {
+  } catch (e) {
     console.log(e);
     throw new Error("error getting secret");
   }
