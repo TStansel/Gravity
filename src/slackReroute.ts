@@ -63,6 +63,21 @@ class UrlVerificationRouteStrategy implements Routeable {
   }
 }
 
+class AppAddedToChannelRouteStrategy implements Routeable {
+  route(): RouteResult {
+    return new RouteResult(
+      200,
+      "Test AppAddedToChannelRouteStrategy route output."
+    );
+  }
+}
+
+class MessagePostedRouteStrategy implements Routeable {
+  route(): RouteResult {
+    return new RouteResult(200, "Test MessagePostedRouteStrategy route output");
+  }
+}
+
 function determineRoute(event: APIGatewayProxyEventV2): Routeable {
   console.log("determining route");
   if (!verifyRequestIsFromSlack(event)) {
@@ -83,13 +98,25 @@ function determineRoute(event: APIGatewayProxyEventV2): Routeable {
         switch (eventType) {
           case "member_joined_channel": {
             console.log("member_joined_channel eventType");
+            return new AppAddedToChannelRouteStrategy();
             break;
           }
           case "message": {
             console.log("message eventType");
+            return new MessagePostedRouteStrategy();
+            break;
+          }
+          default: {
+            console.log(`default eventType reached (unknown): ${eventType}`);
+            throw new Error("default eventType reached");
             break;
           }
         }
+        break;
+      }
+      default: {
+        console.log(`default type reached (unknown): ${type}`);
+        throw new Error("default type reached");
         break;
       }
     }
@@ -104,10 +131,10 @@ function determineRoute(event: APIGatewayProxyEventV2): Routeable {
       } else {
         throw new Error("type url_verification but no challenge!");
       }
+    } else {
+      throw new Error("not from Slack Events API and not url_verification!");
     }
   }
-
-  throw new Error("not from Slack Events API and not url_verification!");
 }
 
 function isUrlVerification(event: APIGatewayProxyEventV2): boolean {
