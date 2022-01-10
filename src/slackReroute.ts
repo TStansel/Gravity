@@ -85,30 +85,34 @@ async function determineRoute(
     console.log(`slackEvent: ${slackEvent}`);
     let type = slackEvent.type as string;
     switch (type) {
-      case "url_verification": {
-        // URL for Events API subscription is being verified by Slack
-        if (slackEvent.challenge) {
-          return new UrlVerificationRouteStrategy(
-            slackEvent.challenge as string
-          );
-        } else {
-          throw new Error("type url_verification but no challenge!");
-        }
-      }
       case "event_callback": {
-        // Most other events from Events API have this type
+        // Most events from Events API have this type
+        console.log("type event_callback");
+        const eventType = slackEvent.event.type;
+        switch (eventType) {
+          case "member_joined_channel": {
+            console.log("member_joined_channel eventType");
+            break;
+          }
+          case "message": {
+            console.log("message eventType");
+            break;
+          }
+        }
+        break;
       }
     }
-  }
-  // Event not from Slack Events API
-  if (isUrlVerification(event)) {
-    console.log("event not from Slack Events API");
-    // URL for Events API subscription is being verified by Slack
-    const slackEvent = JSON.parse(event.body!);
-    if (slackEvent.challenge) {
-      return new UrlVerificationRouteStrategy(slackEvent.challenge as string);
-    } else {
-      throw new Error("type url_verification but no challenge!");
+  } else {
+    // Event not from Slack Events API
+    if (isUrlVerification(event)) {
+      console.log("event not from Slack Events API");
+      // URL for Events API subscription is being verified by Slack
+      const slackEvent = JSON.parse(event.body!);
+      if (slackEvent.challenge) {
+        return new UrlVerificationRouteStrategy(slackEvent.challenge as string);
+      } else {
+        throw new Error("type url_verification but no challenge!");
+      }
     }
   }
 
