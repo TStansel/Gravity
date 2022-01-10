@@ -10,6 +10,7 @@ import {
 } from "@aws-sdk/client-secrets-manager";
 
 const client = new SecretsManagerClient({ region: "us-east-2" });
+// TODO: see if it would be better to get secret here instead of in function
 
 export const lambdaHandler = async (
   event: APIGatewayProxyEventV2
@@ -69,7 +70,9 @@ class UrlVerificationRouteStrategy implements Routeable {
   }
 }
 
-async function determineRoute(event: APIGatewayProxyEventV2): Promise<Routeable> {
+async function determineRoute(
+  event: APIGatewayProxyEventV2
+): Promise<Routeable> {
   console.log("determining route");
   if (!(await verifyRequestIsFromSlack(event))) {
     throw new Error("Could not verify request");
@@ -98,11 +101,38 @@ async function determineRoute(event: APIGatewayProxyEventV2): Promise<Routeable>
     }
   }
   // Event not from Slack Events API
-  console.log("event not from Slack Events API");
-  throw new Error("not from Slack Events API!");
+  if (isUrlVerification(event)) {
+    console.log("event not from Slack Events API");
+    // URL for Events API subscription is being verified by Slack
+    const slackEvent = JSON.parse(event.body!);
+    if (slackEvent.challenge) {
+      return new UrlVerificationRouteStrategy(slackEvent.challenge as string);
+    } else {
+      throw new Error("type url_verification but no challenge!");
+    }
+  }
+
+  throw new Error("not from Slack Events API and not url_verification!");
 }
 
 class slackEventsApiSource {}
+function isUrlVerification(event: APIGatewayProxyEventV2): boolean {
+  if (event.headers["Content-Type"] === "application/json" && event.body) {
+    const slackEvent = JSON.parse(event.body);
+    if (
+      slackEvent.hasOwnProperty("token") &&
+      typeof slackEvent.token === "string" &&
+      slackEvent.hasOwnProperty("type") &&
+      typeof slackEvent.type === "string" &&
+      slackEvent.type === "url_verification" &&
+      slackEvent.hasOwnProperty("challenge") &&
+      typeof slackEvent.challenge === "string"
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
 
 function fromSlackEventsApi(event: APIGatewayProxyEventV2): boolean {
   if (event.headers["Content-Type"] === "application/json" && event.body) {
@@ -132,7 +162,9 @@ function fromSlackEventsApi(event: APIGatewayProxyEventV2): boolean {
   return false;
 }
 
-async function verifyRequestIsFromSlack(event: APIGatewayProxyEventV2): Promise<boolean> {
+async function verifyRequestIsFromSlack(
+  event: APIGatewayProxyEventV2
+): Promise<boolean> {
   if (
     !event.headers["X-Slack-Request-Timestamp"] ||
     !event.headers["X-Slack-Signature"] ||
@@ -168,8 +200,6 @@ async function verifyRequestIsFromSlack(event: APIGatewayProxyEventV2): Promise<
     return false;
   }
 
-  console.log(slackSigningSecret);
-
   const mySignature =
     "v0=" +
     crypto
@@ -200,7 +230,8 @@ async function getSlackSigningSecret(): Promise<string> {
     const response = await client.send(command);
     if (response.SecretString) {
       // TODO: this feels hacky, fix later
-      return JSON.parse(response.SecretString).OSMOSIX_DEV_SIGNING_SECRET as string;
+      return JSON.parse(response.SecretString)
+        .OSMOSIX_DEV_SIGNING_SECRET as string;
     } else {
       throw new Error("secret response has no secretString");
     }
