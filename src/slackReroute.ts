@@ -19,7 +19,7 @@ export const lambdaHandler = async (
   // If the request did not constitute a valid action return null
   let routeStrategy: Routeable;
   try {
-    routeStrategy = determineRoute(event);
+    routeStrategy = await determineRoute(event);
   } catch (e) {
     // Invalid route
     console.log(e);
@@ -69,9 +69,9 @@ class UrlVerificationRouteStrategy implements Routeable {
   }
 }
 
-function determineRoute(event: APIGatewayProxyEventV2): Routeable {
+async function determineRoute(event: APIGatewayProxyEventV2): Promise<Routeable> {
   console.log("determining route");
-  if (!verifyRequestIsFromSlack(event)) {
+  if (!(await verifyRequestIsFromSlack(event))) {
     throw new Error("Could not verify request");
   }
   console.log("request verified");
@@ -132,7 +132,7 @@ function fromSlackEventsApi(event: APIGatewayProxyEventV2): boolean {
   return false;
 }
 
-function verifyRequestIsFromSlack(event: APIGatewayProxyEventV2): boolean {
+async function verifyRequestIsFromSlack(event: APIGatewayProxyEventV2): Promise<boolean> {
   if (
     !event.headers["X-Slack-Request-Timestamp"] ||
     !event.headers["X-Slack-Signature"] ||
@@ -162,7 +162,7 @@ function verifyRequestIsFromSlack(event: APIGatewayProxyEventV2): boolean {
   console.log("trying to get secret");
   let slackSigningSecret: string;
   try {
-    slackSigningSecret = getSlackSigningSecret();
+    slackSigningSecret = await getSlackSigningSecret();
   } catch (e) {
     console.log(e);
     return false;
@@ -188,7 +188,7 @@ function verifyRequestIsFromSlack(event: APIGatewayProxyEventV2): boolean {
   return true;
 }
 
-function getSlackSigningSecret(): string {
+async function getSlackSigningSecret(): Promise<string> {
   // TODO: this feels like a hacky way of doing the try/catch
   try {
     const command = new GetSecretValueCommand({
