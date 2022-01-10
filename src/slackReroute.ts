@@ -193,7 +193,7 @@ async function getSlackSigningSecret(): Promise<string> {
   try {
     const command = new GetSecretValueCommand({
       SecretId:
-        "arn:aws:secretsmanager:us-east-2:579534454884:secret:OSMOSIX_SLACK_SIGNING_SECRET-g0YuJ8",
+        "arn:aws:secretsmanager:us-east-2:579534454884:secret:OSMOSIX_DEV_SIGNING_SECRET-5rg0ga",
     });
     const response = await client.send(command);
     if (response.SecretString) {

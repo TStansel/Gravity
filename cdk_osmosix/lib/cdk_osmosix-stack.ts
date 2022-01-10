@@ -23,7 +23,7 @@ export class CdkOsmosixStack extends Stack {
     });
 
     const secret = secretsmanager.Secret.fromSecretAttributes(this, "osmosixSlackSigningSecret", {
-      secretCompleteArn: "arn:aws:secretsmanager:us-east-2:579534454884:secret:OSMOSIX_SLACK_SIGNING_SECRET-g0YuJ8"
+      secretCompleteArn: "arn:aws:secretsmanager:us-east-2:579534454884:secret:OSMOSIX_DEV_SIGNING_SECRET-5rg0ga"
     });
 
     if(nodeLambda.role) {
