@@ -4,11 +4,9 @@ import {
   APIGatewayProxyStructuredResultV2,
 } from "aws-lambda";
 import * as crypto from "crypto";
-import { SecretsManagerClient } from "@aws-sdk/client-secrets-manager";
+import { SecretsManagerClient, GetSecretValueCommand} from "@aws-sdk/client-secrets-manager";
 
-const client = new SecretsManagerClient({ region: "REGION" });
-
-
+const client = new SecretsManagerClient({ region: "us-east-2" });
 
 export const lambdaHandler = async (
   event: APIGatewayProxyEventV2
@@ -19,8 +17,8 @@ export const lambdaHandler = async (
   let routeStrategy: Routeable;
   try {
     routeStrategy = determineRoute(event);
-  } catch(e) {
-    // Invalid route 
+  } catch (e) {
+    // Invalid route
     console.log(e);
     return buildResponse(401, "Access Denied");
   }
@@ -80,11 +78,13 @@ function determineRoute(event: APIGatewayProxyEventV2): Routeable {
     const slackEvent = JSON.parse(event.body!);
     console.log(`slackEvent: ${slackEvent}`);
     let type = slackEvent.type as string;
-    switch(type) {
+    switch (type) {
       case "url_verification": {
         // URL for Events API subscription is being verified by Slack
-        if(slackEvent.challenge) {
-          return new UrlVerificationRouteStrategy(slackEvent.challenge as string);
+        if (slackEvent.challenge) {
+          return new UrlVerificationRouteStrategy(
+            slackEvent.challenge as string
+          );
         } else {
           throw new Error("type url_verification but no challenge!");
         }
@@ -93,54 +93,36 @@ function determineRoute(event: APIGatewayProxyEventV2): Routeable {
         // Most other events from Events API have this type
       }
     }
-  } else {
-    // Event not from Slack Events API
   }
-
-  if (event.headers["Content-Type"] === "application/json" && event.body) {
-    console.log("event has content type application/json and a body parameter");
-    const body = JSON.parse(event.body);
-
-    if (body.hasOwnProperty("type")) {
-      let type = body.type as string;
-      if (type === "url_verification") {
-        if(body.challenge) {
-          return new UrlVerificationRouteStrategy(body.challenge as string);
-        }
-      } else {
-        throw new Error("Body type is not url_verification");
-      }
-    }
-    
-  }
-
-
+  // Event not from Slack Events API
+  console.log("event not from Slack Events API");
+  throw new Error("not from Slack Events API!");
 }
 
-class slackEventsApiSource {
-
-}
+class slackEventsApiSource {}
 
 function fromSlackEventsApi(event: APIGatewayProxyEventV2): boolean {
-  if(event.headers["Content-Type"] === "application/json" && event.body) {
+  if (event.headers["Content-Type"] === "application/json" && event.body) {
     const slackEvent = JSON.parse(event.body);
-    if(slackEvent.hasOwnProperty("token") && 
-    (typeof slackEvent.token === 'string') && 
-    slackEvent.hasOwnProperty("team_id") && 
-    (typeof slackEvent.team_id === 'string') &&
-    slackEvent.hasOwnProperty("api_app_id") &&
-    (typeof slackEvent.api_app_id === 'string') &&
-    slackEvent.hasOwnProperty("event") &&
-    slackEvent.hasOwnProperty("type") &&
-    (typeof slackEvent.type === 'string') &&
-    slackEvent.hasOwnProperty("authorizations") &&
-    (typeof slackEvent.authorizations === 'string') &&
-    slackEvent.hasOwnProperty("event_context") &&
-    (typeof slackEvent.event_context === 'string') &&
-    slackEvent.hasOwnProperty("event_id") &&
-    (typeof slackEvent.event_id === 'string') &&
-    slackEvent.hasOwnProperty("event_time") &&
-    (typeof slackEvent.event_time === 'number')) {
+    if (
+      slackEvent.hasOwnProperty("token") &&
+      typeof slackEvent.token === "string" &&
+      slackEvent.hasOwnProperty("team_id") &&
+      typeof slackEvent.team_id === "string" &&
+      slackEvent.hasOwnProperty("api_app_id") &&
+      typeof slackEvent.api_app_id === "string" &&
+      slackEvent.hasOwnProperty("event") &&
+      slackEvent.hasOwnProperty("type") &&
+      typeof slackEvent.type === "string" &&
+      slackEvent.hasOwnProperty("authorizations") &&
+      typeof slackEvent.authorizations === "string" &&
+      slackEvent.hasOwnProperty("event_context") &&
+      typeof slackEvent.event_context === "string" &&
+      slackEvent.hasOwnProperty("event_id") &&
+      typeof slackEvent.event_id === "string" &&
+      slackEvent.hasOwnProperty("event_time") &&
+      typeof slackEvent.event_time === "number"
+    ) {
       return true;
     }
   }
@@ -179,7 +161,7 @@ function verifyRequestIsFromSlack(event: APIGatewayProxyEventV2): boolean {
     return false;
   }
 
-  const slackSigningSecret = process.env.OSMOSIX_SLACK_SIGNING_SECRET;
+  const slackSigningSecret = getSlackSigningSecret();
 
   const mySignature =
     "v0=" +
@@ -199,6 +181,22 @@ function verifyRequestIsFromSlack(event: APIGatewayProxyEventV2): boolean {
   }
 
   return true;
+}
+
+function getSlackSigningSecret(): string {
+  // TODO: this feels like a hacky way of doing the try/catch
+  try {
+    const command = new GetSecretValueCommand({SecretId: "arn:aws:secretsmanager:us-east-2:579534454884:secret:OSMOSIX_SLACK_SIGNING_SECRET-g0YuJ8"});
+    const response = await client.send(command);
+    if(response.SecretString){
+      return response.SecretString;
+    } else {
+      throw new Error("secret response has no secretString");
+    }
+  } catch(e) {
+    console.log(e);
+    throw new Error("error getting secret");
+  }
 }
 
 function buildResponse(
