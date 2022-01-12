@@ -17,19 +17,6 @@ exports.handler = async (event) => {
   //console.log("check if workspace is in DB");
 
   let workspaceID = event.payload.workspaceID;
-  let getUsernameSql =
-    `select SlackID from SlackUser 
-    join SlackWorkspace on SlackUser.SlackWorkspaceUUID = SlackWorkspace.SlackWorkspaceUUID
-    where WorkspaceID = :workspaceID`;
-
-  let getUsernameResult = await data.query(getUsernameSql, {
-    workspaceID: workspaceID,
-  });
-
-  if(getUsernameResult.records.length != 0){
-    return { passed: false };
-  }
-
 
   let getWorkspaceSql =
     "select * from SlackWorkspace where WorkspaceID = :workspaceID";

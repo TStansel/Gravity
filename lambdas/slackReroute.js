@@ -5,7 +5,7 @@ const { SFNClient, StartExecutionCommand } = require("@aws-sdk/client-sfn");
 const crypto = require("crypto");
 
 exports.handler = async (event) => {
-  console.log("Request event: ", event);
+  //console.log("Request event: ", event);
 
   // First verify that the request is actually coming from Slack
   if (!verifyRequestIsFromSlack(event)) {

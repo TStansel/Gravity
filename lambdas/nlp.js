@@ -41,6 +41,7 @@ exports.handler = async (event) => {
             };
             
             const addEmojiReactionRes = await axios(addEmojiReactionConfig);
+            console.log(addEmojiReactionRes)
         }
         return true;
     }
