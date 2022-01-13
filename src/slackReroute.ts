@@ -4,6 +4,7 @@ import {
   APIGatewayProxyStructuredResultV2,
 } from "aws-lambda";
 import * as crypto from "crypto";
+import * as qs from "qs";
 
 export const lambdaHandler = async (
   event: APIGatewayProxyEventV2
@@ -175,7 +176,7 @@ class AppAddedEvent extends SlackEvent {
 
 /* --------  Functions -------- */
 
-function determineRoute(event: APIGatewayProxyEventV2): Routeable {
+function determineRoute(event: APIGatewayProxyEventV2): SlackEvent {
   console.log("determining route");
   if (!verifyRequestIsFromSlack(event)) {
     throw new Error("Could not verify request");
@@ -214,6 +215,73 @@ function determineRoute(event: APIGatewayProxyEventV2): Routeable {
       default: {
         console.log(`default type reached (unknown): ${type}`);
         throw new Error("default type reached");
+        break;
+      }
+    }
+  } else if (fromSlackInteractivity(event)) {
+    // This only works because SlackEvents enter the above if statement
+    console.log("From Slack interactivity");
+    let slackEvent = JSON.parse(String(qs.parse(event.body!).payload));
+    // TODO: No idea if the above works. Also kind of hacky casting qs.parse -> String
+    // Is there some typescript way to say we know something will be a string?
+    // Not sure what happens if we try to decode the event.body if it isnt urlencoded
+    // For example, for when the else condition in determineRoute
+    const eventType = slackEvent.type;
+    switch (eventType) {
+      case "message_action": {
+        console.log("Marked Answer eventType");
+        return new MarkedAnswerEvent(
+          slackEvent.channel.id,
+          slackEvent.message.hasOwnProperty("thread_ts")
+            ? slackEvent.message.thread_ts
+            : undefined, // If someone marks a non-threaded message as an answer this becomes undefined
+          slackEvent.message.ts,
+          slackEvent.user.id,
+          slackEvent.team.id,
+          slackEvent.message.text
+        );
+        break;
+      }
+      case "block_actions": {
+        console.log("Button Press eventType");
+        const buttonID = slackEvent.actions[0].action_id;
+        const value = slackEvent.actions[0].value.split(" ");
+        const oldQuestionUUID = value[0];
+        const messageID = value[1];
+        switch (buttonID) {
+          case "helpful": {
+            return new HelpfulButton(
+              slackEvent.channel.id,
+              slackEvent.response_url,
+              messageID,
+              oldQuestionUUID,
+              slackEvent.user.id
+            );
+            break;
+          }
+          case "nothelpful": {
+            return new NotHelpfulButton(
+              slackEvent.channel.id,
+              slackEvent.response_url,
+              messageID,
+              oldQuestionUUID
+            );
+            break;
+          }
+          case "dismiss": {
+            return new DismissButton(
+              slackEvent.channel.id,
+              slackEvent.response_url,
+              messageID
+            );
+            break;
+          }
+        }
+        break;
+      }
+      default: {
+        console.log(`default eventType reached (unknown): ${eventType}`);
+        throw new Error("default eventType reached");
         break;
       }
     }
@@ -275,6 +343,21 @@ function fromSlackEventsApi(event: APIGatewayProxyEventV2): boolean {
     ) {
       return true;
     }
+  }
+  return false;
+}
+
+function fromSlackInteractivity(event: APIGatewayProxyEventV2): boolean {
+  let slackEvent = JSON.parse(String(qs.parse(event.body!).payload));
+  // TODO: No idea if the above works. Also kind of hacky casting qs.parse -> String
+  // Is there some typescript way to say we know something will be a string?
+  // Not sure what happens if we try to decode the event.body if it isnt urlencoded
+  // For example, for when the else condition in determineRoute
+  if (
+    slackEvent.type === "message_action" ||
+    slackEvent.type === "block_actions"
+  ) {
+    return true;
   }
   return false;
 }
