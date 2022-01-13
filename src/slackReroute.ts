@@ -138,7 +138,7 @@ class DismissButton extends SlackButtonEvent {
 class MarkedAnswerEvent extends SlackEvent {
   constructor(
     channelID: string,
-    public parentMsgID: string,
+    public parentMsgID: string | undefined,
     public messageID: string,
     public userID: string,
     public workspaceID: string,
@@ -221,25 +221,40 @@ function determineRoute(event: APIGatewayProxyEventV2): SlackEvent {
   } else if (fromSlackInteractivity(event)) {
     // This only works because SlackEvents enter the above if statement
     console.log("From Slack interactivity");
-    let slackEvent = JSON.parse(String(qs.parse(event.body!).payload));
+    
+    let slackEvent = JSON.parse(event.body!);
+    let slackPayload = qs.parse(slackEvent.payload!);
     // TODO: No idea if the above works. Also kind of hacky casting qs.parse -> String
     // Is there some typescript way to say we know something will be a string?
     // Not sure what happens if we try to decode the event.body if it isnt urlencoded
     // For example, for when the else condition in determineRoute
-    const eventType = slackEvent.type;
+    const eventType = slackPayload.type as string;
     switch (eventType) {
       case "message_action": {
         console.log("Marked Answer eventType");
-        return new MarkedAnswerEvent(
-          slackEvent.channel.id,
-          slackEvent.message.hasOwnProperty("thread_ts")
-            ? slackEvent.message.thread_ts
-            : undefined, // If someone marks a non-threaded message as an answer this becomes undefined
-          slackEvent.message.ts,
-          slackEvent.user.id,
-          slackEvent.team.id,
-          slackEvent.message.text
-        );
+        if (slackPayload.channel && ((<qs.ParsedQs>slackPayload.channel).id) &&
+        slackPayload.message && 
+        ((<qs.ParsedQs>slackPayload.message).ts) &&
+        ((<qs.ParsedQs>slackPayload.message).text) &&
+        ((<qs.ParsedQs>slackPayload.user).id) &&
+        ((<qs.ParsedQs>slackPayload.team).id)) {
+          let thread_ts: string | undefined;
+          if ((<qs.ParsedQs>slackPayload.message).thread_ts) {
+            thread_ts = (<qs.ParsedQs>slackPayload.message).thread_ts as string;
+          } else {
+            thread_ts = undefined;
+          }
+          return new MarkedAnswerEvent(
+            ((<qs.ParsedQs>slackPayload.channel).id) as string,
+            thread_ts,
+            ((<qs.ParsedQs>slackPayload.message).ts) as string,
+            ((<qs.ParsedQs>slackPayload.user).id) as string,
+            ((<qs.ParsedQs>slackPayload.team).id) as string,
+            ((<qs.ParsedQs>slackPayload.message).text) as string
+          );
+        } else {
+          throw new Error("error in trying to create and return MarkedAnswerEvent");
+        }
         break;
       }
       case "block_actions": {
@@ -348,17 +363,33 @@ function fromSlackEventsApi(event: APIGatewayProxyEventV2): boolean {
 }
 
 function fromSlackInteractivity(event: APIGatewayProxyEventV2): boolean {
-  let slackEvent = JSON.parse(String(qs.parse(event.body!).payload));
-  // TODO: No idea if the above works. Also kind of hacky casting qs.parse -> String
-  // Is there some typescript way to say we know something will be a string?
-  // Not sure what happens if we try to decode the event.body if it isnt urlencoded
-  // For example, for when the else condition in determineRoute
+  if (!(event.headers["Content-Type"] === "application/json") || !event.body) {
+    console.log("not slack interaction because no json body");
+    return false;
+  }
+
+  const slackEvent = JSON.parse(event.body);
+
+  if (!slackEvent.payload) {
+    console.log(
+      "not slack interaction because body parameter has no payload property"
+    );
+    return false;
+  }
+
+  let slackPayload = qs.parse(slackEvent.payload);
+
   if (
-    slackEvent.type === "message_action" ||
-    slackEvent.type === "block_actions"
+    slackPayload.type === "message_action" ||
+    slackPayload.type === "block_actions"
   ) {
     return true;
   }
+
+  console.log(
+    "not slack interaction payload type not message_action or block_actions"
+  );
+
   return false;
 }
 
