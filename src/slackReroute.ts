@@ -26,6 +26,14 @@ export const lambdaHandler = async (
   return buildResponse(routeResult.status, routeResult.body);
 };
 
+/* --------  Interfaces -------- */
+
+interface Routeable {
+  route(): RouteResult;
+}
+
+/* --------  Classes -------- */
+
 class Router {
   routeStrategy: Routeable;
 
@@ -46,10 +54,6 @@ class RouteResult {
     this.status = status;
     this.body = body;
   }
-}
-
-interface Routeable {
-  route(): RouteResult;
 }
 
 class UrlVerificationRouteStrategy implements Routeable {
@@ -77,6 +81,134 @@ class MessagePostedRouteStrategy implements Routeable {
     return new RouteResult(200, "Test MessagePostedRouteStrategy route output");
   }
 }
+
+class SlackEvent { 
+  private channelID: string;
+
+  constructor(channelID: string) {
+    this.channelID = channelID;
+  }
+
+  getChannelID(): string{
+    return this.channelID;
+  }
+  //TODO: Although my 340 prof would be saddened, probably ddon't need setters for SlackEvents?  
+  // Could just use the constructors, since the data won't ever change? 
+
+}
+
+class SlackButton extends SlackEvent {
+  constructor(channelID: string, private responseURL: string, private messageID: string){
+    super(channelID);
+    this.responseURL = responseURL;
+    this.messageID = messageID;
+  }
+
+  getResponseURl(): string{
+    return this.responseURL;
+  }
+  getMessageID(): string{
+    return this.messageID;
+  }
+}
+
+class HelpfulButton extends SlackButton {
+
+constructor(channelID: string, responseURL: string, messageID: string, private oldQuestionUUID: string, private userID: string){
+    super(channelID,responseURL,messageID);
+    this.oldQuestionUUID = oldQuestionUUID;
+    this.userID = userID;
+  }
+
+  getOldQuestionUUID(): string{
+    return this.oldQuestionUUID;
+  }
+
+  getUserID(): string{
+    return this.userID;
+  }
+}
+
+class NotHelpfulButton extends SlackButton {
+
+  constructor (channelID: string, responseURL: string, messageID: string, private oldQuestionUUID: string){
+    super(channelID, responseURL, messageID);
+    this.oldQuestionUUID = oldQuestionUUID;
+  }
+
+  getOldQuestionUUID(): string{
+    return this.oldQuestionUUID;
+  }
+}
+
+class DismissButton extends SlackButton {
+
+  constructor (channelID: string, responseURL: string, messageID: string){
+    super(channelID, responseURL, messageID);
+  }
+}
+
+class MarkedAnswer extends SlackEvent {
+
+  constructor(channelID: string, private parentMsgID: string, private messageID: string, private userID: string, private workspaceID: string, private text: string){
+    super(channelID);
+    // TODO: Still need to pass the text for later, but thoughts on reshaping the DB to not store text? 
+    // Would have to drop the tables but we are gonna do a re-install anyway?
+    this.parentMsgID = parentMsgID;
+    this.messageID = messageID;
+    this.userID = userID;
+    this.workspaceID = workspaceID;
+    this.text = text;
+  }
+
+  getParentMsgID(): string{
+    return this.parentMsgID;
+  }
+  getMessageID(): string{
+    return this.messageID;
+  }
+  getUserID(): string{
+    return this.userID;
+  }
+  getWorkspaceID(): string{
+    return this.workspaceID;
+  }
+  getText(): string{
+    return this.text;
+  }
+}
+
+class NewMessage extends SlackEvent {
+  constructor(channelID: string, private messageID: string, private userID: string, private text: string){
+    super(channelID);
+    this.messageID = messageID;
+    this.userID = userID;
+    this.text = text;
+  }
+
+  getMessageID(): string{
+    return this.messageID;
+  }
+  getUserID(): string{
+    return this.userID;
+  }
+  getText(): string{
+    return this.text;
+  }
+}
+
+class AppAdded extends SlackEvent {
+  constructor(channelID: string, private workspaceID: string){
+    super(channelID);
+    this.workspaceID = workspaceID;
+  }
+
+  getWorkspaceID(): string{
+    return this.workspaceID;
+  }
+}
+
+/* --------  Functions -------- */
 
 function determineRoute(event: APIGatewayProxyEventV2): Routeable {
   console.log("determining route");
