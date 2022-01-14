@@ -14,7 +14,13 @@ import {
   MarkedAnswerEvent,
   NewMessageEvent,
   AppAddedEvent,
+  Result,
+  ResultError,
+  ResultSuccess
 } from "./slackEventClasses";
+import {
+  buildResponse,
+} from "./slackFunctions";
 
 const client = new SQSClient({});
 
@@ -51,15 +57,6 @@ export const lambdaHandler = async (
 
   return buildResponse(200, "request queued for processing");
 };
-
-/* --------  Types -------- */
-// These types are used so we can levarage Typescripts type system instead of throwing error which
-// makes it hard to keep track of types
-type ResultSuccess<T> = { type: "success"; value: T };
-
-type ResultError = { type: "error"; error: Error };
-
-type Result<T> = ResultSuccess<T> | ResultError;
 
 /* --------  Classes -------- */
 
@@ -447,20 +444,4 @@ function checkObjHasProperties(
     };
   }
   return { type: "success", value: true };
-}
-
-function buildResponse(
-  status: number,
-  body: string
-): APIGatewayProxyStructuredResultV2 {
-  const response = {
-    isBase64Encoded: false,
-    statusCode: status,
-    headers: {
-      "content-type": "application/json",
-    },
-    body: body,
-  };
-  console.log(response);
-  return response;
 }
