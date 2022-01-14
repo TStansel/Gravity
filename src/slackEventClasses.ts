@@ -1,4 +1,4 @@
-import axios, { AxiosRequestConfig } from "axios";
+import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
 const data = require("data-api-client")({
   secretArn:
     "arn:aws:secretsmanager:us-east-2:579534454884:secret:rds-db-credentials/cluster-4QWLO4T4HOH5I2B5367KESUM5Y/admin-lplDgu",
@@ -26,8 +26,7 @@ export abstract class SlackEvent {
     this.workspaceID = workspaceID;
   }
 
-  static abstract fromJSON(slackJSON: JSON): Result<SlackEvent>;
-  abstract doWork(slackEvent: SlackEvent): Promise<Result<string>>;
+  abstract doWork(): Promise<Result<string>>;
 }
 
 export class HelpfulButton extends SlackEvent {
@@ -73,7 +72,7 @@ export class HelpfulButton extends SlackEvent {
     };
   }
 
-  async doWork(slackEvent: SlackEvent): Promise<Result<string>> {
+  async doWork(): Promise<Result<string>> {
     try {
       let helpfulParams = {
         replace_original: "true",
@@ -226,7 +225,7 @@ export class NotHelpfulButton extends SlackEvent {
     };
   }
 
-  async doWork(slackEvent: SlackEvent): Promise<Result<string>> {
+  async doWork(): Promise<Result<string>> {
     try {
       let notHelpfulParams = {
         replace_original: "true",
@@ -343,7 +342,7 @@ export class DismissButton extends SlackEvent {
     };
   }
 
-  async doWork(slackEvent: SlackEvent): Promise<Result<string>> {
+  async doWork(): Promise<Result<string>> {
     try {
       let dismissParams = {
         delete_original: "true",
@@ -432,6 +431,24 @@ export class MarkedAnswerEvent extends SlackEvent {
     this.text = text;
   }
 
+  async sendBadMessage(botToken: string): Promise<void> {
+    let msgParams = {
+      channel: this.userID,
+      text: "Uh oh! Thank you for marking an answer, but please make sure to only mark answers for your questions, in threads where the parent message is a question, and in channels where the Osmosix app has been added.",
+    };
+
+    let msgConfig = {
+      method: "post",
+      url: "https://slack.com/api/chat.postMessage",
+      headers: {
+        Authorization: "Bearer " + botToken,
+        "Content-Type": "application/json",
+      },
+      data: msgParams,
+    } as AxiosRequestConfig<any>;
+    const msgRes = await axios(msgConfig);
+  }
+
   static fromJSON(slackJSON: JSON): Result<MarkedAnswerEvent> {
     if (
       !slackJSON.hasOwnProperty("channelID") ||
@@ -460,8 +477,18 @@ export class MarkedAnswerEvent extends SlackEvent {
     };
   }
 
-  async doWork(slackEvent: SlackEvent): Promise<Result<string>> {
+  async doWork(): Promise<Result<string>> {
     try {
+      let getBotTokenSql = `select SlackToken.BotToken from SlackToken 
+      join SlackChannel on SlackToken.SlackWorkspaceUUID = SlackChannel.SlackWorkspaceUUID 
+      where SlackChannel.ChannelID = :channelID`;
+
+      let getBotTokenResult = await data.query(getBotTokenSql, {
+        channelID: this.channelID,
+      });
+
+      let botToken = getBotTokenResult.records[0].BotToken;
+
       let getChannelNameSql = `select SlackChannel.Name from SlackChannel 
         join SlackWorkspace on SlackChannel.SlackWorkspaceUUID = SlackWorkspace.SlackWorkspaceUUID
         where SlackChannel.ChannelID = :channelID`;
@@ -472,22 +499,12 @@ export class MarkedAnswerEvent extends SlackEvent {
 
       if (getChannelNameResult.records.length === 0) {
         // Channel doesn't exist in database
-        //TODO: SEND BAD ANSWER MARKED MSG
+        this.sendBadMessage(botToken);
         return {
           type: "error",
           error: new Error("MarkedAnswer: Channel does not exist in DB"),
         };
       }
-
-      let getBotTokenSql = `select SlackToken.BotToken from SlackToken 
-                join SlackChannel on SlackToken.SlackWorkspaceUUID = SlackChannel.SlackWorkspaceUUID 
-                where SlackChannel.ChannelID = :channelID`;
-
-      let getBotTokenResult = await data.query(getBotTokenSql, {
-        channelID: this.channelID,
-      });
-
-      let botToken = getBotTokenResult.records[0].BotToken;
 
       let getParentConfig = {
         method: "get",
@@ -505,7 +522,7 @@ export class MarkedAnswerEvent extends SlackEvent {
 
       if (getParentRes.data.messages[0].user != this.userID) {
         // User marked another's message
-        //TODO: SEND BAD ANSWER MARKED MSG
+        this.sendBadMessage(botToken);
         return {
           type: "error",
           error: new Error("MarkedAnswer: User marked other User's answer"),
@@ -515,7 +532,6 @@ export class MarkedAnswerEvent extends SlackEvent {
       this.parentMsgText = getParentRes.data.messages[0].text;
 
       // CALL NLP
-
     } catch (e) {
       return {
         type: "error",
@@ -565,7 +581,7 @@ export class NewMessageEvent extends SlackEvent {
     };
   }
 
-  async doWork(slackEvent: SlackEvent): Promise<Result<string>> {
+  async doWork(): Promise<Result<string>> {
     try {
     } catch (e) {
       return {
@@ -604,7 +620,7 @@ export class AppAddedEvent extends SlackEvent {
     };
   }
 
-  async doWork(slackEvent: SlackEvent): Promise<Result<string>> {
+  async doWork(): Promise<Result<string>> {
     try {
     } catch (e) {
       return {

@@ -24,18 +24,35 @@ export const lambdaHandler: SQSHandler = async (
 ): Promise<void> => {
   console.log(event);
 
+  if(event.Records.length !== 1){
+    // Access Denied
+    return;
+  }
+
   if(!event.hasOwnProperty("body")){
-      return buildResponse(401, "Access Denied")
+      // Access Denied
+      return;
   }
   
-  let classResult = determineClass(JSON.parse(event.body as string));
+  let slackEvent = event.Records[0];
+
+  let classResult = determineClass(JSON.parse(slackEvent.body as string));
 
   if(classResult.type === "error"){
-      return buildResponse(401,classResult.error.message)
+      console.log(classResult.error.message);
+      return;
   }
   // classResult is now one of the 6 objects
 
-  return buildResponse(200, "request queued for processing");
+  let workResult = await classResult.value.doWork();
+
+  if(workResult.type === "error"){
+      // Network Call in Class failed
+      throw workResult.error;
+  }
+
+  // Successful Call
+  return;
 };
 
 /* ------- Functions ------- */
