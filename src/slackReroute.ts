@@ -3,7 +3,7 @@ import {
   APIGatewayProxyResultV2,
   APIGatewayProxyStructuredResultV2,
 } from "aws-lambda";
-import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
+import { SQSClient, SendMessageCommand, UnsupportedOperation } from "@aws-sdk/client-sqs";
 import * as crypto from "crypto";
 import * as qs from "qs";
 import {
@@ -245,12 +245,20 @@ function fromSlackEventsApi(event: APIGatewayProxyEventV2): Result<SlackEvent> {
       return hasMessageProperties;
     }
 
+    let thread_ts: string | undefined
+    if(slackEvent.event.thread_ts){
+      thread_ts = slackEvent.event.thread_ts
+    } else {
+      thread_ts = undefined
+    }
+
     let newMessageEvent = new NewMessageEvent(
       slackEvent.event.channel as string,
       slackEvent.event.team as string,
       slackEvent.event.ts as string,
       slackEvent.event.user as string,
-      slackEvent.event.text as string
+      slackEvent.event.text as string,
+      thread_ts,
     );
 
     return { type: "success", value: newMessageEvent };

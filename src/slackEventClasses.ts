@@ -1,4 +1,5 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
+import { ulid } from "ulid";
 const data = require("data-api-client")({
   secretArn:
     "arn:aws:secretsmanager:us-east-2:579534454884:secret:rds-db-credentials/cluster-4QWLO4T4HOH5I2B5367KESUM5Y/admin-lplDgu",
@@ -299,10 +300,13 @@ export class NotHelpfulButton extends SlackEvent {
     } catch (e) {
       return {
         type: "error",
-        error: new Error("Helpful Network calls failed:" + e),
+        error: new Error("Not Helpful Network calls failed:" + e),
       };
     }
-    return { type: "success", value: "Helpful Button completed sucessfully" };
+    return {
+      type: "success",
+      value: "Not Helpful Button completed sucessfully",
+    };
   }
 }
 
@@ -406,10 +410,10 @@ export class DismissButton extends SlackEvent {
     } catch (e) {
       return {
         type: "error",
-        error: new Error("Helpful Network calls failed:" + e),
+        error: new Error("Dismiss Network calls failed:" + e),
       };
     }
-    return { type: "success", value: "Helpful Button completed sucessfully" };
+    return { type: "success", value: "Dismiss Button completed sucessfully" };
   }
 }
 
@@ -532,13 +536,16 @@ export class MarkedAnswerEvent extends SlackEvent {
       this.parentMsgText = getParentRes.data.messages[0].text;
 
       // CALL NLP
+      // CALL DOC2VEC
+      // Thank You MSG
+      // Create Q and A
     } catch (e) {
       return {
         type: "error",
-        error: new Error("Helpful Network calls failed:" + e),
+        error: new Error("MarkAnswer calls failed:" + e),
       };
     }
-    return { type: "success", value: "Helpful Button completed sucessfully" };
+    return { type: "success", value: "Marked Answer completed sucessfully" };
   }
 }
 
@@ -549,12 +556,14 @@ export class NewMessageEvent extends SlackEvent {
     workspaceID: string,
     public messageID: string,
     public userID: string,
-    public text: string
+    public text: string,
+    public parentMsgID: string | undefined
   ) {
     super(channelID, workspaceID);
     this.messageID = messageID;
     this.userID = userID;
     this.text = text;
+    this.parentMsgID = parentMsgID;
   }
   static fromJSON(slackJSON: JSON): Result<NewMessageEvent> {
     if (
@@ -562,7 +571,8 @@ export class NewMessageEvent extends SlackEvent {
       !slackJSON.hasOwnProperty("workspaceID") ||
       !slackJSON.hasOwnProperty("messageID") ||
       !slackJSON.hasOwnProperty("userID") ||
-      !slackJSON.hasOwnProperty("text")
+      !slackJSON.hasOwnProperty("text") ||
+      !slackJSON.hasOwnProperty("parentMsgID")
     ) {
       return {
         type: "error",
@@ -576,20 +586,51 @@ export class NewMessageEvent extends SlackEvent {
         slackJSON["workspaceID" as keyof JSON] as string,
         slackJSON["messageID" as keyof JSON] as string,
         slackJSON["userID" as keyof JSON] as string,
-        slackJSON["text" as keyof JSON] as string
+        slackJSON["text" as keyof JSON] as string,
+        slackJSON["parentMsgID" as keyof JSON] as string | undefined
       ),
     };
   }
 
   async doWork(): Promise<Result<string>> {
     try {
+      let getChannelNameSql = `select SlackChannel.Name from SlackChannel 
+        join SlackWorkspace on SlackChannel.SlackWorkspaceUUID = SlackWorkspace.SlackWorkspaceUUID
+        where SlackChannel.ChannelID = :channelID`;
+
+      let getChannelNameResult = await data.query(getChannelNameSql, {
+        channelID: this.channelID,
+      });
+      if (getChannelNameResult.records.length === 0) {
+        // Channel doesn't exist in database
+        return {
+          type: "error",
+          error: new Error("NewMessage: Channel does not exist in DB"),
+        };
+      }
+
+      if (
+        typeof this.parentMsgID === "string" &&
+        this.messageID !== this.parentMsgID
+      ) {
+        // Message is not a parent message
+        return {
+          type: "error",
+          error: new Error("NewMessage: Channel does not exist in DB"),
+        };
+      }
+
+      // NLP
+      // Doc2Vec
+      // Find Similar Questions
+      // Send Message to Slack
     } catch (e) {
       return {
         type: "error",
-        error: new Error("Helpful Network calls failed:" + e),
+        error: new Error("NewMessage: calls failed:" + e),
       };
     }
-    return { type: "success", value: "Helpful Button completed sucessfully" };
+    return { type: "success", value: "New Message completed sucessfully" };
   }
 }
 
@@ -622,12 +663,135 @@ export class AppAddedEvent extends SlackEvent {
 
   async doWork(): Promise<Result<string>> {
     try {
+      let getWorkspaceSql =
+        "select * from SlackWorkspace where WorkspaceID = :workspaceID";
+      let workspaceID = this.workspaceID;
+
+      let getWorkspaceResult = await data.query(getWorkspaceSql, {
+        workspaceID: workspaceID,
+      });
+
+      //console.log("getWorkspaceresult: ", getWorkspaceResult);
+
+      let getBotTokenSql = `select SlackToken.BotToken from SlackToken 
+    join SlackWorkspace on SlackToken.SlackWorkspaceUUID = SlackWorkspace.SlackWorkspaceUUID 
+    where SlackWorkspace.WorkspaceID = :workspaceID`;
+
+      let getBotTokenResult = await data.query(getBotTokenSql, {
+        workspaceID: workspaceID,
+      });
+
+      let botToken = getBotTokenResult.records[0].BotToken;
+
+      let workspaceUUID = getWorkspaceResult.records[0].SlackWorkspaceUUID;
+
+      // Check if slack channel exists in DB
+
+      let channelID = this.channelID;
+
+      let getChannelSql =
+        "select * from SlackChannel where SlackWorkspaceUUID = :workspaceUUID and ChannelID = :channelID";
+
+      let getChannelResult = await data.query(getChannelSql, {
+        workspaceUUID: workspaceUUID,
+        channelID: channelID,
+      });
+
+      let channelUUID;
+
+      // If the channel already exists skip the steps of putting all channel users in DB
+      if (getChannelResult.records.length > 0) {
+        channelUUID = getChannelResult.records[0].SlackChannelUUID;
+        return {
+          type: "error",
+          error: new Error("NewMessage: Channel does not exist in DB"),
+        };
+      }
+
+      channelUUID = ulid();
+
+      // Get needed info about Channel
+      let getChannelInfoConfig = {
+        method: "get",
+        url: "https://slack.com/api/conversations.info?channel=" + channelID,
+        headers: {
+          Authorization: "Bearer " + botToken,
+          "Content-Type": "application/json",
+        },
+      } as AxiosRequestConfig<any>;
+
+      const getChannelInfoResult = await axios(getChannelInfoConfig);
+
+      // Insert channel into DB
+      let channelName = getChannelInfoResult.data.channel.name;
+
+      let insertChannelSql =
+        "insert into SlackChannel (SlackChannelUUID, SlackWorkspaceUUID, ChannelID, Name) values (:channelUUID, :workspaceUUID, :channelID, :channelName)";
+
+      let insertChannelResult = await data.query(insertChannelSql, {
+        channelUUID: channelUUID,
+        workspaceUUID: workspaceUUID,
+        channelID: channelID,
+        channelName: channelName,
+      });
+
+      let cursor = null;
+      let channelMembers = [];
+
+      do {
+        let cursorParam;
+
+        // Logic to send no cursor paramater the first call
+        if (cursor !== null) {
+          cursorParam = "&cursor=" + cursor;
+        } else {
+          cursorParam = "";
+        }
+
+        let getChannelUsersConfig = {
+          method: "get",
+          url:
+            "https://slack.com/api/conversations.members?channel=" +
+            channelID +
+            "&limit=200" +
+            cursorParam,
+          headers: {
+            Authorization: "Bearer " + botToken,
+            "Content-Type": "application/json",
+          },
+        } as AxiosRequestConfig<any>;
+
+        const getChannelUsersResult = await axios(getChannelUsersConfig);
+
+        //console.log("Get Channel Users Call:", getChannelUsersResult);
+
+        channelMembers = channelMembers.concat(
+          getChannelUsersResult.data.members
+        );
+
+        // Logic to decide if need to continue paginating
+        if (
+          !getChannelUsersResult.data.hasOwnProperty("response_metadata") ||
+          getChannelUsersResult.data.response_metadata.next_cursor === ""
+        ) {
+          // Response has no next_cursor property set so we are done paginating!
+          //console.log("no cursor in response, done paginating");
+          cursor = null;
+        } else {
+          cursor =
+            getChannelUsersResult.data.response_metadata.next_cursor.replace(
+              /=/g,
+              "%3D"
+            );
+          //console.log("cursor found in result, encoding and paginating");
+        }
+      } while (cursor !== null); // When done paginating cursor will be set to null
     } catch (e) {
       return {
         type: "error",
-        error: new Error("Helpful Network calls failed:" + e),
+        error: new Error("App Added Network calls failed:" + e),
       };
     }
-    return { type: "success", value: "Helpful Button completed sucessfully" };
+    return { type: "success", value: "App Added completed sucessfully" };
   }
 }
