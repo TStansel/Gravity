@@ -4,14 +4,18 @@ import {
 
 export function buildResponse(
     status: number,
-    body: string
+    body: string,
+    slackNoRetry = false,
   ): APIGatewayProxyStructuredResultV2 {
+    let sendHeaders: {[key: string]: string} = {"content-type": "application/json"};
+    if (slackNoRetry) {
+      sendHeaders["X-Slack-No-Retry"] = "1";
+    }
+    
     const response = {
       isBase64Encoded: false,
       statusCode: status,
-      headers: {
-        "content-type": "application/json",
-      },
+      headers: sendHeaders,
       body: body,
     };
     console.log(response);
