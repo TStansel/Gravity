@@ -12,92 +12,53 @@ export const lambdaHandler = async (
   console.log(event);
   // Inspect the event passed from API gateway to determine what action to perform
   // If the request did not constitute a valid action return null
-  let routeStrategy: Routeable;
-  try {
-    routeStrategy = determineRoute(event);
-  } catch (e) {
-    // Invalid route
-    console.log(e);
+
+  let slackEventResult = determineRoute(event);
+  if (slackEventResult.type === "error") {
+    console.log(slackEventResult.error);
+    // TODO: change this to not allow retry from slack
     return buildResponse(401, "Access Denied");
   }
 
-  const router = new Router(routeStrategy);
-  const routeResult = router.route();
+  let slackEvent = slackEventResult.value;
+  if (slackEvent instanceof UrlVerificationEvent) {
+    return buildResponse(200, slackEvent.challenge);
+  }
 
-  return buildResponse(routeResult.status, routeResult.body);
+  // TODO: send the SlackEvent in var slackEvent to SQS here!
+
+  return buildResponse(200, "request queued for processing");
 };
 
-/* --------  Interfaces -------- */
+/* --------  Types -------- */
+// These types are used so we can levarage Typescripts type system instead of throwing error which
+// makes it hard to keep track of types
+type ResultSuccess<T> = { type: "success"; value: T };
 
-interface Routeable {
-  route(): RouteResult;
-}
+type ResultError = { type: "error"; error: Error };
+
+type Result<T> = ResultSuccess<T> | ResultError;
 
 /* --------  Classes -------- */
 
-class Router {
-  routeStrategy: Routeable;
-
-  constructor(route: Routeable) {
-    this.routeStrategy = route;
-  }
-
-  route(): RouteResult {
-    return this.routeStrategy.route();
-  }
-}
-
-class RouteResult {
-  status: number;
-  body: string;
-
-  constructor(status: number, body: string) {
-    this.status = status;
-    this.body = body;
-  }
-}
-
-class UrlVerificationRouteStrategy implements Routeable {
-  challenge: string;
-  constructor(challenge: string) {
-    this.challenge = challenge;
-  }
-
-  route(): RouteResult {
-    return new RouteResult(200, this.challenge);
-  }
-}
-
-class AppAddedToChannelRouteStrategy implements Routeable {
-  route(): RouteResult {
-    return new RouteResult(
-      200,
-      "Test AppAddedToChannelRouteStrategy route output."
-    );
-  }
-}
-
-class MessagePostedRouteStrategy implements Routeable {
-  route(): RouteResult {
-    return new RouteResult(200, "Test MessagePostedRouteStrategy route output");
-  }
-}
-
 class SlackEvent {
   public channelID: string;
+  public workspaceID: string;
 
-  constructor(channelID: string) {
+  constructor(channelID: string, workspaceID: string) {
     this.channelID = channelID;
+    this.workspaceID = workspaceID;
   }
 }
 
 class SlackButtonEvent extends SlackEvent {
   constructor(
     channelID: string,
+    workspaceID: string,
     public responseURL: string,
     public messageID: string
   ) {
-    super(channelID);
+    super(channelID, workspaceID);
     this.responseURL = responseURL;
     this.messageID = messageID;
   }
@@ -106,12 +67,13 @@ class SlackButtonEvent extends SlackEvent {
 class HelpfulButton extends SlackButtonEvent {
   constructor(
     channelID: string,
+    workspaceID: string,
     responseURL: string,
     messageID: string,
     public oldQuestionUUID: string,
     public userID: string
   ) {
-    super(channelID, responseURL, messageID);
+    super(channelID, workspaceID, responseURL, messageID);
     this.oldQuestionUUID = oldQuestionUUID;
     this.userID = userID;
   }
@@ -120,35 +82,40 @@ class HelpfulButton extends SlackButtonEvent {
 class NotHelpfulButton extends SlackButtonEvent {
   constructor(
     channelID: string,
+    workspaceID: string,
     responseURL: string,
     messageID: string,
     public oldQuestionUUID: string
   ) {
-    super(channelID, responseURL, messageID);
+    super(channelID, workspaceID, responseURL, messageID);
     this.oldQuestionUUID = oldQuestionUUID;
   }
 }
 
 class DismissButton extends SlackButtonEvent {
-  constructor(channelID: string, responseURL: string, messageID: string) {
-    super(channelID, responseURL, messageID);
+  constructor(
+    channelID: string,
+    workspaceID: string,
+    responseURL: string,
+    messageID: string
+  ) {
+    super(channelID, workspaceID, responseURL, messageID);
   }
 }
 
 class MarkedAnswerEvent extends SlackEvent {
   constructor(
     channelID: string,
+    workspaceID: string,
     public parentMsgID: string | undefined,
     public messageID: string,
     public userID: string,
-    public workspaceID: string,
     public text: string
   ) {
-    super(channelID);
+    super(channelID, workspaceID);
     this.parentMsgID = parentMsgID;
     this.messageID = messageID;
     this.userID = userID;
-    this.workspaceID = workspaceID;
     this.text = text;
   }
 }
@@ -156,11 +123,12 @@ class MarkedAnswerEvent extends SlackEvent {
 class NewMessageEvent extends SlackEvent {
   constructor(
     channelID: string,
+    workspaceID: string,
     public messageID: string,
     public userID: string,
     public text: string
   ) {
-    super(channelID);
+    super(channelID, workspaceID);
     this.messageID = messageID;
     this.userID = userID;
     this.text = text;
@@ -168,239 +136,63 @@ class NewMessageEvent extends SlackEvent {
 }
 
 class AppAddedEvent extends SlackEvent {
-  constructor(channelID: string, public workspaceID: string) {
-    super(channelID);
-    this.workspaceID = workspaceID;
+  constructor(channelID: string, workspaceID: string, public userID: string) {
+    super(channelID, workspaceID);
+    this.userID = userID;
   }
+}
+
+// Special event type, does not inherit from SlackEvent becuase no workspaceID or channelID are sent
+class UrlVerificationEvent {
+  constructor(public challenge: string) {}
 }
 
 /* --------  Functions -------- */
 
-function determineRoute(event: APIGatewayProxyEventV2): SlackEvent {
+function determineRoute(
+  event: APIGatewayProxyEventV2
+): Result<SlackEvent> | Result<UrlVerificationEvent> {
   console.log("determining route");
-  if (!verifyRequestIsFromSlack(event)) {
-    throw new Error("Could not verify request");
+
+  // Determine if request is from Slack
+  let verifyResult = verifyRequestIsFromSlack(event);
+  if (verifyResult.type === "error") {
+    return verifyResult;
   }
   console.log("request verified");
 
-  if (fromSlackEventsApi(event)) {
+  let urlVerificationResult = isUrlVerification(event);
+  if (urlVerificationResult.type === "success") {
+    // Event is a url verification challenge from Slack
+    return urlVerificationResult;
+  }
+  console.log(urlVerificationResult.error);
+
+  let fromSlackEventsApiResult = fromSlackEventsApi(event);
+  if (fromSlackEventsApiResult.type === "success") {
     // Event is from Slack Events API
-    const slackEvent = JSON.parse(event.body!);
-    console.log(`slackEvent: ${slackEvent}`);
-    let type = slackEvent.type as string;
-    switch (type) {
-      case "event_callback": {
-        // Most events from Events API have this type
-        console.log("type event_callback");
-        const eventType = slackEvent.event.type;
-        switch (eventType) {
-          case "member_joined_channel": {
-            console.log("member_joined_channel eventType");
-            return new AppAddedToChannelRouteStrategy();
-            break;
-          }
-          case "message": {
-            console.log("message eventType");
-            return new MessagePostedRouteStrategy();
-            break;
-          }
-          default: {
-            console.log(`default eventType reached (unknown): ${eventType}`);
-            throw new Error("default eventType reached");
-            break;
-          }
-        }
-        break;
-      }
-      default: {
-        console.log(`default type reached (unknown): ${type}`);
-        throw new Error("default type reached");
-        break;
-      }
-    }
-  } else if (fromSlackInteractivity(event)) {
-    // This only works because SlackEvents enter the above if statement
-    console.log("From Slack interactivity");
-    
-    let slackEvent = JSON.parse(event.body!);
-    let slackPayload = qs.parse(slackEvent.payload!);
-    // TODO: No idea if the above works. Also kind of hacky casting qs.parse -> String
-    // Is there some typescript way to say we know something will be a string?
-    // Not sure what happens if we try to decode the event.body if it isnt urlencoded
-    // For example, for when the else condition in determineRoute
-    const eventType = slackPayload.type as string;
-    switch (eventType) {
-      case "message_action": {
-        console.log("Marked Answer eventType");
-        if (slackPayload.channel && ((<qs.ParsedQs>slackPayload.channel).id) &&
-        slackPayload.message && 
-        ((<qs.ParsedQs>slackPayload.message).ts) &&
-        ((<qs.ParsedQs>slackPayload.message).text) &&
-        ((<qs.ParsedQs>slackPayload.user).id) &&
-        ((<qs.ParsedQs>slackPayload.team).id)) {
-          let thread_ts: string | undefined;
-          if ((<qs.ParsedQs>slackPayload.message).thread_ts) {
-            thread_ts = (<qs.ParsedQs>slackPayload.message).thread_ts as string;
-          } else {
-            thread_ts = undefined;
-          }
-          return new MarkedAnswerEvent(
-            ((<qs.ParsedQs>slackPayload.channel).id) as string,
-            thread_ts,
-            ((<qs.ParsedQs>slackPayload.message).ts) as string,
-            ((<qs.ParsedQs>slackPayload.user).id) as string,
-            ((<qs.ParsedQs>slackPayload.team).id) as string,
-            ((<qs.ParsedQs>slackPayload.message).text) as string
-          );
-        } else {
-          throw new Error("error in trying to create and return MarkedAnswerEvent");
-        }
-        break;
-      }
-      case "block_actions": {
-        console.log("Button Press eventType");
-        const buttonID = slackEvent.actions[0].action_id;
-        const value = slackEvent.actions[0].value.split(" ");
-        const oldQuestionUUID = value[0];
-        const messageID = value[1];
-        switch (buttonID) {
-          case "helpful": {
-            return new HelpfulButton(
-              slackEvent.channel.id,
-              slackEvent.response_url,
-              messageID,
-              oldQuestionUUID,
-              slackEvent.user.id
-            );
-            break;
-          }
-          case "nothelpful": {
-            return new NotHelpfulButton(
-              slackEvent.channel.id,
-              slackEvent.response_url,
-              messageID,
-              oldQuestionUUID
-            );
-            break;
-          }
-          case "dismiss": {
-            return new DismissButton(
-              slackEvent.channel.id,
-              slackEvent.response_url,
-              messageID
-            );
-            break;
-          }
-        }
-        break;
-      }
-      default: {
-        console.log(`default eventType reached (unknown): ${eventType}`);
-        throw new Error("default eventType reached");
-        break;
-      }
-    }
-  } else {
-    // Event not from Slack Events API
-    if (isUrlVerification(event)) {
-      console.log("event not from Slack Events API");
-      // URL for Events API subscription is being verified by Slack
-      const slackEvent = JSON.parse(event.body!);
-      if (slackEvent.challenge) {
-        return new UrlVerificationRouteStrategy(slackEvent.challenge as string);
-      } else {
-        throw new Error("type url_verification but no challenge!");
-      }
-    } else {
-      throw new Error("not from Slack Events API and not url_verification!");
-    }
+    return fromSlackEventsApiResult;
   }
+  console.log(fromSlackEventsApiResult.error);
+
+  let fromSlackInteractivityResult = fromSlackInteractivity(event);
+  if (fromSlackInteractivityResult.type === "success") {
+    // Event is from Slack interaction
+    return fromSlackInteractivityResult;
+  }
+
+  return fromSlackInteractivityResult;
 }
 
-function isUrlVerification(event: APIGatewayProxyEventV2): boolean {
-  if (event.headers["Content-Type"] === "application/json" && event.body) {
-    const slackEvent = JSON.parse(event.body);
-    if (
-      slackEvent.hasOwnProperty("token") &&
-      typeof slackEvent.token === "string" &&
-      slackEvent.hasOwnProperty("type") &&
-      typeof slackEvent.type === "string" &&
-      slackEvent.type === "url_verification" &&
-      slackEvent.hasOwnProperty("challenge") &&
-      typeof slackEvent.challenge === "string"
-    ) {
-      return true;
-    }
-  }
-  return false;
-}
-
-function fromSlackEventsApi(event: APIGatewayProxyEventV2): boolean {
-  if (event.headers["Content-Type"] === "application/json" && event.body) {
-    const slackEvent = JSON.parse(event.body);
-    if (
-      slackEvent.hasOwnProperty("token") &&
-      typeof slackEvent.token === "string" &&
-      slackEvent.hasOwnProperty("team_id") &&
-      typeof slackEvent.team_id === "string" &&
-      slackEvent.hasOwnProperty("api_app_id") &&
-      typeof slackEvent.api_app_id === "string" &&
-      slackEvent.hasOwnProperty("event") &&
-      slackEvent.hasOwnProperty("type") &&
-      typeof slackEvent.type === "string" &&
-      slackEvent.hasOwnProperty("authorizations") &&
-      slackEvent.hasOwnProperty("event_context") &&
-      typeof slackEvent.event_context === "string" &&
-      slackEvent.hasOwnProperty("event_id") &&
-      typeof slackEvent.event_id === "string" &&
-      slackEvent.hasOwnProperty("event_time") &&
-      typeof slackEvent.event_time === "number"
-    ) {
-      return true;
-    }
-  }
-  return false;
-}
-
-function fromSlackInteractivity(event: APIGatewayProxyEventV2): boolean {
-  if (!(event.headers["Content-Type"] === "application/json") || !event.body) {
-    console.log("not slack interaction because no json body");
-    return false;
-  }
-
-  const slackEvent = JSON.parse(event.body);
-
-  if (!slackEvent.payload) {
-    console.log(
-      "not slack interaction because body parameter has no payload property"
-    );
-    return false;
-  }
-
-  let slackPayload = qs.parse(slackEvent.payload);
-
-  if (
-    slackPayload.type === "message_action" ||
-    slackPayload.type === "block_actions"
-  ) {
-    return true;
-  }
-
-  console.log(
-    "not slack interaction payload type not message_action or block_actions"
-  );
-
-  return false;
-}
-
-function verifyRequestIsFromSlack(event: APIGatewayProxyEventV2): boolean {
+function verifyRequestIsFromSlack(
+  event: APIGatewayProxyEventV2
+): Result<boolean> {
   if (
     !event.headers["X-Slack-Request-Timestamp"] ||
     !event.headers["X-Slack-Signature"] ||
     !event.body
   ) {
-    console.log("Event object missing attributes");
-    return false;
+    return { type: "error", error: Error("Event object missing attributes") };
   }
 
   const slackTimestamp = +event.headers["X-Slack-Request-Timestamp"];
@@ -411,8 +203,7 @@ function verifyRequestIsFromSlack(event: APIGatewayProxyEventV2): boolean {
     Math.abs(Math.floor(new Date().getTime() / 1000) - slackTimestamp) >
     60 * 5
   ) {
-    console.log("timestamp is not current");
-    return false;
+    return { type: "error", error: Error("timestamp is not current") };
   }
 
   const slackSignature = event.headers["X-Slack-Signature"];
@@ -422,8 +213,10 @@ function verifyRequestIsFromSlack(event: APIGatewayProxyEventV2): boolean {
 
   const slackSigningSecret = process.env.SLACK_SIGNING_SECRET;
   if (!slackSigningSecret) {
-    console.log("could not get slack signing secret");
-    return false;
+    return {
+      type: "error",
+      error: Error("could not get slack signing secret"),
+    };
   }
 
   const mySignature =
@@ -439,11 +232,299 @@ function verifyRequestIsFromSlack(event: APIGatewayProxyEventV2): boolean {
       Buffer.from(slackSignature, "utf8")
     )
   ) {
-    console.log("Hashes do not match");
-    return false;
+    return { type: "error", error: Error("Hashes do not match") };
   }
 
-  return true;
+  return { type: "success", value: true };
+}
+
+function isUrlVerification(
+  event: APIGatewayProxyEventV2
+): Result<UrlVerificationEvent> {
+  if (!(event.headers["Content-Type"] === "application/json") || !event.body) {
+    console.log("event not encoded as json/has no event.body");
+    return {
+      type: "error",
+      error: new Error("event not encoded as json/has no event.body"),
+    };
+  }
+
+  const slackEvent = JSON.parse(event.body);
+
+  let hasUrlVerificationProperties = checkObjHasProperties(slackEvent, [
+    "token",
+    "type",
+    "challenge",
+  ]);
+
+  if (hasUrlVerificationProperties.type === "error") {
+    return hasUrlVerificationProperties;
+  }
+
+  if (!(slackEvent.type === "url_verification")) {
+    return {
+      type: "error",
+      error: new Error("did not have url_verification type"),
+    };
+  }
+
+  let urlVerificationEvent = new UrlVerificationEvent(
+    slackEvent.challenge as string
+  );
+  return { type: "success", value: urlVerificationEvent };
+}
+
+function fromSlackEventsApi(event: APIGatewayProxyEventV2): Result<SlackEvent> {
+  if (!(event.headers["Content-Type"] === "application/json") || !event.body) {
+    console.log("event not encoded as json/has no event.body");
+    return {
+      type: "error",
+      error: new Error("event not encoded as json/has no event.body"),
+    };
+  }
+
+  const slackEvent = JSON.parse(event.body);
+
+  let hasEventsApiProperties = checkObjHasProperties(slackEvent, [
+    "token",
+    "team_id",
+    "api_app_id",
+    "event",
+    "type",
+    "authorization",
+    "event_context",
+    "event_id",
+    "event_time",
+  ]);
+
+  if (hasEventsApiProperties.type === "error") {
+    return hasEventsApiProperties;
+  }
+
+  if (slackEvent.event.type === "member_joined_channel") {
+    let hasMemberJoinedChannelProperties = checkObjHasProperties(
+      slackEvent.event,
+      ["user", "channel", "team"]
+    );
+
+    if (hasMemberJoinedChannelProperties.type === "error") {
+      return hasMemberJoinedChannelProperties;
+    }
+
+    let appAddedEvent = new AppAddedEvent(
+      slackEvent.event.channel as string,
+      slackEvent.event.team as string,
+      slackEvent.event.user as string
+    );
+
+    return { type: "success", value: appAddedEvent };
+  } else if (slackEvent.type === "message") {
+    let hasMessageProperties = checkObjHasProperties(slackEvent.event, [
+      "text",
+      "channel",
+      "ts",
+      "user",
+    ]);
+
+    if (hasMessageProperties.type === "error") {
+      return hasMessageProperties;
+    }
+
+    let newMessageEvent = new NewMessageEvent(
+      slackEvent.event.channel as string,
+      slackEvent.event.team as string,
+      slackEvent.event.ts as string,
+      slackEvent.event.user as string,
+      slackEvent.event.text as string
+    );
+
+    return { type: "success", value: newMessageEvent };
+  }
+
+  return {
+    type: "error",
+    error: new Error("incoming slack Events API event did not match any path"),
+  };
+}
+
+function fromSlackInteractivity(
+  event: APIGatewayProxyEventV2
+): Result<SlackEvent> {
+  if (!(event.headers["Content-Type"] === "application/json") || !event.body) {
+    return {
+      type: "error",
+      error: new Error("event not encoded as json/has no event.body"),
+    };
+  }
+
+  const slackEvent = JSON.parse(event.body);
+
+  let hasPayloadProperty = checkObjHasProperties(slackEvent, ["payload"]);
+
+  if (hasPayloadProperty.type === "error") {
+    return hasPayloadProperty;
+  }
+
+  let slackPayload = qs.parse(slackEvent.payload);
+
+  // check that the slackPayload has all properties common to an interactive slack event
+  let hasInteractivityProperties = checkObjHasProperties(slackPayload, [
+    "type",
+    "callback_id",
+    "channel",
+    "message",
+    "user",
+    "team",
+  ]);
+
+  if (hasInteractivityProperties.type === "error") {
+    return hasInteractivityProperties;
+  }
+
+  if (slackPayload.type === "message_action") {
+    if (slackPayload.callback_id === "marked_as_answer") {
+      // This checks for properties needed to continue, is weird because of qs.parse() return types
+      if (
+        (<qs.ParsedQs>slackPayload.channel).id &&
+        (<qs.ParsedQs>slackPayload.message).ts &&
+        (<qs.ParsedQs>slackPayload.message).text &&
+        (<qs.ParsedQs>slackPayload.user).id &&
+        (<qs.ParsedQs>slackPayload.team).id
+      ) {
+        // thread_ts is dealt with as such because its final value depends on its existance
+        let thread_ts: string | undefined;
+        if ((<qs.ParsedQs>slackPayload.message).thread_ts) {
+          thread_ts = (<qs.ParsedQs>slackPayload.message).thread_ts as string;
+        } else {
+          thread_ts = undefined;
+        }
+        // Reason for the ugly casting is due to qs type weirdness and the above checks not
+        // narrowing the type down. Normally code after the above checks would infer the correct
+        // Types, but for some reason it didn't, so had to recast
+        let markedAnswerEvent = new MarkedAnswerEvent(
+          (<qs.ParsedQs>slackPayload.channel).id as string,
+          (<qs.ParsedQs>slackPayload.team).id as string,
+          thread_ts,
+          (<qs.ParsedQs>slackPayload.message).ts as string,
+          (<qs.ParsedQs>slackPayload.user).id as string,
+          (<qs.ParsedQs>slackPayload.message).text as string
+        );
+        return { type: "success", value: markedAnswerEvent };
+      }
+      return {
+        type: "error",
+        error: new Error(
+          "marked_as_answer interactive event missing properties"
+        ),
+      };
+    }
+    return {
+      type: "error",
+      error: new Error(
+        "incoming message_action interactivity event did not match any message_action callback_id path"
+      ),
+    };
+  } else if (slackPayload.type === "block_actions") {
+    if (
+      slackPayload.actions &&
+      (slackPayload.actions as qs.ParsedQs[]).length > 0 &&
+      (slackPayload.actions as qs.ParsedQs[])[0].action_id &&
+      (slackPayload.actions as qs.ParsedQs[])[0].value &&
+      (<qs.ParsedQs>slackPayload.channel).id &&
+      (<qs.ParsedQs>slackPayload.team).id &&
+      (<qs.ParsedQs>slackPayload.user).id &&
+      slackPayload.response_url
+    ) {
+      let buttonID = ((slackPayload.actions as qs.ParsedQs)[0] as qs.ParsedQs)
+        .action_id as string;
+      let value = (
+        ((slackPayload.actions as qs.ParsedQs)[0] as qs.ParsedQs)
+          .value as string
+      ).split(" ");
+      // TODO: the following check assumes all interactive message buttons will have .value
+      // of the format we defined that splits into oldQuestionUUID and messageID. There might
+      // be a better way to do this to future proof
+      if (value.length !== 2) {
+        return {
+          type: "error",
+          error: new Error(
+            "value in actions[0].value did not split into two values"
+          ),
+        };
+      }
+      let oldQuestionUUID = value[0];
+      let messageID = value[1];
+      switch (buttonID) {
+        case "helpful": {
+          let helpfulButton = new HelpfulButton(
+            (<qs.ParsedQs>slackPayload.channel).id as string,
+            (<qs.ParsedQs>slackPayload.team).id as string,
+            slackPayload.response_url as string,
+            messageID,
+            oldQuestionUUID,
+            (<qs.ParsedQs>slackPayload.user).id as string
+          );
+          return { type: "success", value: helpfulButton };
+          break;
+        }
+        case "nothelpful": {
+          let notHelpfulButton = new NotHelpfulButton(
+            (<qs.ParsedQs>slackPayload.channel).id as string,
+            (<qs.ParsedQs>slackPayload.team).id as string,
+            slackPayload.response_url as string,
+            messageID,
+            oldQuestionUUID
+          );
+          return { type: "success", value: notHelpfulButton };
+          break;
+        }
+        case "dismiss": {
+          let dismissButton = new DismissButton(
+            (<qs.ParsedQs>slackPayload.channel).id as string,
+            (<qs.ParsedQs>slackPayload.team).id as string,
+            slackPayload.response_url as string,
+            messageID
+          );
+          return { type: "success", value: dismissButton };
+          break;
+        }
+      }
+      return {
+        type: "error",
+        error: new Error(
+          "incoming block_actions interactivity event did not match any buttonID path"
+        ),
+      };
+    }
+  }
+
+  return {
+    type: "error",
+    error: new Error(
+      "incoming slack interactivity event did not match any type path"
+    ),
+  };
+}
+
+// This function exists so when a request fails the parameter check we get a list of which
+// parameters it was missing
+function checkObjHasProperties(
+  obj: any,
+  properties: string[]
+): Result<boolean> {
+  let missingProperties = [];
+  for (const prop of properties) {
+    if (!(prop in obj)) {
+      missingProperties.push(prop);
+    }
+  }
+  if (missingProperties.length > 0) {
+    return {
+      type: "error",
+      error: new Error(`object missing properties: ${missingProperties}`),
+    };
+  }
+  return { type: "success", value: true };
 }
 
 function buildResponse(
