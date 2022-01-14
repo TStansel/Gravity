@@ -5,6 +5,15 @@ import {
 } from "aws-lambda";
 import * as crypto from "crypto";
 import * as qs from "qs";
+import {
+  SlackEvent,
+  HelpfulButton,
+  NotHelpfulButton,
+  DismissButton,
+  MarkedAnswerEvent,
+  NewMessageEvent,
+  AppAddedEvent,
+} from "./slackEventClasses";
 
 export const lambdaHandler = async (
   event: APIGatewayProxyEventV2
@@ -41,107 +50,6 @@ type ResultError = { type: "error"; error: Error };
 type Result<T> = ResultSuccess<T> | ResultError;
 
 /* --------  Classes -------- */
-
-class SlackEvent {
-  public channelID: string;
-  public workspaceID: string;
-
-  constructor(channelID: string, workspaceID: string) {
-    this.channelID = channelID;
-    this.workspaceID = workspaceID;
-  }
-}
-
-class SlackButtonEvent extends SlackEvent {
-  constructor(
-    channelID: string,
-    workspaceID: string,
-    public responseURL: string,
-    public messageID: string
-  ) {
-    super(channelID, workspaceID);
-    this.responseURL = responseURL;
-    this.messageID = messageID;
-  }
-}
-
-class HelpfulButton extends SlackButtonEvent {
-  constructor(
-    channelID: string,
-    workspaceID: string,
-    responseURL: string,
-    messageID: string,
-    public oldQuestionUUID: string,
-    public userID: string
-  ) {
-    super(channelID, workspaceID, responseURL, messageID);
-    this.oldQuestionUUID = oldQuestionUUID;
-    this.userID = userID;
-  }
-}
-
-class NotHelpfulButton extends SlackButtonEvent {
-  constructor(
-    channelID: string,
-    workspaceID: string,
-    responseURL: string,
-    messageID: string,
-    public oldQuestionUUID: string
-  ) {
-    super(channelID, workspaceID, responseURL, messageID);
-    this.oldQuestionUUID = oldQuestionUUID;
-  }
-}
-
-class DismissButton extends SlackButtonEvent {
-  constructor(
-    channelID: string,
-    workspaceID: string,
-    responseURL: string,
-    messageID: string
-  ) {
-    super(channelID, workspaceID, responseURL, messageID);
-  }
-}
-
-class MarkedAnswerEvent extends SlackEvent {
-  constructor(
-    channelID: string,
-    workspaceID: string,
-    public parentMsgID: string | undefined,
-    public messageID: string,
-    public userID: string,
-    public text: string
-  ) {
-    super(channelID, workspaceID);
-    this.parentMsgID = parentMsgID;
-    this.messageID = messageID;
-    this.userID = userID;
-    this.text = text;
-  }
-}
-
-class NewMessageEvent extends SlackEvent {
-  constructor(
-    channelID: string,
-    workspaceID: string,
-    public messageID: string,
-    public userID: string,
-    public text: string
-  ) {
-    super(channelID, workspaceID);
-    this.messageID = messageID;
-    this.userID = userID;
-    this.text = text;
-  }
-}
-
-class AppAddedEvent extends SlackEvent {
-  constructor(channelID: string, workspaceID: string, public userID: string) {
-    super(channelID, workspaceID);
-    this.userID = userID;
-  }
-}
 
 // Special event type, does not inherit from SlackEvent becuase no workspaceID or channelID are sent
 class UrlVerificationEvent {
