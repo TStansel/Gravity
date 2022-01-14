@@ -16,7 +16,7 @@ export class SlackButtonEvent extends SlackEvent {
     public messageID: string
   ) {
     super(channelID, workspaceID);
-    this.responseURL = responseURL;
+    this.responseURL = responseURL;x
     this.messageID = messageID;
   }
 }

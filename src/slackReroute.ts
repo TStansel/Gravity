@@ -209,7 +209,7 @@ function fromSlackEventsApi(event: APIGatewayProxyEventV2): Result<SlackEvent> {
   if (hasEventsApiProperties.type === "error") {
     return hasEventsApiProperties;
   }
-
+  console.log("Slack Event:", slackEvent)
   if (slackEvent.event.type === "member_joined_channel") {
     let hasMemberJoinedChannelProperties = checkObjHasProperties(
       slackEvent.event,
@@ -234,6 +234,7 @@ function fromSlackEventsApi(event: APIGatewayProxyEventV2): Result<SlackEvent> {
       "ts",
       "user",
     ]);
+    console.log("msg props ",hasMessageProperties)
 
     if (hasMessageProperties.type === "error") {
       return hasMessageProperties;
