@@ -227,7 +227,7 @@ function fromSlackEventsApi(event: APIGatewayProxyEventV2): Result<SlackEvent> {
     );
 
     return { type: "success", value: appAddedEvent };
-  } else if (slackEvent.type === "message") {
+  } else if (slackEvent.event.type === "message") {
     let hasMessageProperties = checkObjHasProperties(slackEvent.event, [
       "text",
       "channel",
