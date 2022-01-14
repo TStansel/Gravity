@@ -1,8 +1,6 @@
 import {
-  SQSHandler,
   SQSEvent,
-  SQSBatchResponse,
-  SQSBatchItemFailure
+  SQSHandler,
 } from "aws-lambda";
 
 export const lambdaHandler: SQSHandler = async (
@@ -10,6 +8,6 @@ export const lambdaHandler: SQSHandler = async (
 ): Promise<void> => {
   console.log(event);
 
-  
-  
+  // Successful Call
+  return;
 };
