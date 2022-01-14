@@ -70,7 +70,7 @@ class UrlVerificationEvent {
 function determineEvent(
   event: APIGatewayProxyEventV2
 ): Result<SlackEvent> | Result<UrlVerificationEvent> {
-  console.log("determining route");
+  console.log("determining event");
 
   // Determine if request is from Slack
   let verifyResult = verifyRequestIsFromSlack(event);
