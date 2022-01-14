@@ -1,10 +1,12 @@
-import { Stack, StackProps } from "aws-cdk-lib";
+import { Duration, Stack, StackProps } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import * as nodelambda from "aws-cdk-lib/aws-lambda-nodejs";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as rds from "aws-cdk-lib/aws-rds";
 import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
+import * as sqs from 'aws-cdk-lib/aws-sqs';
+import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources"
 // import * as sqs from 'aws-cdk-lib/aws-sqs';
 
 export class CdkOsmosixStack extends Stack {
@@ -29,6 +31,11 @@ export class CdkOsmosixStack extends Stack {
       }
     );
 
+    const reverseProxySqs = new sqs.Queue(this, "ReverseProxyQueue", {
+      encryption: sqs.QueueEncryption.KMS_MANAGED,
+      receiveMessageWaitTime: Duration.seconds(20), // This makes SQS long polling, check to make sure does not slow things down
+    });
+
     const nodeLambda = new nodelambda.NodejsFunction(this, "SlackReroute", {
       entry: "../src/slackReroute.ts",
       handler: "lambdaHandler",
@@ -36,6 +43,7 @@ export class CdkOsmosixStack extends Stack {
         SLACK_SIGNING_SECRET: secret
           .secretValueFromJson("OSMOSIX_DEV_SIGNING_SECRET")
           .toString(),
+        REVERSE_PROXY_SQS_URL: reverseProxySqs.queueUrl
       },
       bundling: {
         minify: false,
@@ -51,6 +59,25 @@ export class CdkOsmosixStack extends Stack {
       handler: nodeLambda,
       proxy: false,
     });
+
+    const slackEventWork = new nodelambda.NodejsFunction(this, "SlackEventWork", {
+      entry: "../src/slackEventWork.ts",
+      handler: "lambdaHandler",
+      bundling: {
+        minify: false,
+        sourceMap: true,
+        sourceMapMode: nodelambda.SourceMapMode.INLINE,
+        sourcesContent: false,
+        target: "es2020",
+        tsconfig: "../tsconfig.json",
+      },
+    });
+
+    const slackEventSqsSource = new lambdaEventSources.SqsEventSource(reverseProxySqs, {
+      batchSize: 1,
+    });
+
+    slackEventWork.addEventSource(slackEventSqsSource);
 
     const items = api.root.addResource("slack-reroute").addMethod("POST");
   }

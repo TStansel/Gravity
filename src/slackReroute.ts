@@ -3,6 +3,7 @@ import {
   APIGatewayProxyResultV2,
   APIGatewayProxyStructuredResultV2,
 } from "aws-lambda";
+import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import * as crypto from "crypto";
 import * as qs from "qs";
 import {
@@ -14,6 +15,8 @@ import {
   NewMessageEvent,
   AppAddedEvent,
 } from "./slackEventClasses";
+
+const client = new SQSClient({});
 
 export const lambdaHandler = async (
   event: APIGatewayProxyEventV2
@@ -34,10 +37,17 @@ export const lambdaHandler = async (
     return buildResponse(200, slackEvent.challenge);
   }
 
-  // TODO: send the SlackEvent in var slackEvent to SQS here!
-  console.log(slackEvent.constructor.name);
-  console.log(slackEvent);
-  console.log(JSON.stringify(slackEvent));
+  const command = new SendMessageCommand({
+    MessageBody: JSON.stringify(slackEvent),
+    QueueUrl: process.env.REVERSE_PROXY_SQS_URL,
+  });
+
+  try {
+    const response = await client.send(command);
+  } catch (e) {
+    console.log(`failed to send to SQS! error: ${e}`);
+    return buildResponse(500, "Failed to queue for processing");
+  }
 
   return buildResponse(200, "request queued for processing");
 };
@@ -211,7 +221,7 @@ function fromSlackEventsApi(event: APIGatewayProxyEventV2): Result<SlackEvent> {
   if (hasEventsApiProperties.type === "error") {
     return hasEventsApiProperties;
   }
-  console.log("Slack Event:", slackEvent)
+  console.log("Slack Event:", slackEvent);
   if (slackEvent.event.type === "member_joined_channel") {
     let hasMemberJoinedChannelProperties = checkObjHasProperties(
       slackEvent.event,
@@ -236,7 +246,7 @@ function fromSlackEventsApi(event: APIGatewayProxyEventV2): Result<SlackEvent> {
       "ts",
       "user",
     ]);
-    console.log("msg props ",hasMessageProperties)
+    console.log("msg props ", hasMessageProperties);
 
     if (hasMessageProperties.type === "error") {
       return hasMessageProperties;
