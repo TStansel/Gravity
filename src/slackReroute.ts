@@ -36,6 +36,8 @@ export const lambdaHandler = async (
 
   // TODO: send the SlackEvent in var slackEvent to SQS here!
   console.log(slackEvent.constructor.name);
+  console.log(slackEvent);
+  console.log(JSON.stringify(slackEvent));
 
   return buildResponse(200, "request queued for processing");
 };
