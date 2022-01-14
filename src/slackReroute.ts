@@ -436,10 +436,10 @@ function fromSlackInteractivity(
       (<qs.ParsedQs>slackPayload.user).id &&
       slackPayload.response_url
     ) {
-      let buttonID = ((slackPayload.actions as qs.ParsedQs)[0] as qs.ParsedQs)
+      let buttonID = ((slackPayload.actions as qs.ParsedQs[])[0] as qs.ParsedQs)
         .action_id as string;
       let value = (
-        ((slackPayload.actions as qs.ParsedQs)[0] as qs.ParsedQs)
+        ((slackPayload.actions as qs.ParsedQs[])[0] as qs.ParsedQs)
           .value as string
       ).split(" ");
       // TODO: the following check assumes all interactive message buttons will have .value
