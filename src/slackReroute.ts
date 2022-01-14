@@ -35,7 +35,7 @@ export const lambdaHandler = async (
   if (slackEventResult.type === "error") {
     console.log(slackEventResult.error);
     // TODO: change this to not allow retry from slack
-    return buildResponse(401, "Access Denied");
+    return buildResponse(401, "Access Denied", true);
   }
 
   let slackEvent = slackEventResult.value;
