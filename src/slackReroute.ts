@@ -13,6 +13,9 @@ import {
   MarkedAnswerEvent,
   NewMessageEvent,
   AppAddedEvent,
+  Result,
+  ResultError,
+  ResultSuccess
 } from "./slackEventClasses";
 import {
   buildResponse,
@@ -44,15 +47,6 @@ export const lambdaHandler = async (
 
   return buildResponse(200, "request queued for processing");
 };
-
-/* --------  Types -------- */
-// These types are used so we can levarage Typescripts type system instead of throwing error which
-// makes it hard to keep track of types
-type ResultSuccess<T> = { type: "success"; value: T };
-
-type ResultError = { type: "error"; error: Error };
-
-type Result<T> = ResultSuccess<T> | ResultError;
 
 /* --------  Classes -------- */
 

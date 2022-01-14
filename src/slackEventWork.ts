@@ -12,9 +12,7 @@ import {
   NewMessageEvent,
   AppAddedEvent,
 } from "./slackEventClasses";
-import {
-    buildResponse,
-  } from "./slackFunctions";
+import { buildResponse } from "./slackFunctions";
 
 export const lambdaHandler = async (
   event: APIGatewayProxyEventV2
@@ -25,3 +23,35 @@ export const lambdaHandler = async (
 
   return buildResponse(200, "request queued for processing");
 };
+
+/* ------- Functions ------- */
+
+function determineClass(slackJson: JSON) {
+  if (!slackJson.hasOwnProperty("type")) {
+    return {
+      type: "error",
+      error: new Error("JSON is missing property 'type'."),
+    };
+  }
+
+  switch (slackJson["type" as keyof JSON]) {
+    case "APPADDEDEVENT": {
+      return AppAddedEvent.fromJSON(slackJson);
+    }
+    case "NEWMESSAGEEVENT": {
+      return NewMessageEvent.fromJSON(slackJson);
+    }
+    case "MARKEDANSWEREVENT": {
+      return MarkedAnswerEvent.fromJSON(slackJson);
+    }
+    case "HELPFULBUTTON": {
+      return HelpfulButton.fromJSON(slackJson);
+    }
+    case "NOTHELPFULBUTTON": {
+      return NotHelpfulButton.fromJSON(slackJson);
+    }
+    case "DISMISSBUTTON": {
+      return DismissButton.fromJSON(slackJson);
+    }
+  }
+}
