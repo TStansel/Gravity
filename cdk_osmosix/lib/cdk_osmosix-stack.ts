@@ -7,6 +7,7 @@ import * as rds from "aws-cdk-lib/aws-rds";
 import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources"
+import * as lambda from "aws-cdk-lib/aws-lambda"
 // import * as sqs from 'aws-cdk-lib/aws-sqs';
 
 export class CdkOsmosixStack extends Stack {
@@ -100,6 +101,23 @@ export class CdkOsmosixStack extends Stack {
       },
     });
 
+    const nlpLambda = new nodelambda.NodejsFunction(this, "nlpLambda", {
+      entry: "../src/nlpLambda.ts",
+      handler: "lambdaHandler",
+      bundling: {
+        minify: false,
+        sourceMap: true,
+        sourceMapMode: nodelambda.SourceMapMode.INLINE,
+        sourcesContent: false,
+        target: "es2020",
+        tsconfig: "../tsconfig.json",
+      },
+    });
+    
+    const doc2vecLambda = new lambda.DockerImageFunction(this, "doc2vecLambda", {
+      code: lambda.DockerImageCode.fromImageAsset("../src/ml_lambdas/doc2vec_lambda")
+    });
+    
     const items = api.root.addResource("slack-reroute").addMethod("POST");
   }
 }
