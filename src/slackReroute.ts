@@ -54,6 +54,7 @@ export const lambdaHandler = async (
     return buildResponse(500, "Failed to queue for processing");
   }
 
+  console.log(slackEvent.constructor.name);
   return buildResponse(200, "request queued for processing");
 };
 
