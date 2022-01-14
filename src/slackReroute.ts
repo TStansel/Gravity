@@ -84,14 +84,12 @@ function determineEvent(
     // Event is a url verification challenge from Slack
     return urlVerificationResult;
   }
-  console.log(urlVerificationResult.error);
 
   let fromSlackEventsApiResult = fromSlackEventsApi(event);
   if (fromSlackEventsApiResult.type === "success") {
     // Event is from Slack Events API
     return fromSlackEventsApiResult;
   }
-  console.log(fromSlackEventsApiResult.error);
 
   let fromSlackInteractivityResult = fromSlackInteractivity(event);
   if (fromSlackInteractivityResult.type === "success") {
