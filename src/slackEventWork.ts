@@ -32,8 +32,6 @@ export const lambdaHandler = async (
       return buildResponse(401,classResult.error.message)
   }
   // classResult is now one of the 6 objects
-  // abstract slackevent class
-  // remove slackbuttonevent
 
   return buildResponse(200, "request queued for processing");
 };

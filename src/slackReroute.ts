@@ -320,6 +320,7 @@ function fromSlackInteractivity(
           (<qs.ParsedQs>slackPayload.channel).id as string,
           (<qs.ParsedQs>slackPayload.team).id as string,
           thread_ts,
+          undefined,
           (<qs.ParsedQs>slackPayload.message).ts as string,
           (<qs.ParsedQs>slackPayload.user).id as string,
           (<qs.ParsedQs>slackPayload.message).text as string
