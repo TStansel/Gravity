@@ -26,6 +26,7 @@ export const lambdaHandler = async (
   }
 
   // TODO: send the SlackEvent in var slackEvent to SQS here!
+  console.log(slackEvent.constructor.name);
 
   return buildResponse(200, "request queued for processing");
 };
@@ -291,7 +292,7 @@ function fromSlackEventsApi(event: APIGatewayProxyEventV2): Result<SlackEvent> {
     "api_app_id",
     "event",
     "type",
-    "authorization",
+    "authorizations",
     "event_context",
     "event_id",
     "event_time",
