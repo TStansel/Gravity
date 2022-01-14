@@ -79,6 +79,9 @@ export class CdkOsmosixStack extends Stack {
       {
         entry: "../src/slackEventWork.ts",
         handler: "lambdaHandler",
+        environment: {
+          PROCESS_EVENTS_ML_SQL_URL: processEventsMlSqs.queueUrl,
+        },
         bundling: {
           minify: false,
           sourceMap: true,
@@ -110,6 +113,9 @@ export class CdkOsmosixStack extends Stack {
         code: lambda.DockerImageCode.fromImageAsset(
           "../src/ml_lambdas/doc2vec_lambda"
         ),
+        environment: {
+          ML_OUTPUT_SQS_URL: mlOutputSqs.queueUrl,
+        },
       }
     );
     const processEventsMlSqsSource = new lambdaEventSources.SqsEventSource(
