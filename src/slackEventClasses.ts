@@ -9,7 +9,7 @@ export type Result<T> = ResultSuccess<T> | ResultError;
 
 /* --------  Classes -------- */
 
-export class SlackEvent {
+export abstract class SlackEvent {
   public channelID: string;
   public workspaceID: string;
 
@@ -19,30 +19,19 @@ export class SlackEvent {
   }
 }
 
-export class SlackButtonEvent extends SlackEvent {
-  constructor(
-    channelID: string,
-    workspaceID: string,
-    public responseURL: string,
-    public messageID: string
-  ) {
-    super(channelID, workspaceID);
-    this.responseURL = responseURL;
-    this.messageID = messageID;
-  }
-}
-
-export class HelpfulButton extends SlackButtonEvent {
+export class HelpfulButton extends SlackEvent {
   static type: "HELPFULBUTTON";
   constructor(
     channelID: string,
     workspaceID: string,
-    responseURL: string,
-    messageID: string,
+    public responseURL: string,
+    public messageID: string,
     public oldQuestionUUID: string,
     public userID: string
   ) {
-    super(channelID, workspaceID, responseURL, messageID);
+    super(channelID, workspaceID);
+    this.responseURL = responseURL;
+    this.messageID = messageID;
     this.oldQuestionUUID = oldQuestionUUID;
     this.userID = userID;
   }
@@ -74,16 +63,18 @@ export class HelpfulButton extends SlackButtonEvent {
   }
 }
 
-export class NotHelpfulButton extends SlackButtonEvent {
+export class NotHelpfulButton extends SlackEvent {
   static type: "NOTHELPFULBUTTON";
   constructor(
     channelID: string,
     workspaceID: string,
-    responseURL: string,
-    messageID: string,
+    public responseURL: string,
+    public messageID: string,
     public oldQuestionUUID: string
   ) {
-    super(channelID, workspaceID, responseURL, messageID);
+    super(channelID, workspaceID);
+    this.responseURL = responseURL;
+    this.messageID = messageID;
     this.oldQuestionUUID = oldQuestionUUID;
   }
 
@@ -113,15 +104,17 @@ export class NotHelpfulButton extends SlackButtonEvent {
   }
 }
 
-export class DismissButton extends SlackButtonEvent {
+export class DismissButton extends SlackEvent {
   static type: "DISMISSBUTTON";
   constructor(
     channelID: string,
     workspaceID: string,
-    responseURL: string,
-    messageID: string
+    public responseURL: string,
+    public messageID: string
   ) {
-    super(channelID, workspaceID, responseURL, messageID);
+    super(channelID, workspaceID);
+    this.responseURL = responseURL;
+    this.messageID = messageID;
   }
 
   static fromJSON(slackJSON: JSON): Result<DismissButton> {

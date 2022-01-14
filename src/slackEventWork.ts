@@ -11,6 +11,9 @@ import {
   MarkedAnswerEvent,
   NewMessageEvent,
   AppAddedEvent,
+  Result,
+  ResultError,
+  ResultSuccess
 } from "./slackEventClasses";
 import { buildResponse } from "./slackFunctions";
 
@@ -18,15 +21,26 @@ export const lambdaHandler = async (
   event: APIGatewayProxyEventV2
 ): Promise<APIGatewayProxyResultV2> => {
   console.log(event);
-  // Inspect the event passed from API gateway to determine what action to perform
-  // If the request did not constitute a valid action return null
+
+  if(!event.hasOwnProperty("body")){
+      return buildResponse(401, "Access Denied")
+  }
+  
+  let classResult = determineClass(JSON.parse(event.body as string));
+
+  if(classResult.type === "error"){
+      return buildResponse(401,classResult.error.message)
+  }
+  // classResult is now one of the 6 objects
+  // abstract slackevent class
+  // remove slackbuttonevent
 
   return buildResponse(200, "request queued for processing");
 };
 
 /* ------- Functions ------- */
 
-function determineClass(slackJson: JSON) {
+function determineClass(slackJson: JSON): Result<SlackEvent> {
   if (!slackJson.hasOwnProperty("type")) {
     return {
       type: "error",
@@ -53,5 +67,10 @@ function determineClass(slackJson: JSON) {
     case "DISMISSBUTTON": {
       return DismissButton.fromJSON(slackJson);
     }
+  }
+
+  return {
+      type: "error",
+      error: new Error("JSON did not match class types")
   }
 }
