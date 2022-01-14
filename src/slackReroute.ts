@@ -33,8 +33,7 @@ export const lambdaHandler = async (
 
   let slackEventResult = determineEvent(event);
   if (slackEventResult.type === "error") {
-    console.log(slackEventResult.error);
-    // TODO: change this to not allow retry from slack
+    console.log(`Could not determine event type: ${slackEventResult.error.message}`);
     return buildResponse(401, "Access Denied", true);
   }
 
@@ -218,7 +217,6 @@ function fromSlackEventsApi(event: APIGatewayProxyEventV2): Result<SlackEvent> {
   if (hasEventsApiProperties.type === "error") {
     return hasEventsApiProperties;
   }
-  console.log("Slack Event:", slackEvent);
   if (slackEvent.event.type === "member_joined_channel") {
     let hasMemberJoinedChannelProperties = checkObjHasProperties(
       slackEvent.event,
@@ -243,7 +241,6 @@ function fromSlackEventsApi(event: APIGatewayProxyEventV2): Result<SlackEvent> {
       "ts",
       "user",
     ]);
-    console.log("msg props ", hasMessageProperties);
 
     if (hasMessageProperties.type === "error") {
       return hasMessageProperties;
