@@ -13,7 +13,7 @@ export const lambdaHandler = async (
   // Inspect the event passed from API gateway to determine what action to perform
   // If the request did not constitute a valid action return null
 
-  let slackEventResult = determineRoute(event);
+  let slackEventResult = determineEvent(event);
   if (slackEventResult.type === "error") {
     console.log(slackEventResult.error);
     // TODO: change this to not allow retry from slack
@@ -150,7 +150,7 @@ class UrlVerificationEvent {
 
 /* --------  Functions -------- */
 
-function determineRoute(
+function determineEvent(
   event: APIGatewayProxyEventV2
 ): Result<SlackEvent> | Result<UrlVerificationEvent> {
   console.log("determining route");
