@@ -55,6 +55,8 @@ export class CdkOsmosixStack extends Stack {
       },
     });
 
+    reverseProxySqs.grantSendMessages(nodeLambda);
+
     const api = new apigateway.LambdaRestApi(this, "LambdaProxyApi", {
       handler: nodeLambda,
       proxy: false,
