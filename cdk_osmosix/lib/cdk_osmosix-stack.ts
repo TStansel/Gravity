@@ -81,6 +81,25 @@ export class CdkOsmosixStack extends Stack {
 
     slackEventWork.addEventSource(slackEventSqsSource);
 
+    const addedToChannelSqs = new sqs.Queue(this, "AddedToChannel", {
+      encryption: sqs.QueueEncryption.KMS_MANAGED,
+      receiveMessageWaitTime: Duration.seconds(20), // This makes SQS long polling, check to make sure does not slow things down
+      
+    });
+
+    const readAddedToChannelSqs = new nodelambda.NodejsFunction(this, "ReadAddedToChannelSqs", {
+      entry: "../src/readAddedToChannelSqs.ts",
+      handler: "lambdaHandler",
+      bundling: {
+        minify: false,
+        sourceMap: true,
+        sourceMapMode: nodelambda.SourceMapMode.INLINE,
+        sourcesContent: false,
+        target: "es2020",
+        tsconfig: "../tsconfig.json",
+      },
+    });
+
     const items = api.root.addResource("slack-reroute").addMethod("POST");
   }
 }

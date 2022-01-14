@@ -108,7 +108,7 @@ function verifyRequestIsFromSlack(
     !event.headers["X-Slack-Signature"] ||
     !event.body
   ) {
-    return { type: "error", error: Error("Event object missing attributes") };
+    return { type: "error", error: new Error("Event object missing attributes") };
   }
 
   const slackTimestamp = +event.headers["X-Slack-Request-Timestamp"];
@@ -119,7 +119,7 @@ function verifyRequestIsFromSlack(
     Math.abs(Math.floor(new Date().getTime() / 1000) - slackTimestamp) >
     60 * 5
   ) {
-    return { type: "error", error: Error("timestamp is not current") };
+    return { type: "error", error: new Error("timestamp is not current") };
   }
 
   const slackSignature = event.headers["X-Slack-Signature"];
@@ -131,7 +131,7 @@ function verifyRequestIsFromSlack(
   if (!slackSigningSecret) {
     return {
       type: "error",
-      error: Error("could not get slack signing secret"),
+      error: new Error("could not get slack signing secret"),
     };
   }
 
@@ -148,7 +148,7 @@ function verifyRequestIsFromSlack(
       Buffer.from(slackSignature, "utf8")
     )
   ) {
-    return { type: "error", error: Error("Hashes do not match") };
+    return { type: "error", error: new Error("Hashes do not match") };
   }
 
   return { type: "success", value: true };
