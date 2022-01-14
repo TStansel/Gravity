@@ -14,6 +14,9 @@ import {
   NewMessageEvent,
   AppAddedEvent,
 } from "./slackEventClasses";
+import {
+  buildResponse,
+} from "./slackFunctions";
 
 export const lambdaHandler = async (
   event: APIGatewayProxyEventV2
@@ -437,20 +440,4 @@ function checkObjHasProperties(
     };
   }
   return { type: "success", value: true };
-}
-
-function buildResponse(
-  status: number,
-  body: string
-): APIGatewayProxyStructuredResultV2 {
-  const response = {
-    isBase64Encoded: false,
-    statusCode: status,
-    headers: {
-      "content-type": "application/json",
-    },
-    body: body,
-  };
-  console.log(response);
-  return response;
 }
