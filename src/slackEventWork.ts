@@ -2,6 +2,8 @@ import {
   APIGatewayProxyEventV2,
   APIGatewayProxyResultV2,
   APIGatewayProxyStructuredResultV2,
+  SQSEvent,
+  SQSHandler,
 } from "aws-lambda";
 import {
   SlackEvent,
@@ -17,9 +19,9 @@ import {
 } from "./slackEventClasses";
 import { buildResponse } from "./slackFunctions";
 
-export const lambdaHandler = async (
-  event: APIGatewayProxyEventV2
-): Promise<APIGatewayProxyResultV2> => {
+export const lambdaHandler: SQSHandler = async (
+  event: SQSEvent
+): Promise<void> => {
   console.log(event);
 
   if(!event.hasOwnProperty("body")){
