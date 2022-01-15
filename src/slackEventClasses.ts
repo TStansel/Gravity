@@ -1,5 +1,13 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
-import { SQSClient, SendMessageCommand, SendMessageCommandInput, UnsupportedOperation } from "@aws-sdk/client-sqs";
+import {
+  SQSClient,
+  SendMessageCommand,
+  SendMessageBatchCommand,
+  SendMessageBatchCommandInput,
+  SendMessageBatchRequestEntry,
+  UnsupportedOperation,
+  ServiceOutputTypes,
+} from "@aws-sdk/client-sqs";
 import { ulid } from "ulid";
 const data = require("data-api-client")({
   secretArn:
@@ -76,6 +84,7 @@ export class HelpfulButton extends SlackEvent {
   }
 
   async doWork(): Promise<Result<string>> {
+    console.log("Helpful do work")
     try {
       let helpfulParams = {
         replace_original: "true",
@@ -229,6 +238,7 @@ export class NotHelpfulButton extends SlackEvent {
   }
 
   async doWork(): Promise<Result<string>> {
+    console.log("Not helpful do work")
     try {
       let notHelpfulParams = {
         replace_original: "true",
@@ -349,6 +359,7 @@ export class DismissButton extends SlackEvent {
   }
 
   async doWork(): Promise<Result<string>> {
+    console.log("Dismiss BUtton do work")
     try {
       let dismissParams = {
         delete_original: "true",
@@ -475,7 +486,7 @@ export class MarkedAnswerEvent extends SlackEvent {
         slackJSON["channelID" as keyof JSON] as string,
         slackJSON["workspaceID" as keyof JSON] as string,
         slackJSON["parentMsgID" as keyof JSON] as string,
-        undefined,
+        undefined, // Parent Text: Fetch this from slack later
         slackJSON["messageID" as keyof JSON] as string,
         slackJSON["userID" as keyof JSON] as string,
         slackJSON["text" as keyof JSON] as string
@@ -484,6 +495,7 @@ export class MarkedAnswerEvent extends SlackEvent {
   }
 
   async doWork(): Promise<Result<string>> {
+    console.log("Marked Answer do work");
     try {
       let getBotTokenSql = `select SlackToken.BotToken from SlackToken 
       join SlackChannel on SlackToken.SlackWorkspaceUUID = SlackChannel.SlackWorkspaceUUID 
@@ -537,8 +549,12 @@ export class MarkedAnswerEvent extends SlackEvent {
 
       this.parentMsgText = getParentRes.data.messages[0].text;
 
-      // CALL NLP
-      // CALL DOC2VEC
+      const command = new SendMessageCommand({
+        MessageBody: JSON.stringify(this), // TODO Check This is working
+        QueueUrl: process.env.REVERSE_PROXY_SQS_URL,
+      });
+      let response = await client.send(command);
+      console.log("Marked Answer in SQS", response);
       // Thank You MSG
       // Create Q and A
     } catch (e) {
@@ -547,7 +563,7 @@ export class MarkedAnswerEvent extends SlackEvent {
         error: new Error("MarkAnswer calls failed:" + e),
       };
     }
-    return { type: "success", value: "Marked Answer completed sucessfully" };
+    return { type: "success", value: "Marked Answer sent to SQS sucessfully" };
   }
 }
 
@@ -595,6 +611,7 @@ export class NewMessageEvent extends SlackEvent {
   }
 
   async doWork(): Promise<Result<string>> {
+    console.log("new Message do work");
     try {
       let getChannelNameSql = `select SlackChannel.Name from SlackChannel 
         join SlackWorkspace on SlackChannel.SlackWorkspaceUUID = SlackWorkspace.SlackWorkspaceUUID
@@ -622,9 +639,12 @@ export class NewMessageEvent extends SlackEvent {
         };
       }
 
-      // NLP
-      // Doc2Vec
-      // Find Similar Questions
+      const command = new SendMessageCommand({
+        MessageBody: JSON.stringify(this), // TODO Check This is working
+        QueueUrl: process.env.REVERSE_PROXY_SQS_URL,
+      });
+      let response = await client.send(command);
+      console.log("New Message in SQS", response);
       // Send Message to Slack
     } catch (e) {
       return {
@@ -632,7 +652,7 @@ export class NewMessageEvent extends SlackEvent {
         error: new Error("NewMessage: calls failed:" + e),
       };
     }
-    return { type: "success", value: "New Message completed sucessfully" };
+    return { type: "success", value: "New Message sent to SQS sucessfully" };
   }
 }
 
@@ -664,13 +684,13 @@ export class AppAddedEvent extends SlackEvent {
   }
 
   async doWork(): Promise<Result<string>> {
+    console.log("App Added Do Work");
     try {
       let getWorkspaceSql =
         "select * from SlackWorkspace where WorkspaceID = :workspaceID";
-      let workspaceID = this.workspaceID;
 
       let getWorkspaceResult = await data.query(getWorkspaceSql, {
-        workspaceID: workspaceID,
+        workspaceID: this.workspaceID,
       });
 
       //console.log("getWorkspaceresult: ", getWorkspaceResult);
@@ -680,7 +700,7 @@ export class AppAddedEvent extends SlackEvent {
     where SlackWorkspace.WorkspaceID = :workspaceID`;
 
       let getBotTokenResult = await data.query(getBotTokenSql, {
-        workspaceID: workspaceID,
+        workspaceID: this.workspaceID,
       });
 
       let botToken = getBotTokenResult.records[0].BotToken;
@@ -690,14 +710,12 @@ export class AppAddedEvent extends SlackEvent {
 
       // Check if slack channel exists in DB
 
-      let channelID = this.channelID;
-
       let getChannelSql =
         "select * from SlackChannel where SlackWorkspaceUUID = :workspaceUUID and ChannelID = :channelID";
 
       let getChannelResult = await data.query(getChannelSql, {
         workspaceUUID: workspaceUUID,
-        channelID: channelID,
+        channelID: this.channelID,
       });
 
       let channelUUID: string;
@@ -707,7 +725,7 @@ export class AppAddedEvent extends SlackEvent {
         channelUUID = getChannelResult.records[0].SlackChannelUUID;
         return {
           type: "error",
-          error: new Error("NewMessage: Channel does not exist in DB"),
+          error: new Error("NewMessage: Channel already exists in DB"),
         };
       }
 
@@ -716,7 +734,8 @@ export class AppAddedEvent extends SlackEvent {
       // Get needed info about Channel
       let getChannelInfoConfig = {
         method: "get",
-        url: "https://slack.com/api/conversations.info?channel=" + channelID,
+        url:
+          "https://slack.com/api/conversations.info?channel=" + this.channelID,
         headers: {
           Authorization: "Bearer " + botToken,
           "Content-Type": "application/json",
@@ -734,7 +753,7 @@ export class AppAddedEvent extends SlackEvent {
       let insertChannelResult = await data.query(insertChannelSql, {
         channelUUID: channelUUID,
         workspaceUUID: workspaceUUID,
-        channelID: channelID,
+        channelID: this.channelID,
         channelName: channelName,
       });
 
@@ -755,7 +774,7 @@ export class AppAddedEvent extends SlackEvent {
           method: "get",
           url:
             "https://slack.com/api/conversations.members?channel=" +
-            channelID +
+            this.channelID +
             "&limit=200" +
             cursorParam,
           headers: {
@@ -788,6 +807,8 @@ export class AppAddedEvent extends SlackEvent {
 
       // Now get all users from the workspace in the DB in order to add new users
 
+      console.log("Users in Channel", channelMembers);
+
       let getWorkspaceUsersSql =
         "select SlackID from SlackUser where SlackWorkspaceUUID = :workspaceUUID";
 
@@ -806,7 +827,10 @@ export class AppAddedEvent extends SlackEvent {
           membersNotInDB.push(slackID);
         }
       }
-
+      console.log(
+        "Number of users in channe but no in DB",
+        membersNotInDB.length
+      );
       if (membersNotInDB.length !== 0) {
         // There are New Members to put into DB
         let batchInsertNewSlackUserSql =
@@ -846,7 +870,7 @@ export class AppAddedEvent extends SlackEvent {
           method: "get",
           url:
             "https://slack.com/api/conversations.history?channel=" +
-            channelID +
+            this.channelID +
             "&limit=200" +
             cursorParam,
           headers: {
@@ -895,48 +919,41 @@ export class AppAddedEvent extends SlackEvent {
         }
       } while (cursor !== null); // When done paginating cursor will be set to null
 
-      let batch_size = 1; // TODO changed this to size 1 because that is how we are writing into que at other parts
-      // Is that good or bad? Should we change back to 5? Commented outlines 902 and 914 to change to 1
-  for (let i = 0; i < channelMessages.length; i += batch_size) {
-    //console.log("hit for loop");
-    /*
-    let channelMessagesBatch = channelMessages.slice(i, i + batch_size);
-    //console.log(channelMessagesBatch);
-    let sqsSendBatchMessageEntries = channelMessagesBatch.map(
-      (message, index) => ({
-        Id: index,
-        MessageBody: JSON.stringify({
-          message: message,
-          channelID: channelID,
-          channelUUID: channelUUID,
-        }),
-      })
-    );*/
-    let channelMessagesBatch = channelMessages.slice(i, i + batch_size)[0];
-    let sqsSendBatchMessageEntries = {
-      Id: channelMessagesBatch["index" as keyof JSON] as string,
-      MessageBody: JSON.stringify({
-        message: channelMessagesBatch["message" as keyof JSON] as string,
-        channelID: this.channelID,
-        channelUUID: channelUUID,
-      })
-    }
+      console.log("Number of messages in past year:", channelMessages.length);
 
-    //console.log(sqsSendBatchMessageEntries);
-    let sqsSendBatchMessageInput: SendMessageCommandInput = {
-      Entries: sqsSendBatchMessageEntries,
-      QueueUrl: process.env.PROCESS_EVENTS_ML_SQS_URL
-    };
-    let command = new SendMessageCommand(sqsSendBatchMessageInput);
-    let response = await client.send(command);
-    //console.log(response);
-  }
+      let promises: Promise<ServiceOutputTypes>[] = [];
+      let batch_size = 5;
+      for (let i = 0; i < channelMessages.length; i += batch_size) {
+        //console.log("hit for loop");
+
+        let channelMessagesBatch = channelMessages.slice(i, i + batch_size);
+        //console.log(channelMessagesBatch);
+        let sqsSendBatchMessageEntries: SendMessageBatchRequestEntry[] =
+          channelMessagesBatch.map((message, index) => ({
+            Id: String(index),
+            MessageBody: JSON.stringify({
+              message: message,
+              channelID: this.channelID,
+              channelUUID: channelUUID,
+            }),
+          }));
+
+        //console.log(sqsSendBatchMessageEntries);
+        let sqsSendBatchMessageInput: SendMessageBatchCommandInput = {
+          Entries: sqsSendBatchMessageEntries,
+          QueueUrl: process.env.PROCESS_EVENTS_ML_SQS_URL,
+        };
+        let command = new SendMessageBatchCommand(sqsSendBatchMessageInput);
+        promises.push(client.send(command));
+      }
+      let responses = await Promise.all(promises);
+      console.log("Number of responses:", responses.length);
     } catch (e) {
       return {
         type: "error",
         error: new Error("App Added Network calls failed:" + e),
       };
     }
-    return { type: "success", value: "App Added completed sucessfully" };
+    return { type: "success", value: "App Added sent to SQS sucessfully" };
   }
 }

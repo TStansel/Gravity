@@ -50,7 +50,7 @@ export const lambdaHandler: SQSHandler = async (
       // Network Call in Class failed
       throw workResult.error;
   }
-
+  console.log(workResult.value)
   // Successful Call
   return;
 };
