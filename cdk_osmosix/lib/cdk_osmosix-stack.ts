@@ -80,7 +80,9 @@ export class CdkOsmosixStack extends Stack {
         entry: "../src/slackEventWork.ts",
         handler: "lambdaHandler",
         environment: {
-            PROCESS_EVENTS_ML_SQS_URL: processEventsMlSqs.queueUrl
+          PROCESS_EVENTS_ML_SQS_URL: processEventsMlSqs.queueUrl,
+          AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+          AURORA_SECRET_ARN: auroraCluster.secret?.secretArn as string
         },
         bundling: {
           minify: false,
@@ -98,6 +100,7 @@ export class CdkOsmosixStack extends Stack {
         batchSize: 1,
       }
     );
+
     slackEventWork.addEventSource(slackEventSqsSource);
     processEventsMlSqs.grantSendMessages(slackEventWork);
 
@@ -150,5 +153,7 @@ export class CdkOsmosixStack extends Stack {
       }
     );
     mlOutputLambda.addEventSource(mlOutputSqsSource);
+
+    auroraCluster.grantDataApiAccess(slackEventWork);
   }
 }

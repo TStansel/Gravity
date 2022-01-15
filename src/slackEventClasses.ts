@@ -10,9 +10,8 @@ import {
 } from "@aws-sdk/client-sqs";
 import { ulid } from "ulid";
 const data = require("data-api-client")({
-  secretArn:
-    "arn:aws:secretsmanager:us-east-2:579534454884:secret:rds-db-credentials/cluster-4QWLO4T4HOH5I2B5367KESUM5Y/admin-lplDgu",
-  resourceArn: "arn:aws:rds:us-east-2:579534454884:cluster:osmosix-db-cluster",
+  secretArn: process.env.AURORA_SECRET_ARN,
+  resourceArn: process.env.AURORA_RESOURCE_ARN,
   database: "osmosix", // set a default database
 });
 const client = new SQSClient({});
@@ -29,19 +28,21 @@ export type Result<T> = ResultSuccess<T> | ResultError;
 /* --------  Classes -------- */
 
 export abstract class SlackEvent {
+  public type: string;
   public channelID: string;
   public workspaceID: string;
 
   constructor(channelID: string, workspaceID: string) {
     this.channelID = channelID;
     this.workspaceID = workspaceID;
+    this.type = "SLACKEVENT";
   }
 
   abstract doWork(): Promise<Result<string>>;
 }
 
 export class HelpfulButton extends SlackEvent {
-  static type: "HELPFULBUTTON";
+  public type: string;
   constructor(
     channelID: string,
     workspaceID: string,
@@ -55,6 +56,7 @@ export class HelpfulButton extends SlackEvent {
     this.messageID = messageID;
     this.oldQuestionUUID = oldQuestionUUID;
     this.userID = userID;
+    this.type = "HELPFULBUTTON";
   }
   static fromJSON(slackJSON: JSON): Result<SlackEvent> {
     if (
@@ -84,7 +86,7 @@ export class HelpfulButton extends SlackEvent {
   }
 
   async doWork(): Promise<Result<string>> {
-    console.log("Helpful do work")
+    console.log("Helpful do work");
     try {
       let helpfulParams = {
         replace_original: "true",
@@ -198,7 +200,7 @@ export class HelpfulButton extends SlackEvent {
 }
 
 export class NotHelpfulButton extends SlackEvent {
-  static type: "NOTHELPFULBUTTON";
+  public type: string;
   constructor(
     channelID: string,
     workspaceID: string,
@@ -210,6 +212,7 @@ export class NotHelpfulButton extends SlackEvent {
     this.responseURL = responseURL;
     this.messageID = messageID;
     this.oldQuestionUUID = oldQuestionUUID;
+    this.type = "NOTHELPFULBUTTON";
   }
 
   static fromJSON(slackJSON: JSON): Result<NotHelpfulButton> {
@@ -238,7 +241,7 @@ export class NotHelpfulButton extends SlackEvent {
   }
 
   async doWork(): Promise<Result<string>> {
-    console.log("Not helpful do work")
+    console.log("Not helpful do work");
     try {
       let notHelpfulParams = {
         replace_original: "true",
@@ -323,7 +326,7 @@ export class NotHelpfulButton extends SlackEvent {
 }
 
 export class DismissButton extends SlackEvent {
-  static type: "DISMISSBUTTON";
+  public type: string;
   constructor(
     channelID: string,
     workspaceID: string,
@@ -333,6 +336,7 @@ export class DismissButton extends SlackEvent {
     super(channelID, workspaceID);
     this.responseURL = responseURL;
     this.messageID = messageID;
+    this.type = "DISMISSBUTTON";
   }
 
   static fromJSON(slackJSON: JSON): Result<DismissButton> {
@@ -359,7 +363,7 @@ export class DismissButton extends SlackEvent {
   }
 
   async doWork(): Promise<Result<string>> {
-    console.log("Dismiss BUtton do work")
+    console.log("Dismiss BUtton do work");
     try {
       let dismissParams = {
         delete_original: "true",
@@ -431,7 +435,7 @@ export class DismissButton extends SlackEvent {
 }
 
 export class MarkedAnswerEvent extends SlackEvent {
-  static type: "MARKEDANSWEREVENT";
+  public type: string;
   constructor(
     channelID: string,
     workspaceID: string,
@@ -446,6 +450,7 @@ export class MarkedAnswerEvent extends SlackEvent {
     this.messageID = messageID;
     this.userID = userID;
     this.text = text;
+    this.type = "MARKEDANSWEREVENT";
   }
 
   async sendBadMessage(botToken: string): Promise<void> {
@@ -568,7 +573,7 @@ export class MarkedAnswerEvent extends SlackEvent {
 }
 
 export class NewMessageEvent extends SlackEvent {
-  static type: "NEWMESSAGEEVENT";
+  public type: string;
   constructor(
     channelID: string,
     workspaceID: string,
@@ -582,6 +587,7 @@ export class NewMessageEvent extends SlackEvent {
     this.userID = userID;
     this.text = text;
     this.parentMsgID = parentMsgID;
+    this.type = "NEWMESSAGEEVENT";
   }
   static fromJSON(slackJSON: JSON): Result<NewMessageEvent> {
     if (
@@ -657,10 +663,11 @@ export class NewMessageEvent extends SlackEvent {
 }
 
 export class AppAddedEvent extends SlackEvent {
-  static type: "APPADDEDEVENT";
+  public type: string;
   constructor(channelID: string, workspaceID: string, public userID: string) {
     super(channelID, workspaceID);
     this.userID = userID;
+    this.type = "APPADDEDEVENT";
   }
   static fromJSON(slackJSON: JSON): Result<AppAddedEvent> {
     if (
@@ -705,8 +712,40 @@ export class AppAddedEvent extends SlackEvent {
 
       let botToken = getBotTokenResult.records[0].BotToken;
 
-      let workspaceUUID = getWorkspaceResult.records[0]
-        .SlackWorkspaceUUID as string;
+      let workspaceUUID: string;
+
+      if (getWorkspaceResult.records.length === 0) {
+        // Workspace not in DB - TODO This should be changed to a failure
+        // But for now without oauth we understand it breaks in dev
+
+        let getSlackWorkspaceNameConfig = {
+          method: "get",
+          url: "https://slack.com/api/team.info?team=" + this.workspaceID,
+          headers: {
+            Authorization: "Bearer " + botToken,
+            "Content-Type": "application/json",
+          },
+        } as AxiosRequestConfig<any>;
+
+        const getSlackWorkspaceNameResult = await axios(
+          getSlackWorkspaceNameConfig
+        );
+
+        let workspaceName = getSlackWorkspaceNameResult.data.team.name;
+        workspaceUUID = ulid();
+
+        let insertWorkspaceSql =
+          "insert into SlackWorkspace (SlackWorkspaceUUID, WorkspaceID, Name) values (:SlackWorkspaceUUID, :WorkspaceID, :Name)";
+
+        let insertWorkspaceResult = await data.query(insertWorkspaceSql, {
+          SlackWorkspaceUUID: workspaceUUID,
+          WorkspaceID: this.workspaceID,
+          Name: workspaceName,
+        });
+      } else {
+        workspaceUUID = getWorkspaceResult.records[0]
+          .SlackWorkspaceUUID as string;
+      }
 
       // Check if slack channel exists in DB
 
