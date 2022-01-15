@@ -252,11 +252,11 @@ function fromSlackEventsApi(event: APIGatewayProxyEventV2): Result<SlackEvent> {
       return hasMessageProperties;
     }
 
-    let thread_ts: string | undefined;
+    let thread_ts: string | null;
     if (slackEvent.event.thread_ts) {
       thread_ts = slackEvent.event.thread_ts;
     } else {
-      thread_ts = undefined;
+      thread_ts = null;
     }
 
     let newMessageEvent = new NewMessageEvent(

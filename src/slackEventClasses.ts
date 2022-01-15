@@ -580,7 +580,7 @@ export class NewMessageEvent extends SlackEvent {
     public messageID: string,
     public userID: string,
     public text: string,
-    public parentMsgID: string | undefined
+    public parentMsgID: string | null
   ) {
     super(channelID, workspaceID);
     this.messageID = messageID;
@@ -611,7 +611,7 @@ export class NewMessageEvent extends SlackEvent {
         slackJSON["messageID" as keyof JSON] as string,
         slackJSON["userID" as keyof JSON] as string,
         slackJSON["text" as keyof JSON] as string,
-        slackJSON["parentMsgID" as keyof JSON] as string | undefined
+        slackJSON["parentMsgID" as keyof JSON] as string | null
       ),
     };
   }

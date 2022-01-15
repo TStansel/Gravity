@@ -48,6 +48,8 @@ export class CdkOsmosixStack extends Stack {
             .secretValueFromJson("OSMOSIX_DEV_SIGNING_SECRET")
             .toString(),
           REVERSE_PROXY_SQS_URL: reverseProxySqs.queueUrl,
+          AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+          AURORA_SECRET_ARN: auroraCluster.secret?.secretArn as string
         },
         bundling: {
           minify: false,
