@@ -113,6 +113,9 @@ export class CdkOsmosixStack extends Stack {
         code: lambda.DockerImageCode.fromImageAsset(
           "../src/ml_lambdas/doc2vec_lambda"
         ),
+        environment: {
+          ML_OUTPUT_SQS_URL: mlOutputSqs.queueUrl,
+        },
       }
     );
     const processEventsMlSqsSource = new lambdaEventSources.SqsEventSource(
