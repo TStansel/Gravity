@@ -1,4 +1,5 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
+import { SQSClient, SendMessageCommand, SendMessageCommandInput, UnsupportedOperation } from "@aws-sdk/client-sqs";
 import { ulid } from "ulid";
 const data = require("data-api-client")({
   secretArn:
@@ -6,6 +7,7 @@ const data = require("data-api-client")({
   resourceArn: "arn:aws:rds:us-east-2:579534454884:cluster:osmosix-db-cluster",
   database: "osmosix", // set a default database
 });
+const client = new SQSClient({});
 
 /* --------  Types -------- */
 // These types are used so we can levarage Typescripts type system instead of throwing error which
@@ -683,7 +685,8 @@ export class AppAddedEvent extends SlackEvent {
 
       let botToken = getBotTokenResult.records[0].BotToken;
 
-      let workspaceUUID = getWorkspaceResult.records[0].SlackWorkspaceUUID;
+      let workspaceUUID = getWorkspaceResult.records[0]
+        .SlackWorkspaceUUID as string;
 
       // Check if slack channel exists in DB
 
@@ -697,7 +700,7 @@ export class AppAddedEvent extends SlackEvent {
         channelID: channelID,
       });
 
-      let channelUUID;
+      let channelUUID: string;
 
       // If the channel already exists skip the steps of putting all channel users in DB
       if (getChannelResult.records.length > 0) {
@@ -736,7 +739,7 @@ export class AppAddedEvent extends SlackEvent {
       });
 
       let cursor = null;
-      let channelMembers = [];
+      let channelMembers: string[] = [];
 
       do {
         let cursorParam;
@@ -763,10 +766,8 @@ export class AppAddedEvent extends SlackEvent {
 
         const getChannelUsersResult = await axios(getChannelUsersConfig);
 
-        //console.log("Get Channel Users Call:", getChannelUsersResult);
-
         channelMembers = channelMembers.concat(
-          getChannelUsersResult.data.members
+          getChannelUsersResult.data.members as string[]
         );
 
         // Logic to decide if need to continue paginating
@@ -775,7 +776,6 @@ export class AppAddedEvent extends SlackEvent {
           getChannelUsersResult.data.response_metadata.next_cursor === ""
         ) {
           // Response has no next_cursor property set so we are done paginating!
-          //console.log("no cursor in response, done paginating");
           cursor = null;
         } else {
           cursor =
@@ -783,9 +783,154 @@ export class AppAddedEvent extends SlackEvent {
               /=/g,
               "%3D"
             );
+        }
+      } while (cursor !== null); // When done paginating cursor will be set to null
+
+      // Now get all users from the workspace in the DB in order to add new users
+
+      let getWorkspaceUsersSql =
+        "select SlackID from SlackUser where SlackWorkspaceUUID = :workspaceUUID";
+
+      let getWorkspaceUsersResult = await data.query(getWorkspaceUsersSql, {
+        workspaceUUID: workspaceUUID,
+      });
+
+      let slackUserIdSet = new Set();
+      for (let row of getWorkspaceUsersResult.records) {
+        slackUserIdSet.add(row.SlackID);
+      }
+
+      let membersNotInDB: string[] = [];
+      for (let slackID of channelMembers) {
+        if (!slackUserIdSet.has(slackID)) {
+          membersNotInDB.push(slackID);
+        }
+      }
+
+      if (membersNotInDB.length !== 0) {
+        // There are New Members to put into DB
+        let batchInsertNewSlackUserSql =
+          "insert into SlackUser (SlackUserUUID, SlackWorkspaceUUID, SlackID) values (:slackUserUUID, :workspaceUUID, :slackID)";
+
+        // Prepare list of users to insert
+        let batchInsertSlackUsersParams = membersNotInDB.map((slackID) => [
+          {
+            slackUserUUID: ulid(),
+            workspaceUUID: workspaceUUID,
+            slackID: slackID,
+          },
+        ]);
+
+        //console.log("batchInsertSlackUsersParams: ", batchInsertSlackUsersParams);
+
+        let batchInsertNewSlackUserResult = await data.query(
+          batchInsertNewSlackUserSql,
+          batchInsertSlackUsersParams
+        );
+      }
+
+      cursor = null;
+      let channelMessages: JSON[] = [];
+
+      do {
+        let cursorParam;
+
+        // Logic to send no cursor paramater the first call
+        if (cursor !== null) {
+          cursorParam = "&cursor=" + cursor;
+        } else {
+          cursorParam = "";
+        }
+
+        let getChannelMessagesConfig = {
+          method: "get",
+          url:
+            "https://slack.com/api/conversations.history?channel=" +
+            channelID +
+            "&limit=200" +
+            cursorParam,
+          headers: {
+            Authorization: "Bearer " + botToken,
+            "Content-Type": "application/json",
+          },
+        } as AxiosRequestConfig<any>;
+
+        const getChannelMessagesResult = await axios(getChannelMessagesConfig);
+
+        //console.log("Get Channel Messages Call:", getChannelMessagesResult);
+
+        channelMessages = channelMessages.concat(
+          getChannelMessagesResult.data.messages
+        );
+
+        // Logic to decide if need to continue paginating
+        if (
+          !getChannelMessagesResult.data.hasOwnProperty("response_metadata") ||
+          getChannelMessagesResult.data.response_metadata.next_cursor === ""
+        ) {
+          // Response has no next_cursor property set so we are done paginating!
+          //console.log("no cursor in response, done paginating");
+          cursor = null;
+        } else if (
+          // Types here a bit confusing, channelMessages is list of JSON where ts is a string.
+          // We need it as a number to insure we only get past year of messages
+          Date.now() / 1000 -
+            Number(
+              channelMessages[channelMessages.length - 1]["ts" as keyof JSON]
+            ) >
+          60 * 60 * 24 * 365
+        ) {
+          // Oldest message in response is more than 1 year old, stop paginating!
+          /*console.log(
+            "Oldest message in response is more than 1 year old, stop paginating!"
+          );*/
+          cursor = null;
+        } else {
+          cursor =
+            getChannelMessagesResult.data.response_metadata.next_cursor.replace(
+              /=/g,
+              "%3D"
+            );
           //console.log("cursor found in result, encoding and paginating");
         }
       } while (cursor !== null); // When done paginating cursor will be set to null
+
+      let batch_size = 1; // TODO changed this to size 1 because that is how we are writing into que at other parts
+      // Is that good or bad? Should we change back to 5? Commented outlines 902 and 914 to change to 1
+  for (let i = 0; i < channelMessages.length; i += batch_size) {
+    //console.log("hit for loop");
+    /*
+    let channelMessagesBatch = channelMessages.slice(i, i + batch_size);
+    //console.log(channelMessagesBatch);
+    let sqsSendBatchMessageEntries = channelMessagesBatch.map(
+      (message, index) => ({
+        Id: index,
+        MessageBody: JSON.stringify({
+          message: message,
+          channelID: channelID,
+          channelUUID: channelUUID,
+        }),
+      })
+    );*/
+    let channelMessagesBatch = channelMessages.slice(i, i + batch_size)[0];
+    let sqsSendBatchMessageEntries = {
+      Id: channelMessagesBatch["index" as keyof JSON] as string,
+      MessageBody: JSON.stringify({
+        message: channelMessagesBatch["message" as keyof JSON] as string,
+        channelID: this.channelID,
+        channelUUID: channelUUID,
+      })
+    }
+
+    //console.log(sqsSendBatchMessageEntries);
+    let sqsSendBatchMessageInput: SendMessageCommandInput = {
+      Entries: sqsSendBatchMessageEntries,
+      QueueUrl: process.env.PROCESS_EVENTS_ML_SQS_URL
+    };
+    let command = new SendMessageCommand(sqsSendBatchMessageInput);
+    let response = await client.send(command);
+    //console.log(response);
+  }
     } catch (e) {
       return {
         type: "error",

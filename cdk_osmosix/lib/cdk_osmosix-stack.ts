@@ -79,6 +79,9 @@ export class CdkOsmosixStack extends Stack {
       {
         entry: "../src/slackEventWork.ts",
         handler: "lambdaHandler",
+        environment: {
+            PROCESS_EVENTS_ML_SQS_URL: processEventsMlSqs.queueUrl
+        },
         bundling: {
           minify: false,
           sourceMap: true,
