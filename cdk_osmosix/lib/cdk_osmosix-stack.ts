@@ -6,6 +6,7 @@ import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as rds from "aws-cdk-lib/aws-rds";
 import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 import * as sqs from "aws-cdk-lib/aws-sqs";
+import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 // import * as sqs from 'aws-cdk-lib/aws-sqs';
@@ -32,6 +33,15 @@ export class CdkOsmosixStack extends Stack {
       }
     );
 
+    const dbSecret = secretsmanager.Secret.fromSecretAttributes(
+      this,
+      "DbSecret",
+      {
+        secretCompleteArn:
+          "arn:aws:secretsmanager:us-east-2:579534454884:secret:rds-db-credentials/cluster-DQL4LFXEKFCFKUZQSVOBH2N2PQ/admin-HRqeZ2",
+      }
+    );
+
     const reverseProxySqs = new sqs.Queue(this, "ReverseProxyQueue", {
       encryption: sqs.QueueEncryption.KMS_MANAGED,
       receiveMessageWaitTime: Duration.seconds(20), // This makes SQS long polling, check to make sure does not slow things down
@@ -49,7 +59,7 @@ export class CdkOsmosixStack extends Stack {
             .toString(),
           REVERSE_PROXY_SQS_URL: reverseProxySqs.queueUrl,
           AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
-          AURORA_SECRET_ARN: auroraCluster.secret?.secretArn as string
+          AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
         },
         bundling: {
           minify: false,
@@ -62,6 +72,7 @@ export class CdkOsmosixStack extends Stack {
       }
     );
     reverseProxySqs.grantSendMessages(slackRerouteLambda);
+    dbSecret.grantRead(slackRerouteLambda);
 
     const api = new apigateway.LambdaRestApi(this, "LambdaProxyApi", {
       handler: slackRerouteLambda,
@@ -84,7 +95,7 @@ export class CdkOsmosixStack extends Stack {
         environment: {
           PROCESS_EVENTS_ML_SQS_URL: processEventsMlSqs.queueUrl,
           AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
-          AURORA_SECRET_ARN: auroraCluster.secret?.secretArn as string
+          AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
         },
         bundling: {
           minify: false,
@@ -94,8 +105,10 @@ export class CdkOsmosixStack extends Stack {
           target: "es2020",
           tsconfig: "../tsconfig.json",
         },
+        timeout: Duration.seconds(600),
       }
     );
+    dbSecret.grantRead(slackEventWork);
     const slackEventSqsSource = new lambdaEventSources.SqsEventSource(
       reverseProxySqs,
       {
