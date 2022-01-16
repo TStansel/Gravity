@@ -58,6 +58,17 @@ export const lambdaHandler = async (
     return buildResponse(500, "Failed to queue for processing");
   }
 
+  if ( 
+    slackEvent instanceof MarkedAnswerEvent ||
+    slackEvent instanceof HelpfulButton ||
+    slackEvent instanceof NotHelpfulButton ||
+    slackEvent instanceof DismissButton
+  ) {
+    // For slack interactivity, the user sees an error unless we only return the status code and header
+    // Check buildResponse for the code on this
+    return buildResponse(200, "request queued for processing",false, true);
+  }
+
   console.log(slackEvent.constructor.name);
   return buildResponse(200, "request queued for processing");
 };
