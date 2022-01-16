@@ -112,8 +112,8 @@ export class CdkOsmosixStack extends Stack {
       proxy: false,
     });
 
-    const items = api.root.addResource("slack-reroute").addMethod("POST");
-    const items1 = api.root
+    const slackRerouteEndpoint = api.root.addResource("slack-reroute").addMethod("POST");
+    const oauthEndpoint = api.root
       .addResource("oauth")
       .addMethod("GET", new apigateway.LambdaIntegration(oauthLambda));
 
@@ -212,5 +212,8 @@ export class CdkOsmosixStack extends Stack {
     mlOutputLambda.addEventSource(mlOutputSqsSource);
 
     auroraCluster.grantDataApiAccess(slackEventWork);
+    auroraCluster.grantDataApiAccess(mlOutputLambda);
+    auroraCluster.grantDataApiAccess(pythonMlLambda);
+    auroraCluster.grantDataApiAccess(oauthLambda);
   }
 }

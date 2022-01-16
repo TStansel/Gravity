@@ -19,12 +19,13 @@ const data = require("data-api-client")({
     try{
         console.log(event);
         if(!event.queryStringParameters || !event.queryStringParameters.code){
+          console.log("Failed First")
             return buildResponse(401, "Access Denied");
         }
         let code = event.queryStringParameters.code;
-        let clientID = "2516673192850.2714678861750";
-        let clientSecret = "829f20910714241628de5d8a68562a54";
-        let redirect_uri = "https://a3rodogiwi.execute-api.us-east-2.amazonaws.com/DevStage/oauth";
+        let clientID = process.env.OSMOSIX_DEV_CLIENT_ID;
+        let clientSecret = process.env.OSMOSIX_DEV_CLIENT_SECRET;
+        let redirect_uri = "https://xcnait2t2f.execute-api.us-east-2.amazonaws.com/prod/oauth";
 
         let oauthParams = {
             code: code,
@@ -35,11 +36,11 @@ const data = require("data-api-client")({
 
         let url = "https://slack.com/api/oauth.v2.access"
         const oauthRes = await axios.post(url,qs.stringify(oauthParams));
+        console.log("oauth Res",oauthRes)
       
-        let botToken = oauthRes.data.access_token;
-        let userToken = oauthRes.data.authed_user.access_token;
-        let workspaceID = oauthRes.data.team.id;
-        let workspaceName = oauthRes.data.team.name;
+        let botToken = oauthRes.data.access_token as string;
+        let workspaceID = oauthRes.data.team.id as string;
+        let workspaceName = oauthRes.data.team.name as string;
         let workspaceUUID = ulid();
 
         let insertWorkspaceSql =
@@ -51,6 +52,8 @@ const data = require("data-api-client")({
             Name: workspaceName
         });
 
+        console.log("insert wrkspace",insertWorkspaceResult)
+
         let insertTokenSql =
             `insert into SlackToken (SlackTokenUUID, SlackWorkspaceUUID, BotToken, UserToken) values (:SlackTokenUUID, :SlackWorkspaceUUID, :BotToken, :UserToken)`;
     
@@ -58,10 +61,11 @@ const data = require("data-api-client")({
             SlackTokenUUID: ulid(),
             SlackWorkspaceUUID: workspaceUUID,
             BotToken: botToken,
-            UserToken: userToken
         });
+
+        console.log("insert Token",insertTokenResult)
     } catch(error){
-        return buildResponse(401, "Access Denied");
+        return buildResponse(401, "Access Denied "+ error);
     }
     return buildResponse(200, "Successfully authenticated!");
   }
