@@ -24,6 +24,15 @@ export class CdkOsmosixStack extends Stack {
       enableDataApi: true, // Optional - will be automatically set if you call grantDataApiAccess()
     });
 
+    const clientSecret = secretsmanager.Secret.fromSecretAttributes(
+      this,
+      "osmosixClient",
+      {
+        secretCompleteArn:
+          "arn:aws:secretsmanager:us-east-2:579534454884:secret:OSMOSIX_DEV_CLIENT-Fm23o2",
+      }
+    );
+
     const secret = secretsmanager.Secret.fromSecretAttributes(
       this,
       "osmosixSlackSigningSecret",
@@ -136,6 +145,7 @@ export class CdkOsmosixStack extends Stack {
         },
       }
     );
+    dbSecret.grantRead(pythonMlLambda);
     const processEventsMlSqsSource = new lambdaEventSources.SqsEventSource(
       processEventsMlSqs,
       {
@@ -159,8 +169,13 @@ export class CdkOsmosixStack extends Stack {
           target: "es2020",
           tsconfig: "../tsconfig.json",
         },
+        environment: {
+          AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+          AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+        },
       }
     );
+    dbSecret.grantRead(mlOutputLambda);
     const mlOutputSqsSource = new lambdaEventSources.SqsEventSource(
       mlOutputSqs,
       {
