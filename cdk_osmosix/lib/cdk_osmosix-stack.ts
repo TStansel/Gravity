@@ -24,15 +24,6 @@ export class CdkOsmosixStack extends Stack {
       enableDataApi: true, // Optional - will be automatically set if you call grantDataApiAccess()
     });
 
-    const clientSecret = secretsmanager.Secret.fromSecretAttributes(
-      this,
-      "osmosixClient",
-      {
-        secretCompleteArn:
-          "arn:aws:secretsmanager:us-east-2:579534454884:secret:OSMOSIX_DEV_CLIENT-Fm23o2",
-      }
-    );
-
     const secret = secretsmanager.Secret.fromSecretAttributes(
       this,
       "osmosixSlackSigningSecret",
