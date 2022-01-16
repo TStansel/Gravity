@@ -55,7 +55,7 @@ const data = require("data-api-client")({
         console.log("insert wrkspace",insertWorkspaceResult)
 
         let insertTokenSql =
-            `insert into SlackToken (SlackTokenUUID, SlackWorkspaceUUID, BotToken, UserToken) values (:SlackTokenUUID, :SlackWorkspaceUUID, :BotToken, :UserToken)`;
+            `insert into SlackToken (SlackTokenUUID, SlackWorkspaceUUID, BotToken) values (:SlackTokenUUID, :SlackWorkspaceUUID, :BotToken)`;
     
         let insertTokenResult = await data.query(insertTokenSql, {
             SlackTokenUUID: ulid(),
