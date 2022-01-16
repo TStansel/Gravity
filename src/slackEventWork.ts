@@ -17,12 +17,12 @@ import {
   ResultError,
   ResultSuccess,
 } from "./slackEventClasses";
-import { buildResponse } from "./slackFunctions";
+import { buildResponse, determineClass } from "./slackFunctions";
 
 export const lambdaHandler: SQSHandler = async (
   event: SQSEvent
 ): Promise<void> => {
-  console.log("EventWork", event);
+  console.log("Event Work: ", event);
 
   if (event.Records.length !== 1) {
     // Access Denied
@@ -44,7 +44,7 @@ export const lambdaHandler: SQSHandler = async (
     return;
   }
   // classResult is now one of the 6 objects
-  console.log("Slack Event:",classResult.value)
+  console.log("Slack Event:", classResult.value);
   let workResult = await classResult.value.doWork();
 
   if (workResult.type === "error") {
@@ -55,40 +55,3 @@ export const lambdaHandler: SQSHandler = async (
   // Successful Call
   return;
 };
-
-/* ------- Functions ------- */
-
-function determineClass(slackJson: JSON): Result<SlackEvent> {
-  if (!slackJson.hasOwnProperty("type")) {
-    return {
-      type: "error",
-      error: new Error("JSON is missing property 'type'."),
-    };
-  }
-
-  switch (slackJson["type" as keyof JSON]) {
-    case "APPADDEDEVENT": {
-      return AppAddedEvent.fromJSON(slackJson);
-    }
-    case "NEWMESSAGEEVENT": {
-      return NewMessageEvent.fromJSON(slackJson);
-    }
-    case "MARKEDANSWEREVENT": {
-      return MarkedAnswerEvent.fromJSON(slackJson);
-    }
-    case "HELPFULBUTTON": {
-      return HelpfulButton.fromJSON(slackJson);
-    }
-    case "NOTHELPFULBUTTON": {
-      return NotHelpfulButton.fromJSON(slackJson);
-    }
-    case "DISMISSBUTTON": {
-      return DismissButton.fromJSON(slackJson);
-    }
-  }
-
-  return {
-    type: "error",
-    error: new Error("JSON did not match class types"),
-  };
-}
