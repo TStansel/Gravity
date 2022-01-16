@@ -42,6 +42,15 @@ export class CdkOsmosixStack extends Stack {
       }
     );
 
+    const dbSecret = secretsmanager.Secret.fromSecretAttributes(
+      this,
+      "DbSecret",
+      {
+        secretCompleteArn:
+          "arn:aws:secretsmanager:us-east-2:579534454884:secret:rds-db-credentials/cluster-DQL4LFXEKFCFKUZQSVOBH2N2PQ/admin-HRqeZ2",
+      }
+    );
+
     const oauthLambda = new nodelambda.NodejsFunction(this, "oauthLambda", {
       entry: "../src/oauth.ts",
       handler: "lambdaHandler",
@@ -52,6 +61,8 @@ export class CdkOsmosixStack extends Stack {
         OSMOSIX_DEV_CLIENT_SECRET: devClientSecret
           .secretValueFromJson("OSMOSIX_DEV_CLIENT_SECRET")
           .toString(),
+          AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+          AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
       },
       bundling: {
         minify: false,
@@ -62,15 +73,6 @@ export class CdkOsmosixStack extends Stack {
         tsconfig: "../tsconfig.json",
       },
     });
-
-    const dbSecret = secretsmanager.Secret.fromSecretAttributes(
-      this,
-      "DbSecret",
-      {
-        secretCompleteArn:
-          "arn:aws:secretsmanager:us-east-2:579534454884:secret:rds-db-credentials/cluster-DQL4LFXEKFCFKUZQSVOBH2N2PQ/admin-HRqeZ2",
-      }
-    );
 
     const reverseProxySqs = new sqs.Queue(this, "ReverseProxyQueue", {
       encryption: sqs.QueueEncryption.KMS_MANAGED,
