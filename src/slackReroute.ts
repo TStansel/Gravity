@@ -280,14 +280,19 @@ function fromSlackEventsApi(event: APIGatewayProxyEventV2): Result<SlackEvent> {
 function fromSlackInteractivity(
   event: APIGatewayProxyEventV2
 ): Result<SlackEvent> {
-  if (!(event.headers["Content-Type"] === "application/json") || !event.body) {
+  if (
+    !(event.headers["Content-Type"] === "application/x-www-form-urlencoded") ||
+    !event.body
+  ) {
     return {
       type: "error",
       error: new Error("event not encoded as json/has no event.body"),
     };
   }
 
-  const slackEvent = JSON.parse(event.body);
+  const slackEvent = qs.parse(event.body);
+
+  console.log(slackEvent);
 
   let hasPayloadProperty = checkObjHasProperties(slackEvent, ["payload"]);
 
@@ -295,7 +300,7 @@ function fromSlackInteractivity(
     return hasPayloadProperty;
   }
 
-  let slackPayload = qs.parse(slackEvent.payload);
+  const slackPayload = JSON.parse(slackEvent.payload as string);
 
   // check that the slackPayload has all properties common to an interactive slack event
   let hasInteractivityProperties = checkObjHasProperties(slackPayload, [
