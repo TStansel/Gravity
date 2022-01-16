@@ -32,27 +32,35 @@ export class CdkOsmosixStack extends Stack {
       }
     );
 
-    const oauthLambda = new nodelambda.NodejsFunction(
+    const devClientSecret = secretsmanager.Secret.fromSecretAttributes(
       this,
-      "oauthLambda",
+      "devClientSecret",
       {
-        entry: "../src/oauth.ts",
-        handler: "lambdaHandler",
-        environment: {
-          SLACK_SIGNING_SECRET: secret
-            .secretValueFromJson("OSMOSIX_DEV_SIGNING_SECRET")
-            .toString(),
-        },
-        bundling: {
-          minify: false,
-          sourceMap: true,
-          sourceMapMode: nodelambda.SourceMapMode.INLINE,
-          sourcesContent: false,
-          target: "es2020",
-          tsconfig: "../tsconfig.json",
-        },
+        secretCompleteArn:
+          "arn:aws:secretsmanager:us-east-2:579534454884:secret:OSMOSIX_DEV_CLIENT-Fm23o2",
       }
     );
+
+    const oauthLambda = new nodelambda.NodejsFunction(this, "oauthLambda", {
+      entry: "../src/oauth.ts",
+      handler: "lambdaHandler",
+      environment: {
+        OSMOSIX_DEV_CLIENT_ID: devClientSecret
+          .secretValueFromJson("OSMOSIX_DEV_CLIENT_ID")
+          .toString(),
+        OSMOSIX_DEV_CLIENT_SECRET: devClientSecret
+          .secretValueFromJson("OSMOSIX_DEV_CLIENT_SECRET")
+          .toString(),
+      },
+      bundling: {
+        minify: false,
+        sourceMap: true,
+        sourceMapMode: nodelambda.SourceMapMode.INLINE,
+        sourcesContent: false,
+        target: "es2020",
+        tsconfig: "../tsconfig.json",
+      },
+    });
 
     const reverseProxySqs = new sqs.Queue(this, "ReverseProxyQueue", {
       encryption: sqs.QueueEncryption.KMS_MANAGED,
@@ -87,9 +95,11 @@ export class CdkOsmosixStack extends Stack {
       handler: slackRerouteLambda,
       proxy: false,
     });
-  
+
     const items = api.root.addResource("slack-reroute").addMethod("POST");
-    const items1 = api.root.addResource("oauth").addMethod("GET", new apigateway.LambdaIntegration(oauthLambda));
+    const items1 = api.root
+      .addResource("oauth")
+      .addMethod("GET", new apigateway.LambdaIntegration(oauthLambda));
 
     const processEventsMlSqs = new sqs.Queue(this, "processEventsMlSqs", {
       encryption: sqs.QueueEncryption.KMS_MANAGED,
