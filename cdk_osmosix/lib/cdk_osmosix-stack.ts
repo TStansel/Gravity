@@ -32,6 +32,28 @@ export class CdkOsmosixStack extends Stack {
       }
     );
 
+    const oauthLambda = new nodelambda.NodejsFunction(
+      this,
+      "oauthLambda",
+      {
+        entry: "../src/oauth.ts",
+        handler: "lambdaHandler",
+        environment: {
+          SLACK_SIGNING_SECRET: secret
+            .secretValueFromJson("OSMOSIX_DEV_SIGNING_SECRET")
+            .toString(),
+        },
+        bundling: {
+          minify: false,
+          sourceMap: true,
+          sourceMapMode: nodelambda.SourceMapMode.INLINE,
+          sourcesContent: false,
+          target: "es2020",
+          tsconfig: "../tsconfig.json",
+        },
+      }
+    );
+
     const reverseProxySqs = new sqs.Queue(this, "ReverseProxyQueue", {
       encryption: sqs.QueueEncryption.KMS_MANAGED,
       receiveMessageWaitTime: Duration.seconds(20), // This makes SQS long polling, check to make sure does not slow things down
@@ -65,8 +87,9 @@ export class CdkOsmosixStack extends Stack {
       handler: slackRerouteLambda,
       proxy: false,
     });
-
+  
     const items = api.root.addResource("slack-reroute").addMethod("POST");
+    const items1 = api.root.addResource("oauth").addMethod("GET", new apigateway.LambdaIntegration(oauthLambda));
 
     const processEventsMlSqs = new sqs.Queue(this, "processEventsMlSqs", {
       encryption: sqs.QueueEncryption.KMS_MANAGED,
