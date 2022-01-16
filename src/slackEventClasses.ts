@@ -759,42 +759,41 @@ export class AppAddedEvent extends SlackEvent {
 
       let channelUUID: string;
 
-      // If the channel already exists skip the steps of putting all channel users in DB
-      if (getChannelResult.records.length > 0) {
+      // If the channel already exists skip the step of putting channel in DB
+      if (getChannelResult.records.length === 0) {
+        console.log("Channel not in DB");
+        channelUUID = ulid();
+
+        // Get needed info about Channel
+        let getChannelInfoConfig = {
+          method: "get",
+          url:
+            "https://slack.com/api/conversations.info?channel=" +
+            this.channelID,
+          headers: {
+            Authorization: "Bearer " + botToken,
+            "Content-Type": "application/json",
+          },
+        } as AxiosRequestConfig<any>;
+
+        const getChannelInfoResult = await axios(getChannelInfoConfig);
+
+        // Insert channel into DB
+        let channelName = getChannelInfoResult.data.channel.name;
+
+        let insertChannelSql =
+          "insert into SlackChannel (SlackChannelUUID, SlackWorkspaceUUID, ChannelID, Name) values (:channelUUID, :workspaceUUID, :channelID, :channelName)";
+
+        let insertChannelResult = await data.query(insertChannelSql, {
+          channelUUID: channelUUID,
+          workspaceUUID: workspaceUUID,
+          channelID: this.channelID,
+          channelName: channelName,
+        });
+      } else {
+        console.log("Channel already in DB");
         channelUUID = getChannelResult.records[0].SlackChannelUUID;
-        return {
-          type: "error",
-          error: new Error("NewMessage: Channel already exists in DB"),
-        };
       }
-
-      channelUUID = ulid();
-
-      // Get needed info about Channel
-      let getChannelInfoConfig = {
-        method: "get",
-        url:
-          "https://slack.com/api/conversations.info?channel=" + this.channelID,
-        headers: {
-          Authorization: "Bearer " + botToken,
-          "Content-Type": "application/json",
-        },
-      } as AxiosRequestConfig<any>;
-
-      const getChannelInfoResult = await axios(getChannelInfoConfig);
-
-      // Insert channel into DB
-      let channelName = getChannelInfoResult.data.channel.name;
-
-      let insertChannelSql =
-        "insert into SlackChannel (SlackChannelUUID, SlackWorkspaceUUID, ChannelID, Name) values (:channelUUID, :workspaceUUID, :channelID, :channelName)";
-
-      let insertChannelResult = await data.query(insertChannelSql, {
-        channelUUID: channelUUID,
-        workspaceUUID: workspaceUUID,
-        channelID: this.channelID,
-        channelName: channelName,
-      });
 
       let cursor = null;
       let channelMembers: string[] = [];
@@ -846,8 +845,6 @@ export class AppAddedEvent extends SlackEvent {
 
       // Now get all users from the workspace in the DB in order to add new users
 
-      console.log("Users in Channel", channelMembers);
-
       let getWorkspaceUsersSql =
         "select SlackID from SlackUser where SlackWorkspaceUUID = :workspaceUUID";
 
@@ -867,7 +864,7 @@ export class AppAddedEvent extends SlackEvent {
         }
       }
       console.log(
-        "Number of users in channe but no in DB",
+        "Number of users in channel but not in DB",
         membersNotInDB.length
       );
       if (membersNotInDB.length !== 0) {
@@ -986,7 +983,6 @@ export class AppAddedEvent extends SlackEvent {
         promises.push(client.send(command));
       }
       let responses = await Promise.all(promises);
-      console.log("Number of responses:", responses.length);
     } catch (e) {
       return {
         type: "error",
