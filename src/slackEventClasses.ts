@@ -110,11 +110,11 @@ export class HelpfulButton extends SlackEvent {
       });
 
       let getBotTokenSql = `select SlackToken.BotToken from SlackToken 
-            join SlackChannel on SlackToken.SlackWorkspaceUUID = SlackChannel.SlackWorkspaceUUID 
-            where SlackChannel.ChannelID = :channelID`;
+      join SlackWorkspace on SlackToken.SlackWorkspaceUUID = SlackWorkspace.SlackWorkspaceUUID 
+      where SlackWorkspace.WorkspaceID = :workspaceID`;
 
       let getBotTokenResult = await data.query(getBotTokenSql, {
-        channelID: this.channelID,
+        workspaceID: this.workspaceID,
       });
 
       let botToken = getBotTokenResult.records[0].BotToken;
@@ -257,11 +257,11 @@ export class NotHelpfulButton extends SlackEvent {
       const notHelpfulRes = await axios(notHelpfulConfig);
 
       let getBotTokenSql = `select SlackToken.BotToken from SlackToken 
-            join SlackChannel on SlackToken.SlackWorkspaceUUID = SlackChannel.SlackWorkspaceUUID 
-            where SlackChannel.ChannelID = :channelID`;
+      join SlackWorkspace on SlackToken.SlackWorkspaceUUID = SlackWorkspace.SlackWorkspaceUUID 
+      where SlackWorkspace.WorkspaceID = :workspaceID`;
 
       let getBotTokenResult = await data.query(getBotTokenSql, {
-        channelID: this.channelID,
+        workspaceID: this.workspaceID,
       });
 
       let botToken = getBotTokenResult.records[0].BotToken;
@@ -378,11 +378,11 @@ export class DismissButton extends SlackEvent {
       const dismissRes = await axios(dismissConfig);
 
       let getBotTokenSql = `select SlackToken.BotToken from SlackToken 
-              join SlackChannel on SlackToken.SlackWorkspaceUUID = SlackChannel.SlackWorkspaceUUID 
-              where SlackChannel.ChannelID = :channelID`;
+      join SlackWorkspace on SlackToken.SlackWorkspaceUUID = SlackWorkspace.SlackWorkspaceUUID 
+      where SlackWorkspace.WorkspaceID = :workspaceID`;
 
       let getBotTokenResult = await data.query(getBotTokenSql, {
-        channelID: this.channelID,
+        workspaceID: this.workspaceID,
       });
 
       let botToken = getBotTokenResult.records[0].BotToken;
@@ -439,7 +439,7 @@ export class MarkedAnswerEvent extends SlackEvent {
   constructor(
     channelID: string,
     workspaceID: string,
-    public parentMsgID: string | undefined,
+    public parentMsgID: string | null,
     public parentMsgText: string | undefined,
     public messageID: string,
     public userID: string,
@@ -503,23 +503,22 @@ export class MarkedAnswerEvent extends SlackEvent {
     console.log("Marked Answer do work");
     try {
       let getBotTokenSql = `select SlackToken.BotToken from SlackToken 
-      join SlackChannel on SlackToken.SlackWorkspaceUUID = SlackChannel.SlackWorkspaceUUID 
-      where SlackChannel.ChannelID = :channelID`;
+      join SlackWorkspace on SlackToken.SlackWorkspaceUUID = SlackWorkspace.SlackWorkspaceUUID 
+      where SlackWorkspace.WorkspaceID = :workspaceID`;
 
       let getBotTokenResult = await data.query(getBotTokenSql, {
-        channelID: this.channelID,
+        workspaceID: this.workspaceID,
       });
 
       let botToken = getBotTokenResult.records[0].BotToken;
 
       if (this.parentMsgID === null || this.messageID == this.parentMsgID) {
         // Marked a message that is not in a thread
-        this.sendBadMessage(botToken);
+        await this.sendBadMessage(botToken);
         return {
-          type: "error",
-          error: new Error(
-            "MarkedAnswer: Message marked as answer is not in a thread"
-          ),
+          type: "success",
+          value:
+            "Cannot Process Marked Answer: Marked message is not in thread",
         };
       }
 
@@ -533,10 +532,10 @@ export class MarkedAnswerEvent extends SlackEvent {
 
       if (getChannelNameResult.records.length === 0) {
         // Channel doesn't exist in database
-        this.sendBadMessage(botToken);
+        await this.sendBadMessage(botToken);
         return {
-          type: "error",
-          error: new Error("MarkedAnswer: Channel does not exist in DB"),
+          type: "success",
+          value: "Cannot Process Marked Answer: Channel does not exist in DB",
         };
       }
 
@@ -556,10 +555,11 @@ export class MarkedAnswerEvent extends SlackEvent {
 
       if (getParentRes.data.messages[0].user != this.userID) {
         // User marked another's message
-        this.sendBadMessage(botToken);
+        await this.sendBadMessage(botToken);
         return {
-          type: "error",
-          error: new Error("MarkedAnswer: User marked other User's answer"),
+          type: "success",
+          value:
+            "Cannot Process Marked Answer: User marked for another user's message",
         };
       }
 
@@ -640,8 +640,8 @@ export class NewMessageEvent extends SlackEvent {
       if (getChannelNameResult.records.length === 0) {
         // Channel doesn't exist in database
         return {
-          type: "error",
-          error: new Error("NewMessage: Channel does not exist in DB"),
+          type: "success",
+          value: "Cannot process NewMessage: Channel does not exist in DB",
         };
       }
 
@@ -651,8 +651,8 @@ export class NewMessageEvent extends SlackEvent {
       ) {
         // Message is not a parent message
         return {
-          type: "error",
-          error: new Error("NewMessage: Channel does not exist in DB"),
+          type: "success",
+          value: "Cannot process NewMessage: Message is not a parent message",
         };
       }
       const command = new SendMessageCommand({
@@ -665,7 +665,7 @@ export class NewMessageEvent extends SlackEvent {
     } catch (e) {
       return {
         type: "error",
-        error: new Error("NewMessage: calls failed:" + e),
+        error: new Error("NewMessage calls failed:" + e),
       };
     }
     return { type: "success", value: "New Message sent to SQS sucessfully" };

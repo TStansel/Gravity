@@ -327,11 +327,11 @@ function fromSlackInteractivity(
         (<qs.ParsedQs>slackPayload.team).id
       ) {
         // thread_ts is dealt with as such because its final value depends on its existance
-        let thread_ts: string | undefined;
+        let thread_ts: string | null;
         if ((<qs.ParsedQs>slackPayload.message).thread_ts) {
           thread_ts = (<qs.ParsedQs>slackPayload.message).thread_ts as string;
         } else {
-          thread_ts = undefined;
+          thread_ts = null;
         }
         // Reason for the ugly casting is due to qs type weirdness and the above checks not
         // narrowing the type down. Normally code after the above checks would infer the correct
