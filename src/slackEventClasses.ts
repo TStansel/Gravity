@@ -512,6 +512,17 @@ export class MarkedAnswerEvent extends SlackEvent {
 
       let botToken = getBotTokenResult.records[0].BotToken;
 
+      if (this.parentMsgID === null || this.messageID == this.parentMsgID) {
+        // Marked a message that is not in a thread
+        this.sendBadMessage(botToken);
+        return {
+          type: "error",
+          error: new Error(
+            "MarkedAnswer: Message marked as answer is not in a thread"
+          ),
+        };
+      }
+
       let getChannelNameSql = `select SlackChannel.Name from SlackChannel 
         join SlackWorkspace on SlackChannel.SlackWorkspaceUUID = SlackWorkspace.SlackWorkspaceUUID
         where SlackChannel.ChannelID = :channelID`;
@@ -555,8 +566,8 @@ export class MarkedAnswerEvent extends SlackEvent {
       this.parentMsgText = getParentRes.data.messages[0].text;
 
       const command = new SendMessageCommand({
-        MessageBody: JSON.stringify(this), // TODO Check This is working
-        QueueUrl: process.env.REVERSE_PROXY_SQS_URL,
+        MessageBody: JSON.stringify(this),
+        QueueUrl: process.env.PROCESS_EVENTS_ML_SQS_URL,
       });
       let response = await client.send(command);
       console.log("Marked Answer in SQS", response);
@@ -644,13 +655,12 @@ export class NewMessageEvent extends SlackEvent {
           error: new Error("NewMessage: Channel does not exist in DB"),
         };
       }
-
       const command = new SendMessageCommand({
-        MessageBody: JSON.stringify(this), // TODO Check This is working
-        QueueUrl: process.env.REVERSE_PROXY_SQS_URL,
+        MessageBody: JSON.stringify(this),
+        QueueUrl: process.env.PROCESS_EVENTS_ML_SQS_URL,
       });
       let response = await client.send(command);
-      console.log("New Message in SQS", response);
+      //console.log("New Message in SQS", response);
       // Send Message to Slack
     } catch (e) {
       return {
