@@ -1,11 +1,20 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
+import {
+  SQSClient,
+  SendMessageCommand,
+  SendMessageBatchCommand,
+  SendMessageBatchCommandInput,
+  SendMessageBatchRequestEntry,
+  UnsupportedOperation,
+  ServiceOutputTypes,
+} from "@aws-sdk/client-sqs";
 import { ulid } from "ulid";
 const data = require("data-api-client")({
-  secretArn:
-    "arn:aws:secretsmanager:us-east-2:579534454884:secret:rds-db-credentials/cluster-4QWLO4T4HOH5I2B5367KESUM5Y/admin-lplDgu",
-  resourceArn: "arn:aws:rds:us-east-2:579534454884:cluster:osmosix-db-cluster",
+  secretArn: process.env.AURORA_SECRET_ARN,
+  resourceArn: process.env.AURORA_RESOURCE_ARN,
   database: "osmosix", // set a default database
 });
+const client = new SQSClient({});
 
 /* --------  Types -------- */
 // These types are used so we can levarage Typescripts type system instead of throwing error which
@@ -19,19 +28,21 @@ export type Result<T> = ResultSuccess<T> | ResultError;
 /* --------  Classes -------- */
 
 export abstract class SlackEvent {
+  public type: string;
   public channelID: string;
   public workspaceID: string;
 
   constructor(channelID: string, workspaceID: string) {
     this.channelID = channelID;
     this.workspaceID = workspaceID;
+    this.type = "SLACKEVENT";
   }
 
   abstract doWork(): Promise<Result<string>>;
 }
 
 export class HelpfulButton extends SlackEvent {
-  static type: "HELPFULBUTTON";
+  public type: string;
   constructor(
     channelID: string,
     workspaceID: string,
@@ -45,6 +56,7 @@ export class HelpfulButton extends SlackEvent {
     this.messageID = messageID;
     this.oldQuestionUUID = oldQuestionUUID;
     this.userID = userID;
+    this.type = "HELPFULBUTTON";
   }
   static fromJSON(slackJSON: JSON): Result<SlackEvent> {
     if (
@@ -74,6 +86,7 @@ export class HelpfulButton extends SlackEvent {
   }
 
   async doWork(): Promise<Result<string>> {
+    console.log("Helpful do work");
     try {
       let helpfulParams = {
         replace_original: "true",
@@ -187,7 +200,7 @@ export class HelpfulButton extends SlackEvent {
 }
 
 export class NotHelpfulButton extends SlackEvent {
-  static type: "NOTHELPFULBUTTON";
+  public type: string;
   constructor(
     channelID: string,
     workspaceID: string,
@@ -199,6 +212,7 @@ export class NotHelpfulButton extends SlackEvent {
     this.responseURL = responseURL;
     this.messageID = messageID;
     this.oldQuestionUUID = oldQuestionUUID;
+    this.type = "NOTHELPFULBUTTON";
   }
 
   static fromJSON(slackJSON: JSON): Result<NotHelpfulButton> {
@@ -227,6 +241,7 @@ export class NotHelpfulButton extends SlackEvent {
   }
 
   async doWork(): Promise<Result<string>> {
+    console.log("Not helpful do work");
     try {
       let notHelpfulParams = {
         replace_original: "true",
@@ -311,7 +326,7 @@ export class NotHelpfulButton extends SlackEvent {
 }
 
 export class DismissButton extends SlackEvent {
-  static type: "DISMISSBUTTON";
+  public type: string;
   constructor(
     channelID: string,
     workspaceID: string,
@@ -321,6 +336,7 @@ export class DismissButton extends SlackEvent {
     super(channelID, workspaceID);
     this.responseURL = responseURL;
     this.messageID = messageID;
+    this.type = "DISMISSBUTTON";
   }
 
   static fromJSON(slackJSON: JSON): Result<DismissButton> {
@@ -347,6 +363,7 @@ export class DismissButton extends SlackEvent {
   }
 
   async doWork(): Promise<Result<string>> {
+    console.log("Dismiss BUtton do work");
     try {
       let dismissParams = {
         delete_original: "true",
@@ -418,7 +435,7 @@ export class DismissButton extends SlackEvent {
 }
 
 export class MarkedAnswerEvent extends SlackEvent {
-  static type: "MARKEDANSWEREVENT";
+  public type: string;
   constructor(
     channelID: string,
     workspaceID: string,
@@ -433,6 +450,7 @@ export class MarkedAnswerEvent extends SlackEvent {
     this.messageID = messageID;
     this.userID = userID;
     this.text = text;
+    this.type = "MARKEDANSWEREVENT";
   }
 
   async sendBadMessage(botToken: string): Promise<void> {
@@ -473,7 +491,7 @@ export class MarkedAnswerEvent extends SlackEvent {
         slackJSON["channelID" as keyof JSON] as string,
         slackJSON["workspaceID" as keyof JSON] as string,
         slackJSON["parentMsgID" as keyof JSON] as string,
-        undefined,
+        undefined, // Parent Text: Fetch this from slack later
         slackJSON["messageID" as keyof JSON] as string,
         slackJSON["userID" as keyof JSON] as string,
         slackJSON["text" as keyof JSON] as string
@@ -482,6 +500,7 @@ export class MarkedAnswerEvent extends SlackEvent {
   }
 
   async doWork(): Promise<Result<string>> {
+    console.log("Marked Answer do work");
     try {
       let getBotTokenSql = `select SlackToken.BotToken from SlackToken 
       join SlackChannel on SlackToken.SlackWorkspaceUUID = SlackChannel.SlackWorkspaceUUID 
@@ -535,8 +554,12 @@ export class MarkedAnswerEvent extends SlackEvent {
 
       this.parentMsgText = getParentRes.data.messages[0].text;
 
-      // CALL NLP
-      // CALL DOC2VEC
+      const command = new SendMessageCommand({
+        MessageBody: JSON.stringify(this), // TODO Check This is working
+        QueueUrl: process.env.REVERSE_PROXY_SQS_URL,
+      });
+      let response = await client.send(command);
+      console.log("Marked Answer in SQS", response);
       // Thank You MSG
       // Create Q and A
     } catch (e) {
@@ -545,25 +568,26 @@ export class MarkedAnswerEvent extends SlackEvent {
         error: new Error("MarkAnswer calls failed:" + e),
       };
     }
-    return { type: "success", value: "Marked Answer completed sucessfully" };
+    return { type: "success", value: "Marked Answer sent to SQS sucessfully" };
   }
 }
 
 export class NewMessageEvent extends SlackEvent {
-  static type: "NEWMESSAGEEVENT";
+  public type: string;
   constructor(
     channelID: string,
     workspaceID: string,
     public messageID: string,
     public userID: string,
     public text: string,
-    public parentMsgID: string | undefined
+    public parentMsgID: string | null
   ) {
     super(channelID, workspaceID);
     this.messageID = messageID;
     this.userID = userID;
     this.text = text;
     this.parentMsgID = parentMsgID;
+    this.type = "NEWMESSAGEEVENT";
   }
   static fromJSON(slackJSON: JSON): Result<NewMessageEvent> {
     if (
@@ -587,12 +611,13 @@ export class NewMessageEvent extends SlackEvent {
         slackJSON["messageID" as keyof JSON] as string,
         slackJSON["userID" as keyof JSON] as string,
         slackJSON["text" as keyof JSON] as string,
-        slackJSON["parentMsgID" as keyof JSON] as string | undefined
+        slackJSON["parentMsgID" as keyof JSON] as string | null
       ),
     };
   }
 
   async doWork(): Promise<Result<string>> {
+    console.log("new Message do work");
     try {
       let getChannelNameSql = `select SlackChannel.Name from SlackChannel 
         join SlackWorkspace on SlackChannel.SlackWorkspaceUUID = SlackWorkspace.SlackWorkspaceUUID
@@ -620,9 +645,12 @@ export class NewMessageEvent extends SlackEvent {
         };
       }
 
-      // NLP
-      // Doc2Vec
-      // Find Similar Questions
+      const command = new SendMessageCommand({
+        MessageBody: JSON.stringify(this), // TODO Check This is working
+        QueueUrl: process.env.REVERSE_PROXY_SQS_URL,
+      });
+      let response = await client.send(command);
+      console.log("New Message in SQS", response);
       // Send Message to Slack
     } catch (e) {
       return {
@@ -630,15 +658,16 @@ export class NewMessageEvent extends SlackEvent {
         error: new Error("NewMessage: calls failed:" + e),
       };
     }
-    return { type: "success", value: "New Message completed sucessfully" };
+    return { type: "success", value: "New Message sent to SQS sucessfully" };
   }
 }
 
 export class AppAddedEvent extends SlackEvent {
-  static type: "APPADDEDEVENT";
+  public type: string;
   constructor(channelID: string, workspaceID: string, public userID: string) {
     super(channelID, workspaceID);
     this.userID = userID;
+    this.type = "APPADDEDEVENT";
   }
   static fromJSON(slackJSON: JSON): Result<AppAddedEvent> {
     if (
@@ -662,13 +691,13 @@ export class AppAddedEvent extends SlackEvent {
   }
 
   async doWork(): Promise<Result<string>> {
+    console.log("App Added Do Work");
     try {
       let getWorkspaceSql =
         "select * from SlackWorkspace where WorkspaceID = :workspaceID";
-      let workspaceID = this.workspaceID;
 
       let getWorkspaceResult = await data.query(getWorkspaceSql, {
-        workspaceID: workspaceID,
+        workspaceID: this.workspaceID,
       });
 
       //console.log("getWorkspaceresult: ", getWorkspaceResult);
@@ -678,33 +707,64 @@ export class AppAddedEvent extends SlackEvent {
     where SlackWorkspace.WorkspaceID = :workspaceID`;
 
       let getBotTokenResult = await data.query(getBotTokenSql, {
-        workspaceID: workspaceID,
+        workspaceID: this.workspaceID,
       });
 
       let botToken = getBotTokenResult.records[0].BotToken;
 
-      let workspaceUUID = getWorkspaceResult.records[0].SlackWorkspaceUUID;
+      let workspaceUUID: string;
+
+      if (getWorkspaceResult.records.length === 0) {
+        // Workspace not in DB - TODO This should be changed to a failure
+        // But for now without oauth we understand it breaks in dev
+
+        let getSlackWorkspaceNameConfig = {
+          method: "get",
+          url: "https://slack.com/api/team.info?team=" + this.workspaceID,
+          headers: {
+            Authorization: "Bearer " + botToken,
+            "Content-Type": "application/json",
+          },
+        } as AxiosRequestConfig<any>;
+
+        const getSlackWorkspaceNameResult = await axios(
+          getSlackWorkspaceNameConfig
+        );
+
+        let workspaceName = getSlackWorkspaceNameResult.data.team.name;
+        workspaceUUID = ulid();
+
+        let insertWorkspaceSql =
+          "insert into SlackWorkspace (SlackWorkspaceUUID, WorkspaceID, Name) values (:SlackWorkspaceUUID, :WorkspaceID, :Name)";
+
+        let insertWorkspaceResult = await data.query(insertWorkspaceSql, {
+          SlackWorkspaceUUID: workspaceUUID,
+          WorkspaceID: this.workspaceID,
+          Name: workspaceName,
+        });
+      } else {
+        workspaceUUID = getWorkspaceResult.records[0]
+          .SlackWorkspaceUUID as string;
+      }
 
       // Check if slack channel exists in DB
-
-      let channelID = this.channelID;
 
       let getChannelSql =
         "select * from SlackChannel where SlackWorkspaceUUID = :workspaceUUID and ChannelID = :channelID";
 
       let getChannelResult = await data.query(getChannelSql, {
         workspaceUUID: workspaceUUID,
-        channelID: channelID,
+        channelID: this.channelID,
       });
 
-      let channelUUID;
+      let channelUUID: string;
 
       // If the channel already exists skip the steps of putting all channel users in DB
       if (getChannelResult.records.length > 0) {
         channelUUID = getChannelResult.records[0].SlackChannelUUID;
         return {
           type: "error",
-          error: new Error("NewMessage: Channel does not exist in DB"),
+          error: new Error("NewMessage: Channel already exists in DB"),
         };
       }
 
@@ -713,7 +773,8 @@ export class AppAddedEvent extends SlackEvent {
       // Get needed info about Channel
       let getChannelInfoConfig = {
         method: "get",
-        url: "https://slack.com/api/conversations.info?channel=" + channelID,
+        url:
+          "https://slack.com/api/conversations.info?channel=" + this.channelID,
         headers: {
           Authorization: "Bearer " + botToken,
           "Content-Type": "application/json",
@@ -731,12 +792,12 @@ export class AppAddedEvent extends SlackEvent {
       let insertChannelResult = await data.query(insertChannelSql, {
         channelUUID: channelUUID,
         workspaceUUID: workspaceUUID,
-        channelID: channelID,
+        channelID: this.channelID,
         channelName: channelName,
       });
 
       let cursor = null;
-      let channelMembers = [];
+      let channelMembers: string[] = [];
 
       do {
         let cursorParam;
@@ -752,7 +813,7 @@ export class AppAddedEvent extends SlackEvent {
           method: "get",
           url:
             "https://slack.com/api/conversations.members?channel=" +
-            channelID +
+            this.channelID +
             "&limit=200" +
             cursorParam,
           headers: {
@@ -763,10 +824,8 @@ export class AppAddedEvent extends SlackEvent {
 
         const getChannelUsersResult = await axios(getChannelUsersConfig);
 
-        //console.log("Get Channel Users Call:", getChannelUsersResult);
-
         channelMembers = channelMembers.concat(
-          getChannelUsersResult.data.members
+          getChannelUsersResult.data.members as string[]
         );
 
         // Logic to decide if need to continue paginating
@@ -775,7 +834,6 @@ export class AppAddedEvent extends SlackEvent {
           getChannelUsersResult.data.response_metadata.next_cursor === ""
         ) {
           // Response has no next_cursor property set so we are done paginating!
-          //console.log("no cursor in response, done paginating");
           cursor = null;
         } else {
           cursor =
@@ -783,15 +841,158 @@ export class AppAddedEvent extends SlackEvent {
               /=/g,
               "%3D"
             );
+        }
+      } while (cursor !== null); // When done paginating cursor will be set to null
+
+      // Now get all users from the workspace in the DB in order to add new users
+
+      console.log("Users in Channel", channelMembers);
+
+      let getWorkspaceUsersSql =
+        "select SlackID from SlackUser where SlackWorkspaceUUID = :workspaceUUID";
+
+      let getWorkspaceUsersResult = await data.query(getWorkspaceUsersSql, {
+        workspaceUUID: workspaceUUID,
+      });
+
+      let slackUserIdSet = new Set();
+      for (let row of getWorkspaceUsersResult.records) {
+        slackUserIdSet.add(row.SlackID);
+      }
+
+      let membersNotInDB: string[] = [];
+      for (let slackID of channelMembers) {
+        if (!slackUserIdSet.has(slackID)) {
+          membersNotInDB.push(slackID);
+        }
+      }
+      console.log(
+        "Number of users in channe but no in DB",
+        membersNotInDB.length
+      );
+      if (membersNotInDB.length !== 0) {
+        // There are New Members to put into DB
+        let batchInsertNewSlackUserSql =
+          "insert into SlackUser (SlackUserUUID, SlackWorkspaceUUID, SlackID) values (:slackUserUUID, :workspaceUUID, :slackID)";
+
+        // Prepare list of users to insert
+        let batchInsertSlackUsersParams = membersNotInDB.map((slackID) => [
+          {
+            slackUserUUID: ulid(),
+            workspaceUUID: workspaceUUID,
+            slackID: slackID,
+          },
+        ]);
+
+        //console.log("batchInsertSlackUsersParams: ", batchInsertSlackUsersParams);
+
+        let batchInsertNewSlackUserResult = await data.query(
+          batchInsertNewSlackUserSql,
+          batchInsertSlackUsersParams
+        );
+      }
+
+      cursor = null;
+      let channelMessages: JSON[] = [];
+
+      do {
+        let cursorParam;
+
+        // Logic to send no cursor paramater the first call
+        if (cursor !== null) {
+          cursorParam = "&cursor=" + cursor;
+        } else {
+          cursorParam = "";
+        }
+
+        let getChannelMessagesConfig = {
+          method: "get",
+          url:
+            "https://slack.com/api/conversations.history?channel=" +
+            this.channelID +
+            "&limit=200" +
+            cursorParam,
+          headers: {
+            Authorization: "Bearer " + botToken,
+            "Content-Type": "application/json",
+          },
+        } as AxiosRequestConfig<any>;
+
+        const getChannelMessagesResult = await axios(getChannelMessagesConfig);
+
+        //console.log("Get Channel Messages Call:", getChannelMessagesResult);
+
+        channelMessages = channelMessages.concat(
+          getChannelMessagesResult.data.messages
+        );
+
+        // Logic to decide if need to continue paginating
+        if (
+          !getChannelMessagesResult.data.hasOwnProperty("response_metadata") ||
+          getChannelMessagesResult.data.response_metadata.next_cursor === ""
+        ) {
+          // Response has no next_cursor property set so we are done paginating!
+          //console.log("no cursor in response, done paginating");
+          cursor = null;
+        } else if (
+          // Types here a bit confusing, channelMessages is list of JSON where ts is a string.
+          // We need it as a number to insure we only get past year of messages
+          Date.now() / 1000 -
+            Number(
+              channelMessages[channelMessages.length - 1]["ts" as keyof JSON]
+            ) >
+          60 * 60 * 24 * 365
+        ) {
+          // Oldest message in response is more than 1 year old, stop paginating!
+          /*console.log(
+            "Oldest message in response is more than 1 year old, stop paginating!"
+          );*/
+          cursor = null;
+        } else {
+          cursor =
+            getChannelMessagesResult.data.response_metadata.next_cursor.replace(
+              /=/g,
+              "%3D"
+            );
           //console.log("cursor found in result, encoding and paginating");
         }
       } while (cursor !== null); // When done paginating cursor will be set to null
+
+      console.log("Number of messages in past year:", channelMessages.length);
+
+      let promises: Promise<ServiceOutputTypes>[] = [];
+      let batch_size = 5;
+      for (let i = 0; i < channelMessages.length; i += batch_size) {
+        //console.log("hit for loop");
+
+        let channelMessagesBatch = channelMessages.slice(i, i + batch_size);
+        //console.log(channelMessagesBatch);
+        let sqsSendBatchMessageEntries: SendMessageBatchRequestEntry[] =
+          channelMessagesBatch.map((message, index) => ({
+            Id: String(index),
+            MessageBody: JSON.stringify({
+              message: message,
+              channelID: this.channelID,
+              channelUUID: channelUUID,
+            }),
+          }));
+
+        //console.log(sqsSendBatchMessageEntries);
+        let sqsSendBatchMessageInput: SendMessageBatchCommandInput = {
+          Entries: sqsSendBatchMessageEntries,
+          QueueUrl: process.env.PROCESS_EVENTS_ML_SQS_URL,
+        };
+        let command = new SendMessageBatchCommand(sqsSendBatchMessageInput);
+        promises.push(client.send(command));
+      }
+      let responses = await Promise.all(promises);
+      console.log("Number of responses:", responses.length);
     } catch (e) {
       return {
         type: "error",
         error: new Error("App Added Network calls failed:" + e),
       };
     }
-    return { type: "success", value: "App Added completed sucessfully" };
+    return { type: "success", value: "App Added sent to SQS sucessfully" };
   }
 }

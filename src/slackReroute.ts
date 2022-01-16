@@ -3,7 +3,11 @@ import {
   APIGatewayProxyResultV2,
   APIGatewayProxyStructuredResultV2,
 } from "aws-lambda";
-import { SQSClient, SendMessageCommand, UnsupportedOperation } from "@aws-sdk/client-sqs";
+import {
+  SQSClient,
+  SendMessageCommand,
+  UnsupportedOperation,
+} from "@aws-sdk/client-sqs";
 import * as crypto from "crypto";
 import * as qs from "qs";
 import {
@@ -16,11 +20,9 @@ import {
   AppAddedEvent,
   Result,
   ResultError,
-  ResultSuccess
+  ResultSuccess,
 } from "./slackEventClasses";
-import {
-  buildResponse,
-} from "./slackFunctions";
+import { buildResponse } from "./slackFunctions";
 
 const client = new SQSClient({});
 
@@ -33,7 +35,9 @@ export const lambdaHandler = async (
 
   let slackEventResult = determineEvent(event);
   if (slackEventResult.type === "error") {
-    console.log(`Could not determine event type: ${slackEventResult.error.message}`);
+    console.log(
+      `Could not determine event type: ${slackEventResult.error.message}`
+    );
     return buildResponse(401, "Access Denied", true);
   }
 
@@ -108,7 +112,10 @@ function verifyRequestIsFromSlack(
     !event.headers["X-Slack-Signature"] ||
     !event.body
   ) {
-    return { type: "error", error: new Error("Event object missing attributes") };
+    return {
+      type: "error",
+      error: new Error("Event object missing attributes"),
+    };
   }
 
   const slackTimestamp = +event.headers["X-Slack-Request-Timestamp"];
@@ -245,11 +252,11 @@ function fromSlackEventsApi(event: APIGatewayProxyEventV2): Result<SlackEvent> {
       return hasMessageProperties;
     }
 
-    let thread_ts: string | undefined
-    if(slackEvent.event.thread_ts){
-      thread_ts = slackEvent.event.thread_ts
+    let thread_ts: string | null;
+    if (slackEvent.event.thread_ts) {
+      thread_ts = slackEvent.event.thread_ts;
     } else {
-      thread_ts = undefined
+      thread_ts = null;
     }
 
     let newMessageEvent = new NewMessageEvent(
@@ -258,7 +265,7 @@ function fromSlackEventsApi(event: APIGatewayProxyEventV2): Result<SlackEvent> {
       slackEvent.event.ts as string,
       slackEvent.event.user as string,
       slackEvent.event.text as string,
-      thread_ts,
+      thread_ts
     );
 
     return { type: "success", value: newMessageEvent };
