@@ -73,6 +73,7 @@ export class CdkOsmosixStack extends Stack {
         tsconfig: "../tsconfig.json",
       },
     });
+    dbSecret.grantRead(oauthLambda);
 
     const reverseProxySqs = new sqs.Queue(this, "ReverseProxyQueue", {
       encryption: sqs.QueueEncryption.KMS_MANAGED,
