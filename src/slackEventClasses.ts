@@ -628,7 +628,6 @@ export class MarkedAnswerEvent
   async doMLWork(vectors: string): Promise<Result<string>> {
     console.log("Marked Answer: ML Work");
     try {
-
       let parentVector = vectors;
 
       let getBotTokenSql = `select SlackToken.BotToken from SlackToken 
@@ -1011,6 +1010,8 @@ export class NewMessageEvent
         mostSimilarQuestion["similarity" as keyof JSON]
       ) as number;
 
+      // TODO: Logic to get most recent msg over X%
+
       // Send Slack Message
       let msgParams = {
         channel: this.channelID,
@@ -1118,10 +1119,7 @@ export class NewMessageEvent
   }
 }
 
-export class AppAddedEvent
-  extends SlackEvent
-  implements MachineLearningIsWorkable
-{
+export class AppAddedEvent extends SlackEvent {
   public type: string;
   constructor(channelID: string, workspaceID: string, public userID: string) {
     super(channelID, workspaceID);
@@ -1147,6 +1145,10 @@ export class AppAddedEvent
         slackJSON["userID" as keyof JSON] as string
       ),
     };
+  }
+
+  isParentMessage(message: JSON): boolean{
+    return message.hasOwnProperty("thread_ts");
   }
 
   async doWork(): Promise<Result<string>> {
@@ -1385,8 +1387,9 @@ export class AppAddedEvent
 
         //console.log("Get Channel Messages Call:", getChannelMessagesResult);
 
+        // TODO: Test if filtering below is filtering out non-parent messages
         channelMessages = channelMessages.concat(
-          getChannelMessagesResult.data.messages
+          getChannelMessagesResult.data.messages.filter(this.isParentMessage)
         );
 
         // Logic to decide if need to continue paginating
@@ -1457,10 +1460,67 @@ export class AppAddedEvent
     }
     return { type: "success", value: "App Added sent to SQS sucessfully" };
   }
+}
+
+export class AppAddedMessageProcessing implements MachineLearningIsWorkable {
+  public type: string;
+  constructor(
+    public channelID: string,
+    public channelULID: string,
+    public workspaceID: string,
+    public userID: string,
+    public parentMsgID: string | null,
+    public messageID: string
+  ) {
+    this.channelID = channelID;
+    this.channelULID = channelULID;
+    this.workspaceID = workspaceID;
+    this.userID = userID;
+    this.parentMsgID = parentMsgID;
+    this.messageID = messageID;
+    this.type = "APPADDEDMESSAGEPROCESSING";
+  }
+
+  static fromJSON(slackJSON: JSON): Result<AppAddedMessageProcessing> {
+    if (
+      !slackJSON.hasOwnProperty("channelID") ||
+      !slackJSON.hasOwnProperty("channelULID") ||
+      !slackJSON.hasOwnProperty("workspaceID") ||
+      !slackJSON.hasOwnProperty("userID") ||
+      !slackJSON.hasOwnProperty("parentMsgID") ||
+      !slackJSON.hasOwnProperty("messageID") 
+    ) {
+      return {
+        type: "error",
+        error: new Error("AppAddedMessageProcessing JSON is missing a property"),
+      };
+    }
+    return {
+      type: "success",
+      value: new AppAddedMessageProcessing(
+        slackJSON["channelID" as keyof JSON] as string,
+        slackJSON["channelULID" as keyof JSON] as string,
+        slackJSON["workspaceID" as keyof JSON] as string,
+        slackJSON["userID" as keyof JSON] as string,
+        slackJSON["parentMsgID" as keyof JSON] as string | null,
+        slackJSON["messageID" as keyof JSON] as string,
+      ),
+    };
+  }
 
   async doMLWork(vectors: string): Promise<Result<string>> {
     console.log("App Added: ML Work");
     try {
+
+      if(typeof this.parentMsgID === "string" &&
+      this.messageID !== this.parentMsgID){
+        // Message is not a parent message
+        return {
+          type: "success",
+          value: "Cannot process NewMessage: Message is not a parent message",
+        };
+      }
+
     } catch (e) {
       return {
         type: "error",

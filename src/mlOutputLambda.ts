@@ -4,7 +4,7 @@ import {
   MachineLearningIsWorkable,
   MarkedAnswerEvent,
   NewMessageEvent,
-  AppAddedEvent,
+  AppAddedMessageProcessing,
   Result,
   ResultError,
   ResultSuccess,
@@ -18,7 +18,7 @@ export const lambdaHandler: SQSHandler = async (
 
   let verifySQSResult = verifySQSEvent(event);
 
-  if(verifySQSResult.type === "error"){
+  if (verifySQSResult.type === "error") {
     console.log(verifySQSResult.error.message);
     return;
   }
@@ -44,10 +44,15 @@ export const lambdaHandler: SQSHandler = async (
   //Class Result should be either a new message, app added, or marked answer
   console.log("Slack Result:", classResult.value);
 
-  let workResult = classResult.value.doMLWork(
+  let workResult = await classResult.value.doMLWork(
     slackJson["vector" as keyof JSON] as string | JSON[]
   );
 
+  if (workResult.type === "error") {
+    // Network Call in Class failed
+    throw workResult.error;
+  }
+  console.log(workResult.value);
   // Successful Call
   return;
 };
@@ -61,28 +66,14 @@ function determineClass(slackJson: JSON): Result<MachineLearningIsWorkable> {
   }
 
   switch (slackJson["type" as keyof JSON]) {
-    case "APPADDEDEVENT": {
-      return AppAddedEvent.fromJSON(slackJson);
+    case "APPADDEDMESSAGEPROCESSING": {
+      return AppAddedMessageProcessing.fromJSON(slackJson);
     }
     case "NEWMESSAGEEVENT": {
       return NewMessageEvent.fromJSON(slackJson);
     }
     case "MARKEDANSWEREVENT":
       {
-        if (!slackJson.hasOwnProperty("vector")) {
-          return {
-            type: "error",
-            error: new Error("JSON is missing property 'vector'."),
-          };
-        }
-
-        if (slackJson["vector" as keyof JSON].length != 1) {
-          return {
-            type: "error",
-            error: new Error("Marked Answer: Too many vectors passed in"),
-          };
-        }
-
         return MarkedAnswerEvent.fromJSON(slackJson);
       }
       break;
@@ -103,7 +94,7 @@ function verifyVectors(slackJson: JSON): Result<string> {
   }
 
   switch (slackJson["type" as keyof JSON]) {
-    case "APPADDEDEVENT": {
+    case "APPADDEDMESSAGEPROCESSING": {
       if (typeof slackJson["vectors" as keyof JSON] !== "string") {
         return {
           type: "error",
