@@ -61,8 +61,8 @@ export class CdkOsmosixStack extends Stack {
         OSMOSIX_DEV_CLIENT_SECRET: devClientSecret
           .secretValueFromJson("OSMOSIX_DEV_CLIENT_SECRET")
           .toString(),
-          AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
-          AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+        AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+        AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
       },
       bundling: {
         minify: false,
@@ -112,7 +112,9 @@ export class CdkOsmosixStack extends Stack {
       proxy: false,
     });
 
-    const slackRerouteEndpoint = api.root.addResource("slack-reroute").addMethod("POST");
+    const slackRerouteEndpoint = api.root
+      .addResource("slack-reroute")
+      .addMethod("POST");
     const oauthEndpoint = api.root
       .addResource("oauth")
       .addMethod("GET", new apigateway.LambdaIntegration(oauthLambda));
@@ -160,6 +162,10 @@ export class CdkOsmosixStack extends Stack {
       receiveMessageWaitTime: Duration.seconds(20), // This makes SQS long polling, check to make sure does not slow things down
     });
 
+    const myRole = new iam.Role(this, "My Role", {
+      assumedBy: new iam.ServicePrincipal("sns.amazonaws.com"),
+    });
+
     const pythonMlLambda = new lambda.DockerImageFunction(
       this,
       "pythonMlLambda",
@@ -171,11 +177,22 @@ export class CdkOsmosixStack extends Stack {
           ML_OUTPUT_SQS_URL: mlOutputSqs.queueUrl,
           AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
           AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
-          ENDPOINT_NAME: "huggingface-pytorch-inference-2022-01-17-20-16-16-413"
+          ENDPOINT_NAME:
+            "huggingface-pytorch-inference-2022-01-17-20-16-16-413",
         },
-        timeout: Duration.seconds(300)
+        timeout: Duration.seconds(300),
+        role: myRole,
       }
     );
+
+    myRole.addManagedPolicy(
+      iam.ManagedPolicy.fromManagedPolicyArn(
+        this,
+        "slackMLSageMaker",
+        "arn:aws:iam::579534454884:policy/slackMLSageMaker"
+      )
+    );
+
     dbSecret.grantRead(pythonMlLambda);
     const processEventsMlSqsSource = new lambdaEventSources.SqsEventSource(
       processEventsMlSqs,

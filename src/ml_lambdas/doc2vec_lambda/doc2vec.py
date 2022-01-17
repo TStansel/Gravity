@@ -22,17 +22,18 @@ def lambda_handler(event=None, context=None):
     if ("body" not in event["Records"][0]):
         print("Event is missing Body")
         return
-    slackJson = json.loads(event["body"])
+
+    slackJson = json.loads(event["Records"][0]["body"])
     print(slackJson)
 
     if not nlp(slackJson["text"]):
-        print("MEssage is not a question")
+        print("Message is not a question")
         return
 
     ENDPOINT_NAME = os.environ['ENDPOINT_NAME']
     runtime = boto3.client('runtime.sagemaker')
 
-    payload = {"inputs": slackJson["text"]}
+    payload = json.dumps({"inputs": slackJson["text"]})
     response = runtime.invoke_endpoint(
         EndpointName=ENDPOINT_NAME, ContentType='application/json', Body=payload)
     print(response)
