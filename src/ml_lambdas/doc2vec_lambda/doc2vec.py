@@ -10,8 +10,17 @@ resourceArn = os.environ["AURORA_RESOURCE_ARN"]
 
 def lambda_handler(event=None, context=None):
     print("Request Event", event)
-    if "body" not in event:
-        print("Event it missing Body")
+
+    if "Records" not in event:
+        print("Event is missing Records")
+        return
+
+    if event.Records.length != 1:
+        print("Records length wrong")
+        return
+    
+    if ("body" not in event["Records"][0]):
+        print("Event is missing Body")
         return
     slackJson = json.loads(event.body)
     print(slackJson)
