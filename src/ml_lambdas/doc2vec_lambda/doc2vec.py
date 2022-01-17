@@ -13,6 +13,16 @@ resourceArn = os.environ["AURORA_RESOURCE_ARN"]
 
 def lambda_handler(event=None, context=None):
     print("Request Event", event)
+    if "body" not in event:
+        print("Event it missing Body")
+        return
+    slackJson = json.loads(event.body)
+    print(slackJson)
+
+    if not nlp(slackJson.text):
+        print("MEssage is not a question")
+        return
+
     return#json.dumps({"vector": model.infer_vector(string_to_tokens(event["text"])).tolist()})
 
 def nlp(string):
