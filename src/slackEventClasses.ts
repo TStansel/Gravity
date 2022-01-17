@@ -625,11 +625,9 @@ export class MarkedAnswerEvent
     return { type: "success", value: "Marked Answer sent to SQS sucessfully" };
   }
 
-  async doMLWork(vectors: string): Promise<Result<string>> {
+  async doMLWork(parentVector: string): Promise<Result<string>> {
     console.log("Marked Answer: ML Work");
     try {
-      let parentVector = vectors;
-
       let getBotTokenSql = `select SlackToken.BotToken from SlackToken 
       join SlackWorkspace on SlackToken.SlackWorkspaceUUID = SlackWorkspace.SlackWorkspaceUUID 
       where SlackWorkspace.WorkspaceID = :workspaceID`;
@@ -762,8 +760,8 @@ export class MarkedAnswerEvent
       let qULID = ulid();
 
       // insert Question
-      let insertQuestionSql = `insert into SlackQuestion (SlackQuestionUUID, SlackAnswerUUID, SlackChannelUUID, SlackUserUUID, Ts, RawText, TextVector) 
-      values (:SlackQuestionUUID, :SlackAnswerUUID, :SlackChannelUUID, :SlackUserUUID, :Ts, :RawText, :TextVector)`;
+      let insertQuestionSql = `insert into SlackQuestion (SlackQuestionUUID, SlackAnswerUUID, SlackChannelUUID, SlackUserUUID, Ts, TextVector) 
+      values (:SlackQuestionUUID, :SlackAnswerUUID, :SlackChannelUUID, :SlackUserUUID, :Ts, :TextVector)`;
 
       let insertQuestionResult = await data.query(insertQuestionSql, {
         SlackQuestionUUID: qULID,
@@ -1147,7 +1145,7 @@ export class AppAddedEvent extends SlackEvent {
     };
   }
 
-  isParentMessage(message: JSON): boolean{
+  isParentMessage(message: JSON): boolean {
     return message.hasOwnProperty("thread_ts");
   }
 
@@ -1466,14 +1464,12 @@ export class AppAddedMessageProcessing implements MachineLearningIsWorkable {
   public type: string;
   constructor(
     public channelID: string,
-    public channelULID: string,
     public workspaceID: string,
     public userID: string,
     public parentMsgID: string | null,
     public messageID: string
   ) {
     this.channelID = channelID;
-    this.channelULID = channelULID;
     this.workspaceID = workspaceID;
     this.userID = userID;
     this.parentMsgID = parentMsgID;
@@ -1484,43 +1480,53 @@ export class AppAddedMessageProcessing implements MachineLearningIsWorkable {
   static fromJSON(slackJSON: JSON): Result<AppAddedMessageProcessing> {
     if (
       !slackJSON.hasOwnProperty("channelID") ||
-      !slackJSON.hasOwnProperty("channelULID") ||
       !slackJSON.hasOwnProperty("workspaceID") ||
       !slackJSON.hasOwnProperty("userID") ||
       !slackJSON.hasOwnProperty("parentMsgID") ||
-      !slackJSON.hasOwnProperty("messageID") 
+      !slackJSON.hasOwnProperty("messageID")
     ) {
       return {
         type: "error",
-        error: new Error("AppAddedMessageProcessing JSON is missing a property"),
+        error: new Error(
+          "AppAddedMessageProcessing JSON is missing a property"
+        ),
       };
     }
     return {
       type: "success",
       value: new AppAddedMessageProcessing(
         slackJSON["channelID" as keyof JSON] as string,
-        slackJSON["channelULID" as keyof JSON] as string,
         slackJSON["workspaceID" as keyof JSON] as string,
         slackJSON["userID" as keyof JSON] as string,
         slackJSON["parentMsgID" as keyof JSON] as string | null,
-        slackJSON["messageID" as keyof JSON] as string,
+        slackJSON["messageID" as keyof JSON] as string
       ),
     };
   }
 
-  async doMLWork(vectors: string): Promise<Result<string>> {
+  async doMLWork(vector: string): Promise<Result<string>> {
     console.log("App Added: ML Work");
     try {
+      let insertQuestionSql = `insert into SlackQuestion (SlackQuestionUUID,
+    SlackAnswerUUID,
+    SlackChannelUUID,
+    SlackUserUUID,
+    Ts,
+    TextVector)
+    values (:SlackQuestionUUID,
+      NULL,
+      (select SlackChannelUUID from SlackChannel where ChannelID = :slackChannelID limit 1),
+      (select SlackUserUUID from SlackUser where SlackID = :slackID limit 1),
+      :Ts,
+      :TextVector)`;
 
-      if(typeof this.parentMsgID === "string" &&
-      this.messageID !== this.parentMsgID){
-        // Message is not a parent message
-        return {
-          type: "success",
-          value: "Cannot process NewMessage: Message is not a parent message",
-        };
-      }
-
+      let insertQuestionResult = await data.query(insertQuestionSql, {
+        SlackQuestionUUID: ulid(),
+        slackChannelID: this.channelID,
+        slackID: this.userID,
+        Ts: this.messageID,
+        TextVector: vector,
+      });
     } catch (e) {
       return {
         type: "error",
