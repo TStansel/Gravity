@@ -18,7 +18,7 @@ def lambda_handler(event=None, context=None):
     if len(event["Records"]) != 1:
         print("Records length wrong")
         return
-    
+
     if ("body" not in event["Records"][0]):
         print("Event is missing Body")
         return
@@ -29,17 +29,28 @@ def lambda_handler(event=None, context=None):
         print("MEssage is not a question")
         return
 
-    if slackJson["type"] == "NEWMESSAGEEVENT":
-        pass
-
     ENDPOINT_NAME = os.environ['ENDPOINT_NAME']
     runtime = boto3.client('runtime.sagemaker')
 
     payload = {"inputs": slackJson["text"]}
-    response = runtime.invoke_endpoint(EndpointName=ENDPOINT_NAME, ContentType='application/json', Body=payload)
+    response = runtime.invoke_endpoint(
+        EndpointName=ENDPOINT_NAME, ContentType='application/json', Body=payload)
     print(response)
+    new_vector = np.array([])  # change
 
-    # json.dumps({"vector": model.infer_vector(string_to_tokens(event["text"])).tolist()})
+    if slackJson["type"] == "NEWMESSAGEEVENT":
+        questionObjects = callRds(slackJson["channelID"])
+        similarities = []
+        for question in questionObjects:
+          similarity = cosine_similarity(new_vector, np.array(json.loads(question["TextVector"])))
+          if similarity >= .6:
+            similarities.append({"similarity": similarity, "SlackQuestionID": question["SlackQuestionUUID"], "SlackQuestionTs": question["Ts"]})
+        slackJson["vectors"] = sorted(similarities, key=lambda d: d['similarity'], reverse=True)
+        return json.dumps(slackJson)
+
+    if slackJson["type"] == "MARKEDANSWEREVENT":
+      slackJson["vectors"] = json.dumps(list(new_vector))
+      return json.dumps(slackJson)
     return
 
 
