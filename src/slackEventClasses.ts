@@ -876,7 +876,7 @@ export class NewMessageEvent
     return { type: "success", value: "New Message sent to SQS sucessfully" };
   }
 
-  async doMLWork(vectors: JSON[]): Promise<Result<string>> {
+  async doMLWork(questions: JSON[]): Promise<Result<string>> {
     console.log("New Message: ML Work");
     try {
       let getBotTokenSql = `select SlackToken.BotToken from SlackToken 
@@ -917,7 +917,7 @@ export class NewMessageEvent
 
       const addEmojiReactionRes = await axios(addEmojiReactionConfig);
 
-      if (vectors.length === 0) {
+      if (questions.length === 0) {
         let noSuggestionsMessageParams = {
           channel: this.channelID,
           user: this.userID,
@@ -940,7 +940,7 @@ export class NewMessageEvent
         };
       }
 
-      let mostSimilarQuestion = vectors[0];
+      let mostSimilarQuestion = questions[0];
       let mostSimilarQuestionULID = mostSimilarQuestion[
         "SlackQuestionID" as keyof JSON
       ] as string;
@@ -1009,7 +1009,19 @@ export class NewMessageEvent
       ) as number;
 
       // TODO: Logic to get most recent msg over X%
-
+      // TODO: How are we passing the TS
+      // Sort questions by TS
+      questions.sort((a,b) => parseFloat(a["SlackQuestionTs" as keyof JSON] as string) - parseFloat(b["SlackQuestionTs" as keyof JSON] as string));
+      
+      // Find most recent question above 60% simlarity
+      let mostRecentAboveXQuestion:JSON;
+      for(let i = 0; i < questions.length; i ++){
+        console.log("TS",questions[i]["SlackQuestionTs" as keyof JSON])
+        if(Number(questions[i]["similarity" as keyof JSON]) as number > 0.6){
+          mostRecentAboveXQuestion = questions[i];
+          break;
+        }
+      }
       // Send Slack Message
       let msgParams = {
         channel: this.channelID,
