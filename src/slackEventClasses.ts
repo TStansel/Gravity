@@ -1008,83 +1008,273 @@ export class NewMessageEvent
         mostSimilarQuestion["similarity" as keyof JSON]
       ) as number;
 
-      // TODO: Logic to get most recent msg over X%
       // TODO: How are we passing the TS
       // Sort questions by TS
-      questions.sort((a,b) => parseFloat(a["SlackQuestionTs" as keyof JSON] as string) - parseFloat(b["SlackQuestionTs" as keyof JSON] as string));
-      
+      questions.sort(
+        (a, b) =>
+          parseFloat(a["SlackQuestionTs" as keyof JSON] as string) -
+          parseFloat(b["SlackQuestionTs" as keyof JSON] as string)
+      );
+
       // Find most recent question above 60% simlarity
-      let mostRecentAboveXQuestion:JSON;
-      for(let i = 0; i < questions.length; i ++){
-        console.log("TS",questions[i]["SlackQuestionTs" as keyof JSON])
-        if(Number(questions[i]["similarity" as keyof JSON]) as number > 0.6){
+      let mostRecentAboveXQuestion: JSON | undefined = undefined;
+      for (let i = 0; i < questions.length; i++) {
+        console.log("TS", questions[i]["SlackQuestionTs" as keyof JSON]);
+        if (
+          (Number(questions[i]["similarity" as keyof JSON]) as number) > 0.6
+        ) {
           mostRecentAboveXQuestion = questions[i];
           break;
         }
       }
+
+      let msgParams;
+      let isRecentAnswerInDb: boolean = false;
+      let recentAnswerLink: string = "";
+      let recentQuestionULID: string = "";
+
+      if (mostRecentAboveXQuestion === undefined) {
+        msgParams = {
+          channel: this.channelID,
+          user: this.userID,
+          text: "I think I might have an answer for you!",
+          blocks: [
+            {
+              type: "section",
+              text: {
+                type: "mrkdwn",
+                text: "I think I might have an answer for you!",
+              },
+            },
+            {
+              type: "divider",
+            },
+            {
+              type: "section",
+              text: {
+                type: "mrkdwn",
+                text:
+                  "Similarity score: " +
+                  Math.round(similarityScore * 100) / 100 +
+                  " <" +
+                  answerLink +
+                  "|View thread>",
+              },
+            },
+            {
+              type: "actions",
+              elements: [
+                {
+                  type: "button",
+                  text: {
+                    type: "plain_text",
+                    text: "Helpful",
+                  },
+                  value: mostSimilarQuestionULID + " " + this.messageID,
+                  action_id: "helpful",
+                },
+                {
+                  type: "button",
+                  text: {
+                    type: "plain_text",
+                    text: "Not Helpful",
+                  },
+                  value: mostSimilarQuestionULID + " " + this.messageID,
+                  action_id: "nothelpful",
+                },
+                {
+                  type: "button",
+                  style: "danger",
+                  text: {
+                    type: "plain_text",
+                    text: "Dismiss",
+                  },
+                  value: mostSimilarQuestionULID + " " + this.messageID,
+                  action_id: "dismiss",
+                },
+              ],
+            },
+          ],
+        };
+      } else {
+        let recentSimilarityScore = Number(
+          mostRecentAboveXQuestion["similarity" as keyof JSON]
+        ) as number;
+
+        let recentQuestionULID = mostRecentAboveXQuestion[
+          "SlackQuestionID" as keyof JSON
+        ] as string;
+
+        let getQuestionSql =
+          "select SlackAnswerUUID from SlackQuestion where SlackQuestionUUID = :SlackQuestionUUID";
+
+        let getQuestionResult = await data.query(getQuestionSql, {
+          SlackQuestionUUID: recentQuestionULID,
+        });
+
+        let recentAnswerLink: string;
+
+        if (getQuestionResult.records[0].SlackAnswerUUID === null) {
+          // Answer is null in DB
+          let recentQuestionTS = mostRecentAboveXQuestion[
+            "SlackQuestionTs" as keyof JSON
+          ] as string;
+
+          let repliesConfig = {
+            method: "get",
+            url:
+              "https://slack.com/api/conversations.replies?channel=" +
+              this.channelID +
+              "&ts=" +
+              recentQuestionTS,
+            headers: {
+              Authorization: "Bearer " + botToken,
+              "Content-Type": "application/json",
+            },
+          } as AxiosRequestConfig<any>;
+          const repliesRes = await axios(repliesConfig);
+
+          let answerTs = repliesRes.data.messages[1].ts as string;
+
+          let getLinkConfig = {
+            method: "get",
+            url:
+              "https://slack.com/api/chat.getPermalink?channel=" +
+              this.channelID +
+              "&message_ts=" +
+              answerTs,
+            headers: {
+              Authorization: "Bearer " + botToken,
+              "Content-Type": "application/json",
+            },
+          } as AxiosRequestConfig<any>;
+          const getLinkRes = await axios(getLinkConfig);
+          recentAnswerLink = getLinkRes.data.permalink;
+        } else {
+          isRecentAnswerInDb = true;
+
+          let getAnswerLinkSql =
+            "select AnswerLink from SlackAnswer where SlackAnswerUUID = :SlackAnswerUUID";
+
+          let getAnswerLinkResult = await data.query(getAnswerLinkSql, {
+            SlackAnswerUUID: getQuestionResult.records[0]
+              .SlackAnswerUUID as string,
+          });
+          recentAnswerLink = getAnswerLinkResult.records[0].AnswerLink;
+        }
+
+        msgParams = {
+          channel: this.channelID,
+          user: this.userID,
+          text: "I think I might have an answer for you!",
+          blocks: [
+            {
+              type: "section",
+              text: {
+                type: "mrkdwn",
+                text: "I think I might have an answer for you!",
+              },
+            },
+            {
+              type: "divider",
+            },
+            {
+              // Most similar question
+              type: "section",
+              text: {
+                type: "mrkdwn",
+                text:
+                  "Similarity score: " +
+                  Math.round(similarityScore * 100) / 100 +
+                  " <" +
+                  answerLink +
+                  "|View thread>",
+              },
+            },
+            {
+              type: "actions",
+              elements: [
+                {
+                  type: "button",
+                  text: {
+                    type: "plain_text",
+                    text: "Helpful",
+                  },
+                  value: mostSimilarQuestionULID + " " + this.messageID,
+                  action_id: "helpful",
+                },
+                {
+                  type: "button",
+                  text: {
+                    type: "plain_text",
+                    text: "Not Helpful",
+                  },
+                  value: mostSimilarQuestionULID + " " + this.messageID,
+                  action_id: "nothelpful",
+                },
+                {
+                  type: "button",
+                  style: "danger",
+                  text: {
+                    type: "plain_text",
+                    text: "Dismiss",
+                  },
+                  value: mostSimilarQuestionULID + " " + this.messageID,
+                  action_id: "dismiss",
+                },
+              ],
+            },
+            {
+              // Most recent question over 60% similar
+              type: "section",
+              text: {
+                type: "mrkdwn",
+                text:
+                  "Recent Similarity score: " +
+                  Math.round(recentSimilarityScore * 100) / 100 +
+                  " <" +
+                  recentAnswerLink +
+                  "|View thread>",
+              },
+            },
+            {
+              type: "actions",
+              elements: [
+                {
+                  type: "button",
+                  text: {
+                    type: "plain_text",
+                    text: "Helpful",
+                  },
+                  value: recentQuestionULID + " " + this.messageID,
+                  action_id: "helpful",
+                },
+                {
+                  type: "button",
+                  text: {
+                    type: "plain_text",
+                    text: "Not Helpful",
+                  },
+                  value: recentQuestionULID + " " + this.messageID,
+                  action_id: "nothelpful",
+                },
+                {
+                  type: "button",
+                  style: "danger",
+                  text: {
+                    type: "plain_text",
+                    text: "Dismiss",
+                  },
+                  value: recentQuestionULID + " " + this.messageID,
+                  action_id: "dismiss",
+                },
+              ],
+            },
+          ],
+        };
+      }
+
       // Send Slack Message
-      let msgParams = {
-        channel: this.channelID,
-        user: this.userID,
-        text: "I think I might have an answer for you!",
-        blocks: [
-          {
-            type: "section",
-            text: {
-              type: "mrkdwn",
-              text: "I think I might have an answer for you!",
-            },
-          },
-          {
-            type: "divider",
-          },
-          {
-            type: "section",
-            text: {
-              type: "mrkdwn",
-              text:
-                "Similarity score: " +
-                Math.round(similarityScore * 100) / 100 +
-                " <" +
-                answerLink +
-                "|View thread>",
-            },
-          },
-          {
-            type: "actions",
-            elements: [
-              {
-                type: "button",
-                text: {
-                  type: "plain_text",
-                  text: "Helpful",
-                },
-                value: mostSimilarQuestionULID + " " + this.messageID,
-                action_id: "helpful",
-              },
-              {
-                type: "button",
-                text: {
-                  type: "plain_text",
-                  text: "Not Helpful",
-                },
-                value: mostSimilarQuestionULID + " " + this.messageID,
-                action_id: "nothelpful",
-              },
-              {
-                type: "button",
-                style: "danger",
-                text: {
-                  type: "plain_text",
-                  text: "Dismiss",
-                },
-                value: mostSimilarQuestionULID + " " + this.messageID,
-                action_id: "dismiss",
-              },
-            ],
-          },
-        ],
-      };
 
       let msgConfig = {
         method: "post",
@@ -1114,6 +1304,26 @@ export class NewMessageEvent
         let updateQuestionResult = await data.query(updateQuestionSql, {
           SlackAnswerUUID: answerULID,
           SlackQuestionUUID: mostSimilarQuestionULID,
+        });
+      }
+
+      if (!isRecentAnswerInDb) {
+        let insertAnswerSql =
+          "insert into SlackAnswer (SlackAnswerUUID, AnswerLink, Upvotes) values (:SlackAnswerUUID, :AnswerLink, :Upvotes)";
+        let answerULID = ulid();
+
+        let insertAnswerResult = await data.query(insertAnswerSql, {
+          SlackAnswerUUID: answerULID,
+          AnswerLink: recentAnswerLink as string,
+          Upvotes: 0,
+        });
+
+        let updateQuestionSql =
+          "update SlackQuestion set SlackAnswerUUID = :SlackAnswerUUID where SlackQuestionUUID = :SlackQuestionUUID";
+
+        let updateQuestionResult = await data.query(updateQuestionSql, {
+          SlackAnswerUUID: answerULID,
+          SlackQuestionUUID: recentQuestionULID,
         });
       }
     } catch (e) {
