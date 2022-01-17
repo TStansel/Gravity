@@ -52,6 +52,10 @@ def lambda_handler(event=None, context=None):
     if slackJson["type"] == "MARKEDANSWEREVENT":
       slackJson["vectors"] = json.dumps(list(new_vector))
       return json.dumps(slackJson)
+
+    if slackJson["type"] == "APPADDEDEVENT":
+      pass
+    
     return
 
 
