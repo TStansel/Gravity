@@ -27,7 +27,7 @@ def lambda_handler(event=None, context=None):
     print(slackJson)
 
     if not nlp(slackJson["text"]):
-        print("MEssage is not a question")
+        print("Message is not a question")
         return
 
     if slackJson["type"] == "NEWMESSAGEEVENT":
