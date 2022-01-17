@@ -19,9 +19,12 @@ def lambda_handler(event=None, context=None):
     slackJson = json.loads(event.body)
     print(slackJson)
 
-    if not nlp(slackJson.text):
+    if not nlp(slackJson["text"]):
         print("MEssage is not a question")
         return
+
+    if slackJson["type"] == "NEWMESSAGEEVENT":
+        pass
 
     return#json.dumps({"vector": model.infer_vector(string_to_tokens(event["text"])).tolist()})
 
