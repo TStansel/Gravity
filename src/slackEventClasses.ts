@@ -625,17 +625,11 @@ export class MarkedAnswerEvent
     return { type: "success", value: "Marked Answer sent to SQS sucessfully" };
   }
 
-  async doMLWork(vectors: string[][]): Promise<Result<string>> {
+  async doMLWork(vectors: string): Promise<Result<string>> {
     console.log("Marked Answer: ML Work");
     try {
-      if (vectors.length !== 1) {
-        return {
-          type: "error",
-          error: new Error("Marked Answer ML Work: Wrong number of vectors"),
-        };
-      }
 
-      let parentVector = vectors[0];
+      let parentVector = vectors;
 
       let getBotTokenSql = `select SlackToken.BotToken from SlackToken 
       join SlackWorkspace on SlackToken.SlackWorkspaceUUID = SlackWorkspace.SlackWorkspaceUUID 
@@ -1464,7 +1458,7 @@ export class AppAddedEvent
     return { type: "success", value: "App Added sent to SQS sucessfully" };
   }
 
-  async doMLWork(vectors: string[][]): Promise<Result<string>> {
+  async doMLWork(vectors: string): Promise<Result<string>> {
     console.log("App Added: ML Work");
     try {
     } catch (e) {
@@ -1483,5 +1477,5 @@ export class AppAddedEvent
 /* --------  Interface -------- */
 
 export interface MachineLearningIsWorkable {
-  doMLWork(vectors: string[][] | JSON[]): Promise<Result<string>>;
+  doMLWork(vectors: string | JSON[]): Promise<Result<string>>;
 }
