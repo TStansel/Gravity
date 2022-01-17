@@ -2,24 +2,18 @@ import numpy as np
 import json
 from pydataapi import DataAPI, Result
 import boto3
-import gensim
-import aws_cdk.aws_sqs as sqs
 import os
 
 secretArn =  os.environ["AURORA_SECRET_ARN"]
 resourceArn = os.environ["AURORA_RESOURCE_ARN"]
 
-model = gensim.models.doc2vec.Doc2Vec.load(
-    'so_top_100k_vec_50_win_5_min_2_ep_80.pkl')
+#model = gensim.models.doc2vec.Doc2Vec.load(
+    #'so_top_100k_vec_50_win_5_min_2_ep_80.pkl')
 
 
 def lambda_handler(event=None, context=None):
     print("Request Event", event)
-    return json.dumps({"vector": model.infer_vector(string_to_tokens(event["text"])).tolist()})
-
-
-def string_to_tokens(string):
-    return gensim.utils.simple_preprocess(string)
+    return#json.dumps({"vector": model.infer_vector(string_to_tokens(event["text"])).tolist()})
 
 def nlp(string):
     return "?" in string

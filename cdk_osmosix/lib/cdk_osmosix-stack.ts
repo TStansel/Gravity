@@ -172,6 +172,7 @@ export class CdkOsmosixStack extends Stack {
           AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
           AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
         },
+        timeout: Duration.seconds(300)
       }
     );
     dbSecret.grantRead(pythonMlLambda);
