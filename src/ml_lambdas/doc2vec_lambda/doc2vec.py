@@ -36,7 +36,7 @@ def lambda_handler(event=None, context=None):
     ENDPOINT_NAME = os.environ['ENDPOINT_NAME']
     runtime = boto3.client('runtime.sagemaker')
 
-    payload = {"inputs": slackJson["text"]}
+    payload = json.dumps({"inputs": slackJson["text"]})
     response = runtime.invoke_endpoint(EndpointName=ENDPOINT_NAME, ContentType='application/json', Body=payload)
     print(response)
 
