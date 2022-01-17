@@ -17,7 +17,7 @@ import {
   ResultError,
   ResultSuccess,
 } from "./slackEventClasses";
-import { buildResponse, determineClass } from "./slackFunctions";
+import { buildResponse } from "./slackFunctions";
 
 export const lambdaHandler: SQSHandler = async (
   event: SQSEvent
@@ -55,3 +55,39 @@ export const lambdaHandler: SQSHandler = async (
   // Successful Call
   return;
 };
+
+function determineClass(slackJson: JSON): Result<SlackEvent> {
+  if (!slackJson.hasOwnProperty("type")) {
+    return {
+      type: "error",
+      error: new Error("JSON is missing property 'type'."),
+    };
+  }
+
+  switch (slackJson["type" as keyof JSON]) {
+    case "APPADDEDEVENT": {
+      return AppAddedEvent.fromJSON(slackJson);
+    }
+    case "NEWMESSAGEEVENT": {
+      return NewMessageEvent.fromJSON(slackJson);
+    }
+    case "MARKEDANSWEREVENT": {
+      return MarkedAnswerEvent.fromJSON(slackJson);
+    }
+    case "HELPFULBUTTON": {
+      return HelpfulButton.fromJSON(slackJson);
+    }
+    case "NOTHELPFULBUTTON": {
+      return NotHelpfulButton.fromJSON(slackJson);
+    }
+    case "DISMISSBUTTON": {
+      return DismissButton.fromJSON(slackJson);
+    }
+    break;
+  }
+
+  return {
+    type: "error",
+    error: new Error("JSON did not match class types"),
+  };
+}

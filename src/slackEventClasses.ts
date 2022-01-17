@@ -117,6 +117,16 @@ export class HelpfulButton extends SlackEvent {
         workspaceID: this.workspaceID,
       });
 
+      if (
+        getBotTokenResult.records.length != 0 ||
+        !getBotTokenResult.records[0].BotToken
+      ) {
+        return {
+          type: "success",
+          value: "Helpful Button Work: Missing Bot Token",
+        };
+      }
+
       let botToken = getBotTokenResult.records[0].BotToken;
 
       let successfulParams = {
@@ -264,6 +274,16 @@ export class NotHelpfulButton extends SlackEvent {
         workspaceID: this.workspaceID,
       });
 
+      if (
+        getBotTokenResult.records.length != 0 ||
+        !getBotTokenResult.records[0].BotToken
+      ) {
+        return {
+          type: "success",
+          value: "Not Helpful Button Work: Missing Bot Token",
+        };
+      }
+
       let botToken = getBotTokenResult.records[0].BotToken;
 
       // Updating the parent message with the question mark reaction
@@ -363,7 +383,7 @@ export class DismissButton extends SlackEvent {
   }
 
   async doWork(): Promise<Result<string>> {
-    console.log("Dismiss BUtton do work");
+    console.log("Dismiss Button do work");
     try {
       let dismissParams = {
         delete_original: "true",
@@ -384,6 +404,16 @@ export class DismissButton extends SlackEvent {
       let getBotTokenResult = await data.query(getBotTokenSql, {
         workspaceID: this.workspaceID,
       });
+
+      if (
+        getBotTokenResult.records.length != 0 ||
+        !getBotTokenResult.records[0].BotToken
+      ) {
+        return {
+          type: "success",
+          value: "Dismiss Button Work: Missing Bot Token",
+        };
+      }
 
       let botToken = getBotTokenResult.records[0].BotToken;
 
@@ -434,7 +464,10 @@ export class DismissButton extends SlackEvent {
   }
 }
 
-export class MarkedAnswerEvent extends SlackEvent {
+export class MarkedAnswerEvent
+  extends SlackEvent
+  implements MachineLearningIsWorkable
+{
   public type: string;
   constructor(
     channelID: string,
@@ -510,6 +543,16 @@ export class MarkedAnswerEvent extends SlackEvent {
         workspaceID: this.workspaceID,
       });
 
+      if (
+        getBotTokenResult.records.length != 0 ||
+        !getBotTokenResult.records[0].BotToken
+      ) {
+        return {
+          type: "success",
+          value: "Marked Answer Work: Missing Bot Token",
+        };
+      }
+
       let botToken = getBotTokenResult.records[0].BotToken;
 
       if (this.parentMsgID === null || this.messageID == this.parentMsgID) {
@@ -581,9 +624,179 @@ export class MarkedAnswerEvent extends SlackEvent {
     }
     return { type: "success", value: "Marked Answer sent to SQS sucessfully" };
   }
+
+  async doMLWork(vectors: string[][]): Promise<Result<string>> {
+    console.log("Marked Answer: ML Work");
+    try {
+      if (vectors.length !== 1) {
+        return {
+          type: "error",
+          error: new Error("Marked Answer ML Work: Wrong number of vectors"),
+        };
+      }
+
+      let parentVector = vectors[0];
+
+      let getBotTokenSql = `select SlackToken.BotToken from SlackToken 
+      join SlackWorkspace on SlackToken.SlackWorkspaceUUID = SlackWorkspace.SlackWorkspaceUUID 
+      where SlackWorkspace.WorkspaceID = :workspaceID`;
+
+      let getBotTokenResult = await data.query(getBotTokenSql, {
+        workspaceID: this.workspaceID,
+      });
+
+      if (
+        getBotTokenResult.records.length != 0 ||
+        !getBotTokenResult.records[0].BotToken
+      ) {
+        return {
+          type: "success",
+          value: "Marked Answer ML Work: Missing Bot Token",
+        };
+      }
+
+      let botToken = getBotTokenResult.records[0].BotToken;
+
+      // Emoji reactions and Thank you Message
+
+      let removeEmojiReactionParams = {
+        channel: this.channelID,
+        timestamp: this.parentMsgID,
+        name: "question",
+      };
+
+      let removeEmojiReactionConfig = {
+        method: "post",
+        url: "https://slack.com/api/reactions.remove",
+        headers: {
+          Authorization: "Bearer " + botToken,
+          "Content-Type": "application/json",
+        },
+        data: removeEmojiReactionParams,
+      } as AxiosRequestConfig<any>;
+
+      const removeEmojiReactionRes = await axios(removeEmojiReactionConfig);
+
+      let addEmojiReactionParams = {
+        channel: this.channelID,
+        timestamp: this.parentMsgID,
+        name: "white_check_mark",
+      };
+
+      let addEmojiReactionConfig = {
+        method: "post",
+        url: "https://slack.com/api/reactions.add",
+        headers: {
+          Authorization: "Bearer " + botToken,
+          "Content-Type": "application/json",
+        },
+        data: addEmojiReactionParams,
+      } as AxiosRequestConfig<any>;
+
+      const addEmojiReactionRes = await axios(addEmojiReactionConfig);
+
+      let msgParams = {
+        channel: this.userID,
+        text: "Thank you for marking an answer and for making Osmosix more accurate!",
+      };
+
+      let msgConfig = {
+        method: "post",
+        url: "https://slack.com/api/chat.postMessage",
+        headers: {
+          Authorization: "Bearer " + botToken,
+          "Content-Type": "application/json",
+        },
+        data: msgParams,
+      } as AxiosRequestConfig<any>;
+      const msgRes = await axios(msgConfig);
+
+      // Create Q and A pair in DB
+
+      let getULIDsSql = `select SlackChannel.SlackChannelUUID, SlackUser.SlackUserUUID from SlackWorkspace 
+            join SlackChannel on SlackWorkspace.SlackWorkspaceUUID = SlackChannel.SlackWorkspaceUUID 
+            join SlackUser on SlackWorkspace.SlackWorkspaceUUID = SlackUser.SlackWorkspaceUUID 
+            where SlackWorkspace.WorkspaceID = :workspaceID and SlackChannel.ChannelID = :channelID 
+            and SlackUser.SlackID = :userID`;
+
+      let getULIDsResult = await data.query(getULIDsSql, {
+        workspaceID: this.workspaceID,
+        channelID: this.channelID,
+        userID: this.userID,
+      });
+      //console.log(getUUIDsResult)
+      if (
+        getULIDsResult.records.length != 0 ||
+        !getULIDsResult.records[0].SlackChannelUUID ||
+        !getULIDsResult.records[0].SlackUserUUID
+      ) {
+        return {
+          type: "success",
+          value: "Missing needed ULIDS for Marked Answer",
+        };
+      }
+      let ULIDs = getULIDsResult.records[0];
+
+      // Get Answer Link
+      let linkConfig = {
+        method: "get",
+        url:
+          "https://slack.com/api/chat.getPermalink?channel=" +
+          this.channelID +
+          "&message_ts=" +
+          this.messageID,
+        headers: {
+          Authorization: "Bearer " + botToken,
+          "Content-Type": "application/json",
+        },
+      } as AxiosRequestConfig<any>;
+
+      const linkRes = await axios(linkConfig);
+
+      let link = linkRes.data.permalink;
+      let aULID = ulid();
+
+      // insert Answer
+      let insertAnswerSql =
+        "insert into SlackAnswer (SlackAnswerUUID, AnswerLink, Upvotes) values (:SlackAnswerUUID, :AnswerLink, :Upvotes)";
+      console.log(link);
+      let insertAnswerResult = await data.query(insertAnswerSql, {
+        SlackAnswerUUID: aULID,
+        AnswerLink: link,
+        Upvotes: 0,
+      });
+
+      let qULID = ulid();
+
+      // insert Question
+      let insertQuestionSql = `insert into SlackQuestion (SlackQuestionUUID, SlackAnswerUUID, SlackChannelUUID, SlackUserUUID, Ts, RawText, TextVector) 
+      values (:SlackQuestionUUID, :SlackAnswerUUID, :SlackChannelUUID, :SlackUserUUID, :Ts, :RawText, :TextVector)`;
+
+      let insertQuestionResult = await data.query(insertQuestionSql, {
+        SlackQuestionUUID: qULID,
+        SlackAnswerUUID: aULID,
+        SlackChannelUUID: ULIDs.SlackChannelUUID,
+        SlackUserUUID: ULIDs.SlackUserUUID,
+        Ts: this.messageID,
+        TextVector: parentVector,
+      });
+    } catch (e) {
+      return {
+        type: "error",
+        error: new Error("MarkedAnswer ML Work calls failed: " + e),
+      };
+    }
+    return {
+      type: "success",
+      value: "Marked Answer ML Work successfully finished",
+    };
+  }
 }
 
-export class NewMessageEvent extends SlackEvent {
+export class NewMessageEvent
+  extends SlackEvent
+  implements MachineLearningIsWorkable
+{
   public type: string;
   constructor(
     channelID: string,
@@ -600,6 +813,7 @@ export class NewMessageEvent extends SlackEvent {
     this.parentMsgID = parentMsgID;
     this.type = "NEWMESSAGEEVENT";
   }
+
   static fromJSON(slackJSON: JSON): Result<NewMessageEvent> {
     if (
       !slackJSON.hasOwnProperty("channelID") ||
@@ -670,9 +884,250 @@ export class NewMessageEvent extends SlackEvent {
     }
     return { type: "success", value: "New Message sent to SQS sucessfully" };
   }
+
+  async doMLWork(vectors: JSON[]): Promise<Result<string>> {
+    console.log("New Message: ML Work");
+    try {
+      let getBotTokenSql = `select SlackToken.BotToken from SlackToken 
+      join SlackWorkspace on SlackToken.SlackWorkspaceUUID = SlackWorkspace.SlackWorkspaceUUID 
+      where SlackWorkspace.WorkspaceID = :workspaceID`;
+
+      let getBotTokenResult = await data.query(getBotTokenSql, {
+        workspaceID: this.workspaceID,
+      });
+
+      if (
+        getBotTokenResult.records.length != 0 ||
+        !getBotTokenResult.records[0].BotToken
+      ) {
+        return {
+          type: "success",
+          value: "New Message ML Work: Missing Bot Token",
+        };
+      }
+
+      let botToken = getBotTokenResult.records[0].BotToken as string;
+
+      let addEmojiReactionParams = {
+        channel: this.channelID,
+        timestamp: this.messageID,
+        name: "arrows_counterclockwise",
+      };
+
+      let addEmojiReactionConfig = {
+        method: "post",
+        url: "https://slack.com/api/reactions.add",
+        headers: {
+          Authorization: "Bearer " + botToken,
+          "Content-Type": "application/json",
+        },
+        data: addEmojiReactionParams,
+      } as AxiosRequestConfig<any>;
+
+      const addEmojiReactionRes = await axios(addEmojiReactionConfig);
+
+      if (vectors.length === 0) {
+        let noSuggestionsMessageParams = {
+          channel: this.channelID,
+          user: this.userID,
+          text: "We currently don't have an answer for your question. After someone answers your question make sure to mark it as an answer so next time someone has a question similiar to yours we can help them out!",
+        };
+
+        let msgConfig = {
+          method: "post",
+          url: "https://slack.com/api/chat.postEphemeral",
+          headers: {
+            Authorization: "Bearer " + botToken,
+            "Content-Type": "application/json",
+          },
+          data: noSuggestionsMessageParams,
+        } as AxiosRequestConfig<any>;
+        const msgRes = await axios(msgConfig);
+        return {
+          type: "success",
+          value: "New Message ML Work: No suggestions for this question",
+        };
+      }
+
+      let mostSimilarQuestion = vectors[0];
+      let mostSimilarQuestionULID = mostSimilarQuestion[
+        "SlackQuestionID" as keyof JSON
+      ] as string;
+
+      let getQuestionSql =
+        "select SlackAnswerUUID from SlackQuestion where SlackQuestionUUID = :SlackQuestionUUID";
+
+      let getQuestionResult = await data.query(getQuestionSql, {
+        SlackQuestionUUID: mostSimilarQuestionULID,
+      });
+
+      let answerLink: string;
+      let isAnswerInDb = false;
+
+      if (getQuestionResult.records[0].SlackAnswerUUID === null) {
+        // Answer is null in DB
+        let messageTS = mostSimilarQuestion[
+          "SlackQuestionTs" as keyof JSON
+        ] as string;
+
+        let repliesConfig = {
+          method: "get",
+          url:
+            "https://slack.com/api/conversations.replies?channel=" +
+            this.channelID +
+            "&ts=" +
+            messageTS,
+          headers: {
+            Authorization: "Bearer " + botToken,
+            "Content-Type": "application/json",
+          },
+        } as AxiosRequestConfig<any>;
+        const repliesRes = await axios(repliesConfig);
+
+        let answerTs = repliesRes.data.messages[1].ts as string;
+
+        let getLinkConfig = {
+          method: "get",
+          url:
+            "https://slack.com/api/chat.getPermalink?channel=" +
+            this.channelID +
+            "&message_ts=" +
+            answerTs,
+          headers: {
+            Authorization: "Bearer " + botToken,
+            "Content-Type": "application/json",
+          },
+        } as AxiosRequestConfig<any>;
+        const getLinkRes = await axios(getLinkConfig);
+        answerLink = getLinkRes.data.permalink;
+      } else {
+        isAnswerInDb = true;
+
+        let getAnswerLinkSql =
+          "select AnswerLink from SlackAnswer where SlackAnswerUUID = :SlackAnswerUUID";
+
+        let getAnswerLinkResult = await data.query(getAnswerLinkSql, {
+          SlackAnswerUUID: getQuestionResult.records[0]
+            .SlackAnswerUUID as string,
+        });
+        answerLink = getAnswerLinkResult.records[0].AnswerLink;
+      }
+
+      let similarityScore = Number(
+        mostSimilarQuestion["similarity" as keyof JSON]
+      ) as number;
+
+      // Send Slack Message
+      let msgParams = {
+        channel: this.channelID,
+        user: this.userID,
+        text: "I think I might have an answer for you!",
+        blocks: [
+          {
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: "I think I might have an answer for you!",
+            },
+          },
+          {
+            type: "divider",
+          },
+          {
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text:
+                "Similarity score: " +
+                Math.round(similarityScore * 100) / 100 +
+                " <" +
+                answerLink +
+                "|View thread>",
+            },
+          },
+          {
+            type: "actions",
+            elements: [
+              {
+                type: "button",
+                text: {
+                  type: "plain_text",
+                  text: "Helpful",
+                },
+                value: mostSimilarQuestionULID + " " + this.messageID,
+                action_id: "helpful",
+              },
+              {
+                type: "button",
+                text: {
+                  type: "plain_text",
+                  text: "Not Helpful",
+                },
+                value: mostSimilarQuestionULID + " " + this.messageID,
+                action_id: "nothelpful",
+              },
+              {
+                type: "button",
+                style: "danger",
+                text: {
+                  type: "plain_text",
+                  text: "Dismiss",
+                },
+                value: mostSimilarQuestionULID + " " + this.messageID,
+                action_id: "dismiss",
+              },
+            ],
+          },
+        ],
+      };
+
+      let msgConfig = {
+        method: "post",
+        url: "https://slack.com/api/chat.postEphemeral",
+        headers: {
+          Authorization: "Bearer " + botToken,
+          "Content-Type": "application/json",
+        },
+        data: msgParams,
+      } as AxiosRequestConfig<any>;
+      const msgRes = await axios(msgConfig);
+
+      if (!isAnswerInDb) {
+        let insertAnswerSql =
+          "insert into SlackAnswer (SlackAnswerUUID, AnswerLink, Upvotes) values (:SlackAnswerUUID, :AnswerLink, :Upvotes)";
+        let answerULID = ulid();
+
+        let insertAnswerResult = await data.query(insertAnswerSql, {
+          SlackAnswerUUID: answerULID,
+          AnswerLink: answerLink,
+          Upvotes: 0,
+        });
+
+        let updateQuestionSql =
+          "update SlackQuestion set SlackAnswerUUID = :SlackAnswerUUID where SlackQuestionUUID = :SlackQuestionUUID";
+
+        let updateQuestionResult = await data.query(updateQuestionSql, {
+          SlackAnswerUUID: answerULID,
+          SlackQuestionUUID: mostSimilarQuestionULID,
+        });
+      }
+    } catch (e) {
+      return {
+        type: "error",
+        error: new Error("New Message ML Work calls failed: " + e),
+      };
+    }
+    return {
+      type: "success",
+      value: "New Message ML Work successfully finished",
+    };
+  }
 }
 
-export class AppAddedEvent extends SlackEvent {
+export class AppAddedEvent
+  extends SlackEvent
+  implements MachineLearningIsWorkable
+{
   public type: string;
   constructor(channelID: string, workspaceID: string, public userID: string) {
     super(channelID, workspaceID);
@@ -719,6 +1174,13 @@ export class AppAddedEvent extends SlackEvent {
       let getBotTokenResult = await data.query(getBotTokenSql, {
         workspaceID: this.workspaceID,
       });
+
+      if (
+        getBotTokenResult.records.length != 0 ||
+        !getBotTokenResult.records[0].BotToken
+      ) {
+        return { type: "success", value: "App Added Work: Missing Bot Token" };
+      }
 
       let botToken = getBotTokenResult.records[0].BotToken;
 
@@ -1001,4 +1463,25 @@ export class AppAddedEvent extends SlackEvent {
     }
     return { type: "success", value: "App Added sent to SQS sucessfully" };
   }
+
+  async doMLWork(vectors: string[][]): Promise<Result<string>> {
+    console.log("App Added: ML Work");
+    try {
+    } catch (e) {
+      return {
+        type: "error",
+        error: new Error("AppAdded ML Work calls failed: " + e),
+      };
+    }
+    return {
+      type: "success",
+      value: "App Added ML Work successfully finished",
+    };
+  }
+}
+
+/* --------  Interface -------- */
+
+export interface MachineLearningIsWorkable {
+  doMLWork(vectors: string[][] | JSON[]): Promise<Result<string>>;
 }
