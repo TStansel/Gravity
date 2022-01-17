@@ -163,7 +163,7 @@ export class CdkOsmosixStack extends Stack {
     });
 
     const myRole = new iam.Role(this, "My Role", {
-      assumedBy: new iam.ServicePrincipal("sns.amazonaws.com"),
+      assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
     });
 
     const pythonMlLambda = new lambda.DockerImageFunction(
