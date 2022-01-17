@@ -171,6 +171,7 @@ export class CdkOsmosixStack extends Stack {
           ML_OUTPUT_SQS_URL: mlOutputSqs.queueUrl,
           AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
           AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+          ENDPOINT_NAME: "huggingface-pytorch-inference-2022-01-17-20-16-16-413"
         },
         timeout: Duration.seconds(300)
       }
