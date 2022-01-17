@@ -165,10 +165,12 @@ export class CdkOsmosixStack extends Stack {
       "pythonMlLambda",
       {
         code: lambda.DockerImageCode.fromImageAsset(
-          "../src/slackML.py"
+          "../src/ml_lambdas/doc2vec_lambda"
         ),
         environment: {
           ML_OUTPUT_SQS_URL: mlOutputSqs.queueUrl,
+          AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+          AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
         },
       }
     );
