@@ -35,8 +35,8 @@ def lambda_handler(event=None, context=None):
 
     payload = json.dumps({"inputs": slackJson["text"]})
     response = runtime.invoke_endpoint(
-        EndpointName=ENDPOINT_NAME, ContentType='application/json', Body=payload)
-    print(response)
+        EndpointName=ENDPOINT_NAME, ContentType='application/json', Body=payload)["Body"].read()
+    print(json.loads(response)[0])
     new_vector = np.array([])  # change
 
     if slackJson["type"] == "NEWMESSAGEEVENT":
