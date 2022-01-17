@@ -165,7 +165,7 @@ export class CdkOsmosixStack extends Stack {
       "pythonMlLambda",
       {
         code: lambda.DockerImageCode.fromImageAsset(
-          "../src/ml_lambdas/doc2vec_lambda"
+          "../src/slackML.py"
         ),
         environment: {
           ML_OUTPUT_SQS_URL: mlOutputSqs.queueUrl,
