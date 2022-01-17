@@ -15,14 +15,14 @@ def lambda_handler(event=None, context=None):
         print("Event is missing Records")
         return
 
-    if event.Records.length != 1:
+    if len(event["Records"]) != 1:
         print("Records length wrong")
         return
     
     if ("body" not in event["Records"][0]):
         print("Event is missing Body")
         return
-    slackJson = json.loads(event.body)
+    slackJson = json.loads(event["body"])
     print(slackJson)
 
     if not nlp(slackJson["text"]):
