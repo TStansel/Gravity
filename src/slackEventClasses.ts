@@ -118,7 +118,7 @@ export class HelpfulButton extends SlackEvent {
       });
 
       if (
-        getBotTokenResult.records.length != 0 ||
+        getBotTokenResult.records.length !== 1 ||
         !getBotTokenResult.records[0].BotToken
       ) {
         return {
@@ -275,7 +275,7 @@ export class NotHelpfulButton extends SlackEvent {
       });
 
       if (
-        getBotTokenResult.records.length != 0 ||
+        getBotTokenResult.records.length !== 1 ||
         !getBotTokenResult.records[0].BotToken
       ) {
         return {
@@ -406,7 +406,7 @@ export class DismissButton extends SlackEvent {
       });
 
       if (
-        getBotTokenResult.records.length != 0 ||
+        getBotTokenResult.records.length !== 1 ||
         !getBotTokenResult.records[0].BotToken
       ) {
         return {
@@ -544,7 +544,7 @@ export class MarkedAnswerEvent
       });
 
       if (
-        getBotTokenResult.records.length != 0 ||
+        getBotTokenResult.records.length !== 1 ||
         !getBotTokenResult.records[0].BotToken
       ) {
         return {
@@ -637,7 +637,7 @@ export class MarkedAnswerEvent
       });
 
       if (
-        getBotTokenResult.records.length != 0 ||
+        getBotTokenResult.records.length !== 1 ||
         !getBotTokenResult.records[0].BotToken
       ) {
         return {
@@ -888,7 +888,7 @@ export class NewMessageEvent
       });
 
       if (
-        getBotTokenResult.records.length != 0 ||
+        getBotTokenResult.records.length !== 1 ||
         !getBotTokenResult.records[0].BotToken
       ) {
         return {
@@ -1170,7 +1170,7 @@ export class AppAddedEvent extends SlackEvent {
       });
 
       if (
-        getBotTokenResult.records.length != 0 ||
+        getBotTokenResult.records.length !== 1 ||
         !getBotTokenResult.records[0].BotToken
       ) {
         return { type: "success", value: "App Added Work: Missing Bot Token" };
