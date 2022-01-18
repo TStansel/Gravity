@@ -1,0 +1,46 @@
+CREATE TABLE SlackAnswer(
+  	SlackAnswerUUID varchar(255) NOT NULL,
+  	AnswerLink varchar(255) NOT NULL,
+  	Upvotes int DEFAULT 0 NOT NULL,
+    PRIMARY KEY (SlackAnswerUUID)
+);
+CREATE TABLE SlackWorkspace(
+  	SlackWorkspaceUUID varchar(255) NOT NULL,
+  	WorkspaceID varchar(255) NOT NULL,
+  	Name varchar(255) NOT NULL,
+  	PRIMARY KEY (SlackWorkspaceUUID)
+);
+CREATE TABLE SlackToken(
+  	SlackTokenUUID varchar(255) NOT NULL,
+  	SlackWorkspaceUUID varchar(255) NOT NULL,
+  	BotToken varchar(255) NOT NULL,
+  	PRIMARY KEY (SlackTokenUUID),
+  	FOREIGN KEY (SlackWorkspaceUUID) REFERENCES SlackWorkspace(SlackWorkspaceUUID)
+);
+CREATE TABLE SlackChannel(
+  	SlackChannelUUID varchar(255) NOT NULL,
+  	SlackWorkspaceUUID varchar(255) NOT NULL,
+  	ChannelID varchar(255) NOT NULL,
+  	Name varchar(255) NOT NULL,
+  	PRIMARY KEY (SlackChannelUUID),
+  	FOREIGN KEY (SlackWorkspaceUUID) REFERENCES SlackWorkspace(SlackWorkspaceUUID)
+);
+CREATE TABLE SlackUser (
+  	SlackUserUUID varchar(255) NOT NULL,
+  	SlackWorkspaceUUID varchar(255) NOT NULL,
+  	SlackID varchar(255),
+  	PRIMARY KEY (SlackUserUUID),
+  	FOREIGN KEY (SlackWorkspaceUUID) REFERENCES SlackWorkspace(SlackWorkspaceUUID)
+);
+CREATE TABLE SlackQuestion(
+  	SlackQuestionUUID varchar(255) NOT NULL,
+  	SlackAnswerUUID varchar(255),
+    SlackChannelUUID varchar(255) NOT NULL,
+  	SlackUserUUID varchar(255),
+    Ts varchar(255) NOT NULL,
+  	TextVector varchar(25000),
+  	PRIMARY KEY (SlackQuestionUUID),
+  	FOREIGN KEY (SlackAnswerUUID) REFERENCES SlackAnswer(SlackAnswerUUID),
+    FOREIGN KEY (SlackChannelUUID) REFERENCES SlackChannel(SlackChannelUUID),
+  	FOREIGN KEY (SlackUserUUID) REFERENCES SlackUser(SlackUserUUID)
+);
