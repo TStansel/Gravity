@@ -100,6 +100,7 @@ export class HelpfulButton extends SlackEvent {
       } as AxiosRequestConfig<any>;
 
       const dismissRes = await axios(dismissConfig);
+      console.log(dismissRes);
 
       let getLinkSql = `select AnswerLink from SlackQuestion 
     join SlackAnswer on SlackQuestion.SlackAnswerUUID = SlackAnswer.SlackAnswerUUID
@@ -108,6 +109,7 @@ export class HelpfulButton extends SlackEvent {
       let getLinkResult = await data.query(getLinkSql, {
         SlackQuestionUUID: this.oldQuestionUUID,
       });
+      console.log(getLinkResult);
 
       let getBotTokenSql = `select SlackToken.BotToken from SlackToken 
       join SlackWorkspace on SlackToken.SlackWorkspaceUUID = SlackWorkspace.SlackWorkspaceUUID 
@@ -116,6 +118,8 @@ export class HelpfulButton extends SlackEvent {
       let getBotTokenResult = await data.query(getBotTokenSql, {
         workspaceID: this.workspaceID,
       });
+
+      console.log(getBotTokenResult);
 
       if (
         getBotTokenResult.records.length !== 1 ||
@@ -153,6 +157,8 @@ export class HelpfulButton extends SlackEvent {
 
       const successfulRes = await axios(successfulConfig);
 
+      console.log(successfulRes);
+
       // Updating the parent message with the check mark reaction
 
       let removeEmojiReactionParams = {
@@ -173,6 +179,8 @@ export class HelpfulButton extends SlackEvent {
 
       const removeEmojiReactionRes = await axios(removeEmojiReactionConfig);
 
+      console.log(removeEmojiReactionRes);
+
       let addEmojiReactionParams = {
         channel: this.channelID,
         timestamp: this.messageID,
@@ -191,6 +199,8 @@ export class HelpfulButton extends SlackEvent {
 
       const addEmojiReactionRes = await axios(addEmojiReactionConfig);
 
+      console.log(addEmojiReactionRes);
+
       let increamentUpvotesSql = `update SlackAnswer 
             join SlackQuestion on SlackAnswer.SlackAnswerUUID = SlackQuestion.SlackAnswerUUID
             set SlackAnswer.Upvotes = (SlackAnswer.Upvotes + 1)
@@ -199,6 +209,8 @@ export class HelpfulButton extends SlackEvent {
       let increamentUpvotesResult = await data.query(increamentUpvotesSql, {
         SlackQuestionUUID: this.oldQuestionUUID,
       });
+
+      console.log(increamentUpvotesResult);
     } catch (e) {
       return {
         type: "error",
