@@ -54,6 +54,7 @@ export class CdkOsmosixStack extends Stack {
     const oauthLambda = new nodelambda.NodejsFunction(this, "oauthLambda", {
       entry: "../src/oauth.ts",
       handler: "lambdaHandler",
+      timeout: Duration.seconds(30),
       environment: {
         OSMOSIX_DEV_CLIENT_ID: devClientSecret
           .secretValueFromJson("OSMOSIX_DEV_CLIENT_ID")
