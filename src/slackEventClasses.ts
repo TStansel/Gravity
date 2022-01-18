@@ -1088,6 +1088,8 @@ export class NewMessageEvent
         }
       }
 
+      // TODO: Add logic to check if mostRecentAboveXQuestion is same as mostSimilar and then only send one
+
       if (
         mostRecentAboveXQuestion &&
         (mostRecentAboveXQuestion[
