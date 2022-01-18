@@ -26,6 +26,7 @@ export const lambdaHandler: SQSHandler = async (
   let slackEvent = event.Records[0];
 
   let slackJson = JSON.parse(slackEvent.body as string) as JSON;
+  console.log(slackJson);
 
   let classResult = determineClass(slackJson);
 
@@ -45,7 +46,7 @@ export const lambdaHandler: SQSHandler = async (
   console.log("Slack Result:", classResult.value);
 
   let workResult = await classResult.value.doMLWork(
-    slackJson["vector" as keyof JSON] as string | JSON[]
+    slackJson["vectors" as keyof JSON] as string | JSON[]
   );
 
   if (workResult.type === "error") {
@@ -95,31 +96,33 @@ function verifyVectors(slackJson: JSON): Result<string> {
 
   switch (slackJson["type" as keyof JSON]) {
     case "APPADDEDMESSAGEPROCESSING": {
-      if (typeof slackJson["vectors" as keyof JSON] !== "string") {
-        return {
-          type: "error",
-          error: new Error("Vectors type does not match SlackEvent Type"),
-        };
-      }
-    }
-    case "NEWMESSAGEEVENT": {
       if (!Array.isArray(slackJson["vectors" as keyof JSON])) {
         return {
           type: "error",
           error: new Error("Vectors type does not match SlackEvent Type"),
         };
       }
+      break;
     }
-    case "MARKEDANSWEREVENT":
-      {
-        if (typeof slackJson["vectors" as keyof JSON] !== "string") {
-          return {
-            type: "error",
-            error: new Error("Vectors type does not match SlackEvent Type"),
-          };
-        }
+    case "NEWMESSAGEEVENT": {
+      if (!Array.isArray(slackJson["vectors" as keyof JSON])) {
+        console.log("newmessageevent vector does not match!");
+        return {
+          type: "error",
+          error: new Error("Vectors type does not match SlackEvent Type"),
+        };
       }
       break;
+    }
+    case "MARKEDANSWEREVENT": {
+      if (!Array.isArray(slackJson["vectors" as keyof JSON])) {
+        return {
+          type: "error",
+          error: new Error("Vectors type does not match SlackEvent Type"),
+        };
+      }
+      break;
+    }
   }
 
   return { type: "success", value: "Vectors matches SlackEvent Type" };

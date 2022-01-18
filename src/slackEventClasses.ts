@@ -718,7 +718,7 @@ export class MarkedAnswerEvent
       });
       //console.log(getUUIDsResult)
       if (
-        getULIDsResult.records.length != 0 ||
+        getULIDsResult.records.length === 0 ||
         !getULIDsResult.records[0].SlackChannelUUID ||
         !getULIDsResult.records[0].SlackUserUUID
       ) {
@@ -763,14 +763,14 @@ export class MarkedAnswerEvent
       // insert Question
       let insertQuestionSql = `insert into SlackQuestion (SlackQuestionUUID, SlackAnswerUUID, SlackChannelUUID, SlackUserUUID, Ts, TextVector) 
       values (:SlackQuestionUUID, :SlackAnswerUUID, :SlackChannelUUID, :SlackUserUUID, :Ts, :TextVector)`;
-
+      console.log(JSON.stringify(parentVector));
       let insertQuestionResult = await data.query(insertQuestionSql, {
         SlackQuestionUUID: qULID,
         SlackAnswerUUID: aULID,
         SlackChannelUUID: ULIDs.SlackChannelUUID,
         SlackUserUUID: ULIDs.SlackUserUUID,
         Ts: this.messageID,
-        TextVector: parentVector,
+        TextVector: JSON.stringify(parentVector),
       });
     } catch (e) {
       return {
@@ -879,6 +879,7 @@ export class NewMessageEvent
 
   async doMLWork(questions: JSON[]): Promise<Result<string>> {
     console.log("New Message: ML Work");
+    console.log(`questions: ${questions}`);
     try {
       let getBotTokenSql = `select SlackToken.BotToken from SlackToken 
       join SlackWorkspace on SlackToken.SlackWorkspaceUUID = SlackWorkspace.SlackWorkspaceUUID 
@@ -919,22 +920,59 @@ export class NewMessageEvent
       const addEmojiReactionRes = await axios(addEmojiReactionConfig);
 
       if (questions.length === 0) {
-        let noSuggestionsMessageParams = {
+        let removeEmojiReactionParams = {
           channel: this.channelID,
-          user: this.userID,
-          text: "We currently don't have an answer for your question. After someone answers your question make sure to mark it as an answer so next time someone has a question similiar to yours we can help them out!",
+          timestamp: this.messageID,
+          name: "arrows_counterclockwise",
         };
 
-        let msgConfig = {
+        let removeEmojiReactionConfig = {
           method: "post",
-          url: "https://slack.com/api/chat.postEphemeral",
+          url: "https://slack.com/api/reactions.remove",
           headers: {
             Authorization: "Bearer " + botToken,
             "Content-Type": "application/json",
           },
-          data: noSuggestionsMessageParams,
+          data: removeEmojiReactionParams,
         } as AxiosRequestConfig<any>;
-        const msgRes = await axios(msgConfig);
+
+        const removeEmojiReactionRes = await axios(removeEmojiReactionConfig);
+        console.log(removeEmojiReactionRes);
+
+        let addEmojiReactionParams = {
+          channel: this.channelID,
+          timestamp: this.messageID,
+          name: "question",
+        };
+
+        let addEmojiReactionConfig = {
+          method: "post",
+          url: "https://slack.com/api/reactions.add",
+          headers: {
+            Authorization: "Bearer " + botToken,
+            "Content-Type": "application/json",
+          },
+          data: addEmojiReactionParams,
+        } as AxiosRequestConfig<any>;
+
+        const addEmojiReactionRes = await axios(addEmojiReactionConfig);
+        console.log(addEmojiReactionRes);
+        // let noSuggestionsMessageParams = {
+        //   channel: this.channelID,
+        //   user: this.userID,
+        //   text: "We currently don't have an answer for your question. After someone answers your question make sure to mark it as an answer so next time someone has a question similiar to yours we can help them out!",
+        // };
+
+        // let msgConfig = {
+        //   method: "post",
+        //   url: "https://slack.com/api/chat.postEphemeral",
+        //   headers: {
+        //     Authorization: "Bearer " + botToken,
+        //     "Content-Type": "application/json",
+        //   },
+        //   data: noSuggestionsMessageParams,
+        // } as AxiosRequestConfig<any>;
+        // const msgRes = await axios(msgConfig);
         return {
           type: "success",
           value: "New Message ML Work: No suggestions for this question",
@@ -942,6 +980,7 @@ export class NewMessageEvent
       }
 
       let mostSimilarQuestion = questions[0];
+      console.log(`most similar question: ${mostSimilarQuestion}`);
       let mostSimilarQuestionULID = mostSimilarQuestion[
         "SlackQuestionID" as keyof JSON
       ] as string;
@@ -953,10 +992,13 @@ export class NewMessageEvent
         SlackQuestionUUID: mostSimilarQuestionULID,
       });
 
+      console.log(`getQuestionResult: ${getQuestionResult}`);
+
       let answerLink: string;
       let isAnswerInDb = false;
 
       if (getQuestionResult.records[0].SlackAnswerUUID === null) {
+        console.log("answer is null in DB");
         // Answer is null in DB
         let messageTS = mostSimilarQuestion[
           "SlackQuestionTs" as keyof JSON
@@ -977,7 +1019,7 @@ export class NewMessageEvent
         const repliesRes = await axios(repliesConfig);
 
         let answerTs = repliesRes.data.messages[1].ts as string;
-
+        console.log(`answerTs: ${answerTs}`);
         let getLinkConfig = {
           method: "get",
           url:
@@ -992,9 +1034,12 @@ export class NewMessageEvent
         } as AxiosRequestConfig<any>;
         const getLinkRes = await axios(getLinkConfig);
         answerLink = getLinkRes.data.permalink;
+        console.log(`answerLink: ${answerLink}`);
       } else {
+        console.log("answer is in DB");
         isAnswerInDb = true;
 
+        // TODO: Make this a SQL join with the above
         let getAnswerLinkSql =
           "select AnswerLink from SlackAnswer where SlackAnswerUUID = :SlackAnswerUUID";
 
@@ -1003,6 +1048,7 @@ export class NewMessageEvent
             .SlackAnswerUUID as string,
         });
         answerLink = getAnswerLinkResult.records[0].AnswerLink;
+        console.log(`answerLink: ${answerLink}`);
       }
 
       let similarityScore = Number(
@@ -1011,11 +1057,13 @@ export class NewMessageEvent
 
       // TODO: How are we passing the TS
       // Sort questions by TS
-      questions.sort(
+      questions = questions.sort(
         (a, b) =>
           parseFloat(a["SlackQuestionTs" as keyof JSON] as string) -
           parseFloat(b["SlackQuestionTs" as keyof JSON] as string)
       );
+
+      console.log(`sorted questions: ${questions}`);
 
       // Find most recent question above 60% simlarity
       let mostRecentAboveXQuestion: JSON | undefined = undefined;
@@ -1024,9 +1072,24 @@ export class NewMessageEvent
         if (
           (Number(questions[i]["similarity" as keyof JSON]) as number) > 0.6
         ) {
+          console.log("found most recent question above .6 score!");
           mostRecentAboveXQuestion = questions[i];
           break;
         }
+      }
+
+      if (
+        mostRecentAboveXQuestion &&
+        (mostRecentAboveXQuestion[
+          "SlackQuestionTs" as keyof JSON
+        ] as string) ===
+          (mostSimilarQuestion["SlackQuestionTs" as keyof JSON] as string)
+      ) {
+        // most recent question is the same as most similar question
+        console.log(
+          "most recent question is the same as most similar question"
+        );
+        mostRecentAboveXQuestion = undefined; // so below if statement triggers
       }
 
       let msgParams;
@@ -1035,6 +1098,7 @@ export class NewMessageEvent
       let recentQuestionULID: string = "";
 
       if (mostRecentAboveXQuestion === undefined) {
+        console.log("no most recent and similar question found");
         msgParams = {
           channel: this.channelID,
           user: this.userID,
@@ -1098,6 +1162,7 @@ export class NewMessageEvent
           ],
         };
       } else {
+        console.log("found a more recent similar question");
         let recentSimilarityScore = Number(
           mostRecentAboveXQuestion["similarity" as keyof JSON]
         ) as number;
@@ -1117,6 +1182,7 @@ export class NewMessageEvent
 
         if (getQuestionResult.records[0].SlackAnswerUUID === null) {
           // Answer is null in DB
+          console.log("answer of similar recent question in DB is null");
           let recentQuestionTS = mostRecentAboveXQuestion[
             "SlackQuestionTs" as keyof JSON
           ] as string;
@@ -1136,6 +1202,7 @@ export class NewMessageEvent
           const repliesRes = await axios(repliesConfig);
 
           let answerTs = repliesRes.data.messages[1].ts as string;
+          console.log(`answerTs from slack: ${answerTs}`);
 
           let getLinkConfig = {
             method: "get",
@@ -1151,7 +1218,11 @@ export class NewMessageEvent
           } as AxiosRequestConfig<any>;
           const getLinkRes = await axios(getLinkConfig);
           recentAnswerLink = getLinkRes.data.permalink;
+          console.log(`recentAnswerLink: ${recentAnswerLink}`);
         } else {
+          console.log(
+            "answer link for more recent similar question exists in DB"
+          );
           isRecentAnswerInDb = true;
 
           let getAnswerLinkSql =
@@ -1162,6 +1233,7 @@ export class NewMessageEvent
               .SlackAnswerUUID as string,
           });
           recentAnswerLink = getAnswerLinkResult.records[0].AnswerLink;
+          console.log(`recentAnswerLink: ${recentAnswerLink}`);
         }
 
         msgParams = {
@@ -1289,6 +1361,7 @@ export class NewMessageEvent
       const msgRes = await axios(msgConfig);
 
       if (!isAnswerInDb) {
+        console.log("isAnswerInDb was false so inserting answer into DB");
         let insertAnswerSql =
           "insert into SlackAnswer (SlackAnswerUUID, AnswerLink, Upvotes) values (:SlackAnswerUUID, :AnswerLink, :Upvotes)";
         let answerULID = ulid();
@@ -1309,6 +1382,7 @@ export class NewMessageEvent
       }
 
       if (!isRecentAnswerInDb) {
+        console.log("isRecentAnswerInDb was false so inserting answer into DB");
         let insertAnswerSql =
           "insert into SlackAnswer (SlackAnswerUUID, AnswerLink, Upvotes) values (:SlackAnswerUUID, :AnswerLink, :Upvotes)";
         let answerULID = ulid();
@@ -1608,7 +1682,7 @@ export class AppAddedEvent extends SlackEvent {
 
         // This code should ensure that only messages with a thread get sent to ML processing
         for (const message of getChannelMessagesResult.data.messages) {
-          if (message.thread_ts && message.type && (message.type === "message")) {
+          if (message.thread_ts && message.type && message.type === "message") {
             channelMessages.push(message);
           }
         }
@@ -1649,7 +1723,10 @@ export class AppAddedEvent extends SlackEvent {
         }
       } while (cursor !== null); // When done paginating cursor will be set to null
 
-      console.log("Number of candidate messages in past year:", channelMessages.length);
+      console.log(
+        "Number of candidate messages in past year:",
+        channelMessages.length
+      );
 
       let promises: Promise<ServiceOutputTypes>[] = [];
       let batch_size = 5;
@@ -1661,9 +1738,16 @@ export class AppAddedEvent extends SlackEvent {
         let sqsSendBatchMessageEntries: SendMessageBatchRequestEntry[] =
           channelMessagesBatch.map((message, index) => ({
             Id: String(index),
-            MessageBody: JSON.stringify( new AppAddedMessageProcessing(this.channelID, this.workspaceID,
-              this.userID, message.thread_ts, message.ts)
-              ),
+            MessageBody: JSON.stringify(
+              new AppAddedMessageProcessing(
+                this.channelID,
+                this.workspaceID,
+                this.userID,
+                message.thread_ts,
+                message.ts,
+                message.text
+              )
+            ),
           }));
 
         //console.log(sqsSendBatchMessageEntries);
@@ -1692,7 +1776,8 @@ export class AppAddedMessageProcessing implements MachineLearningIsWorkable {
     public workspaceID: string,
     public userID: string,
     public parentMsgID: string | null,
-    public messageID: string
+    public messageID: string,
+    public text: string
   ) {
     this.channelID = channelID;
     this.workspaceID = workspaceID;
@@ -1700,6 +1785,7 @@ export class AppAddedMessageProcessing implements MachineLearningIsWorkable {
     this.parentMsgID = parentMsgID;
     this.messageID = messageID;
     this.type = "APPADDEDMESSAGEPROCESSING";
+    this.text = text;
   }
 
   static fromJSON(slackJSON: JSON): Result<AppAddedMessageProcessing> {
@@ -1708,7 +1794,8 @@ export class AppAddedMessageProcessing implements MachineLearningIsWorkable {
       !slackJSON.hasOwnProperty("workspaceID") ||
       !slackJSON.hasOwnProperty("userID") ||
       !slackJSON.hasOwnProperty("parentMsgID") ||
-      !slackJSON.hasOwnProperty("messageID")
+      !slackJSON.hasOwnProperty("messageID") ||
+      !slackJSON.hasOwnProperty("text")
     ) {
       return {
         type: "error",
@@ -1724,7 +1811,8 @@ export class AppAddedMessageProcessing implements MachineLearningIsWorkable {
         slackJSON["workspaceID" as keyof JSON] as string,
         slackJSON["userID" as keyof JSON] as string,
         slackJSON["parentMsgID" as keyof JSON] as string | null,
-        slackJSON["messageID" as keyof JSON] as string
+        slackJSON["messageID" as keyof JSON] as string,
+        slackJSON["text" as keyof JSON] as string
       ),
     };
   }
@@ -1750,7 +1838,7 @@ export class AppAddedMessageProcessing implements MachineLearningIsWorkable {
         slackChannelID: this.channelID,
         slackID: this.userID,
         Ts: this.messageID,
-        TextVector: vector,
+        TextVector: JSON.stringify(vector),
       });
     } catch (e) {
       return {

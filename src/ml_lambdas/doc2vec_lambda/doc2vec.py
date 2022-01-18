@@ -27,11 +27,16 @@ def lambda_handler(event=None, context=None):
         return
 
     slackJson = json.loads(event["Records"][0]["body"])
+    print("slackJson:")
     print(slackJson)
-
-    if not nlp(slackJson["text"]):
-        print("Message is not a question")
+    if slackJson["type"] == "MARKEDANSWEREVENT":
+      if not nlp(slackJson['parentMsgText']):
+        print("Parent of marked message is not a question!")
         return
+    else:
+      if not nlp(slackJson["text"]):
+          print("Message is not a question")
+          return
 
     ENDPOINT_NAME = os.environ['ENDPOINT_NAME']
     
@@ -39,7 +44,7 @@ def lambda_handler(event=None, context=None):
     payload = json.dumps({"inputs": slackJson["text"]})
     response = runtime.invoke_endpoint(
         EndpointName=ENDPOINT_NAME, ContentType='application/json', Body=payload)["Body"].read()
-    new_vector = np.array(json.loads(response)[0])  # change
+    new_vector = np.array(json.loads(response)[0], dtype=np.float64) 
 
 
     if slackJson["type"] == "NEWMESSAGEEVENT":
@@ -47,20 +52,20 @@ def lambda_handler(event=None, context=None):
       questionObjects = callRds(slackJson["channelID"])
       similarities = []
       for question in questionObjects:
-        similarity = cosine_similarity(new_vector, np.frombuffer(base64.decodebytes(question["TextVector"])))
+        similarity = cosine_similarity(new_vector, np.array((question["TextVector"]), dtype=np.float64))
         if similarity >= .6:
-          similarities.append({"similarity": similarity, "SlackQuestionID": question["SlackQuestionUUID"], "SlackQuestionTs": question["Ts"]})
+          similarities.append({"similarity": similarity, "SlackQuestionID": question["SlackQuestionID"], "SlackQuestionTs": question["Ts"]})
       slackJson["vectors"] = sorted(similarities, key=lambda d: d['similarity'], reverse=True)
       return write_to_sqs(slackJson, sqs)
 
     if slackJson["type"] == "MARKEDANSWEREVENT":
-      print("NEWMESSAGEEVENT")
-      slackJson["vectors"] = base64.b64encode(new_vector)
+      print("MARKEDANSWEREVENT")
+      slackJson["vectors"] = list(new_vector)
       return write_to_sqs(slackJson, sqs)
 
     if slackJson["type"] == "APPADDEDMESSAGEPROCESSING":
-      print("NEWMESSAGEEVENT")
-      slackJson["vectors"] = base64.b64encode(new_vector)
+      print("APPADDEDMESSAGEPROCESSING")
+      slackJson["vectors"] = list(new_vector)
       return write_to_sqs(slackJson, sqs)
 
     print("incoming event did not match any event types")
@@ -109,6 +114,6 @@ def callRds(channelID):
         vector = row[1]["stringValue"]
         ts = row[2]["stringValue"]
         oldQuestions.append(
-            {"SlackQuestionID": qUUID, "Ts": ts, "TextVector": vector})
+            {"SlackQuestionID": qUUID, "Ts": ts, "TextVector": json.loads(vector)})
 
     return oldQuestions

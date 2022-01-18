@@ -66,6 +66,7 @@ export const lambdaHandler = async (
   ) {
     // For slack interactivity, the user sees an error unless we only return the status code and header
     // Check buildResponse for the code on this
+    console.log(slackEvent.constructor.name);
     return buildResponse(200, "request queued for processing",false, true);
   }
 
@@ -272,7 +273,7 @@ function fromSlackEventsApi(event: APIGatewayProxyEventV2): Result<SlackEvent> {
 
     let newMessageEvent = new NewMessageEvent(
       slackEvent.event.channel as string,
-      slackEvent.event.team as string,
+      slackEvent.team_id as string,
       slackEvent.event.ts as string,
       slackEvent.event.user as string,
       slackEvent.event.text as string,
