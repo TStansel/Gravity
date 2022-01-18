@@ -3,9 +3,12 @@ import json
 from pydataapi import DataAPI, Result
 import boto3
 import os
+import base64
 
 secretArn = os.environ["AURORA_SECRET_ARN"]
 resourceArn = os.environ["AURORA_RESOURCE_ARN"]
+runtime = boto3.client('runtime.sagemaker')
+sqs = boto3.client('sqs')
 
 
 def lambda_handler(event=None, context=None):
@@ -31,32 +34,47 @@ def lambda_handler(event=None, context=None):
         return
 
     ENDPOINT_NAME = os.environ['ENDPOINT_NAME']
-    runtime = boto3.client('runtime.sagemaker')
+    
 
     payload = json.dumps({"inputs": slackJson["text"]})
     response = runtime.invoke_endpoint(
         EndpointName=ENDPOINT_NAME, ContentType='application/json', Body=payload)["Body"].read()
-    print(json.loads(response)[0])
-    new_vector = np.array([])  # change
+    new_vector = np.array(json.loads(response)[0])  # change
+
 
     if slackJson["type"] == "NEWMESSAGEEVENT":
-        questionObjects = callRds(slackJson["channelID"])
-        similarities = []
-        for question in questionObjects:
-          similarity = cosine_similarity(new_vector, np.array(json.loads(question["TextVector"])))
-          if similarity >= .6:
-            similarities.append({"similarity": similarity, "SlackQuestionID": question["SlackQuestionUUID"], "SlackQuestionTs": question["Ts"]})
-        slackJson["vectors"] = sorted(similarities, key=lambda d: d['similarity'], reverse=True)
-        return json.dumps(slackJson)
+      print("NEWMESSAGEEVENT")
+      questionObjects = callRds(slackJson["channelID"])
+      similarities = []
+      for question in questionObjects:
+        similarity = cosine_similarity(new_vector, np.frombuffer(base64.decodebytes(question["TextVector"])))
+        if similarity >= .6:
+          similarities.append({"similarity": similarity, "SlackQuestionID": question["SlackQuestionUUID"], "SlackQuestionTs": question["Ts"]})
+      slackJson["vectors"] = sorted(similarities, key=lambda d: d['similarity'], reverse=True)
+      return write_to_sqs(slackJson, sqs)
 
     if slackJson["type"] == "MARKEDANSWEREVENT":
-      slackJson["vectors"] = json.dumps(list(new_vector))
-      return json.dumps(slackJson)
+      print("NEWMESSAGEEVENT")
+      slackJson["vectors"] = base64.b64encode(new_vector)
+      return write_to_sqs(slackJson, sqs)
 
-    if slackJson["type"] == "APPADDEDEVENT":
-      pass
-    
+    if slackJson["type"] == "APPADDEDMESSAGEPROCESSING":
+      print("NEWMESSAGEEVENT")
+      slackJson["vectors"] = base64.b64encode(new_vector)
+      return write_to_sqs(slackJson, sqs)
+
+    print("incoming event did not match any event types")
     return
+
+def write_to_sqs(slackJson, sqs):
+  response = sqs.send_message(
+    QueueUrl=os.environ['ML_OUTPUT_SQS_URL'],
+    MessageBody=(
+      json.dumps(slackJson)
+    )
+  )
+  print(response['MessageId'])
+  return True
 
 
 def nlp(string):

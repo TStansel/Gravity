@@ -9,6 +9,7 @@ import {
   ServiceOutputTypes,
 } from "@aws-sdk/client-sqs";
 import { ulid } from "ulid";
+// TODO move this data instatiation to above calling lambda handler to make sure happens once
 const data = require("data-api-client")({
   secretArn: process.env.AURORA_SECRET_ARN,
   resourceArn: process.env.AURORA_RESOURCE_ARN,
@@ -1578,7 +1579,7 @@ export class AppAddedEvent extends SlackEvent {
       }
 
       cursor = null;
-      let channelMessages: JSON[] = [];
+      let channelMessages = [];
 
       do {
         let cursorParam;
@@ -1605,12 +1606,16 @@ export class AppAddedEvent extends SlackEvent {
 
         const getChannelMessagesResult = await axios(getChannelMessagesConfig);
 
-        //console.log("Get Channel Messages Call:", getChannelMessagesResult);
-
-        // TODO: Test if filtering below is filtering out non-parent messages
-        channelMessages = channelMessages.concat(
-          getChannelMessagesResult.data.messages.filter(this.isParentMessage)
-        );
+        // This code should ensure that only messages with a thread get sent to ML processing
+        for (const message of getChannelMessagesResult.data.messages) {
+          if (message.thread_ts && message.type && (message.type === "message")) {
+            channelMessages.push(message);
+          }
+        }
+        // // TODO: Test if filtering below is filtering out non-parent messages
+        // channelMessages = channelMessages.concat(
+        //   (getChannelMessagesResult.data.messages).filter(message  => {if (message.thread_ts)})
+        // );
 
         // Logic to decide if need to continue paginating
         if (
@@ -1644,7 +1649,7 @@ export class AppAddedEvent extends SlackEvent {
         }
       } while (cursor !== null); // When done paginating cursor will be set to null
 
-      console.log("Number of messages in past year:", channelMessages.length);
+      console.log("Number of candidate messages in past year:", channelMessages.length);
 
       let promises: Promise<ServiceOutputTypes>[] = [];
       let batch_size = 5;
@@ -1656,11 +1661,9 @@ export class AppAddedEvent extends SlackEvent {
         let sqsSendBatchMessageEntries: SendMessageBatchRequestEntry[] =
           channelMessagesBatch.map((message, index) => ({
             Id: String(index),
-            MessageBody: JSON.stringify({
-              message: message,
-              channelID: this.channelID,
-              channelUUID: channelUUID,
-            }),
+            MessageBody: JSON.stringify( new AppAddedMessageProcessing(this.channelID, this.workspaceID,
+              this.userID, message.thread_ts, message.ts)
+              ),
           }));
 
         //console.log(sqsSendBatchMessageEntries);
