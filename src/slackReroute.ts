@@ -317,9 +317,7 @@ function fromSlackInteractivity(
   // check that the slackPayload has all properties common to an interactive slack event
   let hasInteractivityProperties = checkObjHasProperties(slackPayload, [
     "type",
-    "callback_id",
     "channel",
-    "message",
     "user",
     "team",
   ]);

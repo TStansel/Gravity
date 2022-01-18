@@ -89,18 +89,17 @@ export class HelpfulButton extends SlackEvent {
   async doWork(): Promise<Result<string>> {
     console.log("Helpful do work");
     try {
-      let helpfulParams = {
-        replace_original: "true",
-        text: "Thank you for making Osmosix more accurate!",
+      let dismissParams = {
+        delete_original: "true",
       };
 
-      let helpfulConfig = {
+      let dismissConfig = {
         method: "post",
         url: this.responseURL,
-        data: helpfulParams,
+        data: dismissParams,
       } as AxiosRequestConfig<any>;
 
-      const helpfulRes = await axios(helpfulConfig);
+      const dismissRes = await axios(dismissConfig);
 
       let getLinkSql = `select AnswerLink from SlackQuestion 
     join SlackAnswer on SlackQuestion.SlackAnswerUUID = SlackAnswer.SlackAnswerUUID
@@ -254,18 +253,17 @@ export class NotHelpfulButton extends SlackEvent {
   async doWork(): Promise<Result<string>> {
     console.log("Not helpful do work");
     try {
-      let notHelpfulParams = {
-        replace_original: "true",
-        text: "Thank you for making Osmosix more accurate!",
+      let dismissParams = {
+        delete_original: "true",
       };
 
-      let notHelpfulConfig = {
+      let dismissConfig = {
         method: "post",
         url: this.responseURL,
-        data: notHelpfulParams,
+        data: dismissParams,
       } as AxiosRequestConfig<any>;
 
-      const notHelpfulRes = await axios(notHelpfulConfig);
+      const dismissRes = await axios(dismissConfig);
 
       let getBotTokenSql = `select SlackToken.BotToken from SlackToken 
       join SlackWorkspace on SlackToken.SlackWorkspaceUUID = SlackWorkspace.SlackWorkspaceUUID 
@@ -687,21 +685,21 @@ export class MarkedAnswerEvent
 
       const addEmojiReactionRes = await axios(addEmojiReactionConfig);
 
-      let msgParams = {
-        channel: this.userID,
-        text: "Thank you for marking an answer and for making Osmosix more accurate!",
-      };
+      // let msgParams = {
+      //   channel: this.userID,
+      //   text: "Thank you for marking an answer and for making Osmosix more accurate!",
+      // };
 
-      let msgConfig = {
-        method: "post",
-        url: "https://slack.com/api/chat.postMessage",
-        headers: {
-          Authorization: "Bearer " + botToken,
-          "Content-Type": "application/json",
-        },
-        data: msgParams,
-      } as AxiosRequestConfig<any>;
-      const msgRes = await axios(msgConfig);
+      // let msgConfig = {
+      //   method: "post",
+      //   url: "https://slack.com/api/chat.postMessage",
+      //   headers: {
+      //     Authorization: "Bearer " + botToken,
+      //     "Content-Type": "application/json",
+      //   },
+      //   data: msgParams,
+      // } as AxiosRequestConfig<any>;
+      // const msgRes = await axios(msgConfig);
 
       // Create Q and A pair in DB
 
@@ -879,7 +877,7 @@ export class NewMessageEvent
 
   async doMLWork(questions: JSON[]): Promise<Result<string>> {
     console.log("New Message: ML Work");
-    console.log(`questions: ${questions}`);
+    console.log(questions);
     try {
       let getBotTokenSql = `select SlackToken.BotToken from SlackToken 
       join SlackWorkspace on SlackToken.SlackWorkspaceUUID = SlackWorkspace.SlackWorkspaceUUID 
@@ -1063,7 +1061,7 @@ export class NewMessageEvent
           parseFloat(b["SlackQuestionTs" as keyof JSON] as string)
       );
 
-      console.log(`sorted questions: ${questions}`);
+      console.log(questions);
 
       // Find most recent question above 60% simlarity
       let mostRecentAboveXQuestion: JSON | undefined = undefined;
@@ -1102,6 +1100,7 @@ export class NewMessageEvent
         msgParams = {
           channel: this.channelID,
           user: this.userID,
+          username: "Osmosix Bot",
           text: "I think I might have an answer for you!",
           blocks: [
             {
@@ -1203,6 +1202,7 @@ export class NewMessageEvent
 
           let answerTs = repliesRes.data.messages[1].ts as string;
           console.log(`answerTs from slack: ${answerTs}`);
+          console.log(`message text: ${repliesRes.data.messages[1].text}`);
 
           let getLinkConfig = {
             method: "get",
@@ -1239,6 +1239,7 @@ export class NewMessageEvent
         msgParams = {
           channel: this.channelID,
           user: this.userID,
+          username: "Osmosix Bot",
           text: "I think I might have an answer for you!",
           blocks: [
             {
@@ -1359,6 +1360,7 @@ export class NewMessageEvent
         data: msgParams,
       } as AxiosRequestConfig<any>;
       const msgRes = await axios(msgConfig);
+      console.log(msgRes);
 
       if (!isAnswerInDb) {
         console.log("isAnswerInDb was false so inserting answer into DB");
@@ -1379,6 +1381,7 @@ export class NewMessageEvent
           SlackAnswerUUID: answerULID,
           SlackQuestionUUID: mostSimilarQuestionULID,
         });
+        console.log(updateQuestionResult);
       }
 
       if (!isRecentAnswerInDb) {
@@ -1400,6 +1403,7 @@ export class NewMessageEvent
           SlackAnswerUUID: answerULID,
           SlackQuestionUUID: recentQuestionULID,
         });
+        console.log(updateQuestionResult);
       }
     } catch (e) {
       return {

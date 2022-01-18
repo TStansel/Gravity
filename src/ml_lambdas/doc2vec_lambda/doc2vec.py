@@ -1,14 +1,14 @@
 import numpy as np
 import json
-from pydataapi import DataAPI, Result
 import boto3
 import os
-import base64
+
 
 secretArn = os.environ["AURORA_SECRET_ARN"]
 resourceArn = os.environ["AURORA_RESOURCE_ARN"]
 runtime = boto3.client('runtime.sagemaker')
 sqs = boto3.client('sqs')
+rdsData = boto3.client('rds-data')
 
 
 def lambda_handler(event=None, context=None):
@@ -40,8 +40,8 @@ def lambda_handler(event=None, context=None):
 
     ENDPOINT_NAME = os.environ['ENDPOINT_NAME']
     
-
-    payload = json.dumps({"inputs": slackJson["text"]})
+    vectorizer_text_field = "parentMsgText" if slackJson["type"] == "MARKEDANSWEREVENT" else "text"
+    payload = json.dumps({"inputs": slackJson[vectorizer_text_field]})
     response = runtime.invoke_endpoint(
         EndpointName=ENDPOINT_NAME, ContentType='application/json', Body=payload)["Body"].read()
     new_vector = np.array(json.loads(response)[0], dtype=np.float64) 
@@ -50,6 +50,8 @@ def lambda_handler(event=None, context=None):
     if slackJson["type"] == "NEWMESSAGEEVENT":
       print("NEWMESSAGEEVENT")
       questionObjects = callRds(slackJson["channelID"])
+      print(len(questionObjects))
+      print(questionObjects)
       similarities = []
       for question in questionObjects:
         similarity = cosine_similarity(new_vector, np.array((question["TextVector"]), dtype=np.float64))
@@ -91,8 +93,6 @@ def cosine_similarity(v1, v2):
 
 
 def callRds(channelID):
-    rdsData = boto3.client('rds-data')
-
     sqlStatement = """
                   select SlackQuestionUUID, TextVector, Ts from SlackQuestion 
                   inner join SlackChannel on SlackQuestion.SlackChannelUUID=SlackChannel.SlackChannelUUID 
