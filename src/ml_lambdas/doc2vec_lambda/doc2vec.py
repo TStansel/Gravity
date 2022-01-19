@@ -15,7 +15,6 @@ DYNAMO_TABLE_NAME = os.environ['DYNAMO_TABLE_NAME']
 table = dynamodb.Table(DYNAMO_TABLE_NAME)
 
 
-
 def lambda_handler(event=None, context=None):
     print("Request Event", event)
 
@@ -67,20 +66,22 @@ def lambda_handler(event=None, context=None):
             new_vector, slackJson['workspaceID'], slackJson['channelID'], table)
 
         if len(similar_questions) > 0:
-          slackJson["vectors"] = sorted(
-              similar_questions, key=lambda d: d['similarity'], reverse=True)
+            slackJson["vectors"] = sorted(
+                similar_questions, key=lambda d: d['similarity'], reverse=True)
         else:
-          slackJson["vectors"] = []
+            slackJson["vectors"] = []
         return write_to_sqs(slackJson, sqs)
 
     if slackJson["type"] == "MARKEDANSWEREVENT":
         print("MARKEDANSWEREVENT")
         print(write_to_dynamo(slackJson, new_vector, table))
+        slackJson["vectors"] = []
         return write_to_sqs(slackJson, sqs)
 
     if slackJson["type"] == "APPADDEDMESSAGEPROCESSING":
         print("APPADDEDMESSAGEPROCESSING")
         print(write_to_dynamo(slackJson, new_vector, table))
+        slackJson["vectors"] = []
         return write_to_sqs(slackJson, sqs)
 
     print("incoming event did not match any event types")
@@ -102,8 +103,8 @@ def write_to_dynamo(slackJson, vector, table):
     channelID = slackJson['channelID']
     workspaceID = slackJson['workspaceID']
     messageTs = slackJson['messageID']
-    response = table.put_item(TableName=DYNAMO_TABLE_NAME, Item={"workspaceID": {'S': workspaceID}, "channelID#ts": {
-        'S': "{channelID}#{ts}".format(channelID=channelID, ts=messageTs)}, "vector": {'B': vector.tobytes()}, "messageTs": {'S': messageTs}})
+    response = table.put_item(TableName=DYNAMO_TABLE_NAME, Item={"workspaceID": workspaceID, "channelID#ts": "{channelID}#{ts}".format(
+        channelID=channelID, ts=messageTs), "vector": vector.tobytes(), "messageTs": messageTs})
     return response
 
 
@@ -137,7 +138,7 @@ def process_batch(batch_items, workspaceID, channelID, new_message_vector):
     similar_questions = []
 
     if len(batch_items) == 0:
-      return similar_questions
+        return similar_questions
 
     for question in batch_items:
         similarity = cosine_similarity(
@@ -158,8 +159,8 @@ def cosine_similarity(v1, v2):
 
 # def callRds(channelID):
 #     sqlStatement = """
-#                   select SlackQuestionUUID, TextVector, Ts from SlackQuestion 
-#                   inner join SlackChannel on SlackQuestion.SlackChannelUUID=SlackChannel.SlackChannelUUID 
+#                   select SlackQuestionUUID, TextVector, Ts from SlackQuestion
+#                   inner join SlackChannel on SlackQuestion.SlackChannelUUID=SlackChannel.SlackChannelUUID
 #                   where SlackChannel.ChannelID = :channelID
 #                   limit 60
 #                  """
