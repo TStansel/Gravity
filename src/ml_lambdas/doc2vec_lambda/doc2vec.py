@@ -10,7 +10,9 @@ resourceArn = os.environ["AURORA_RESOURCE_ARN"]
 runtime = boto3.client('runtime.sagemaker')
 sqs = boto3.client('sqs')
 rdsData = boto3.client('rds-data')
-dynamodb = boto3.client('dynamodb')
+dynamodb = boto3.resource('dynamodb', region_name="us-east-2")
+DYNAMO_TABLE_NAME = os.environ['DYNAMO_TABLE_NAME']
+
 
 
 def lambda_handler(event=None, context=None):
@@ -95,18 +97,18 @@ def write_to_dynamo(slackJson, vector, dynamo_client):
     channelID = slackJson['channelID']
     workspaceID = slackJson['workspaceID']
     messageTs = slackJson['messageID']
-    response = dynamo_client.put_item(TableName="questionTable", Item={"workspaceID": {'S': workspaceID}, "channelID#ts": {
+    response = dynamo_client.put_item(TableName=DYNAMO_TABLE_NAME, Item={"workspaceID": {'S': workspaceID}, "channelID#ts": {
         'S': "{channelID}#{ts}".format(channelID=channelID, ts=messageTs)}, "vector": {'B': vector.tobytes()}, "messageTs": {'S': messageTs}})
     return response
 
 
 def get_similar_questions_dynamo(new_message_vector, workspaceID, channelID, dynamo_client):
-    table = dynamo_client.Table('questionTable')
+    table = dynamo_client.Table(DYNAMO_TABLE_NAME)
 
     similar_questions = []
 
     response = table.query(
-        KeyConditionExpression=Key(workspaceID) & Key(
+        KeyConditionExpression=Key("workspaceID").eq(workspaceID) & Key(
             'channelID#ts').begins_with(channelID)
     )
     startkey = response.get('LastEvaluatedKey', None)
@@ -116,7 +118,7 @@ def get_similar_questions_dynamo(new_message_vector, workspaceID, channelID, dyn
     while startkey is not None:
         response = table.query(
             ExclusiveStartKey=startkey,
-            KeyConditionExpression=Key(workspaceID) & Key(
+            KeyConditionExpression=Key("workspaceID").eq(workspaceID) & Key(
                 'channelID#ts').begins_with(channelID)
         )
         startkey = response.get('LastEvaluatedKey', None)
@@ -125,7 +127,7 @@ def get_similar_questions_dynamo(new_message_vector, workspaceID, channelID, dyn
 
 
 def process_batch(batch_items, workspaceID, channelID, new_message_vector):
-    print("processing batch of size: " + len(batch_items))
+    print("processing batch of size: " + str(len(batch_items)))
     similar_questions = []
     for question in batch_items:
         similarity = cosine_similarity(

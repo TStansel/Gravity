@@ -42,6 +42,7 @@ export class CdkOsmosixStack extends Stack {
       billingMode: dynamodb.BillingMode.PROVISIONED,
     });
 
+    
     const secret = secretsmanager.Secret.fromSecretAttributes(
       this,
       "osmosixSlackSigningSecret",
@@ -213,6 +214,7 @@ export class CdkOsmosixStack extends Stack {
           AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
           ENDPOINT_NAME:
             "huggingface-pytorch-inference-2022-01-17-20-16-16-413",
+          DYNAMO_TABLE_NAME: dynamoQuestionTable.tableName
         },
         timeout: Duration.seconds(300),
         role: myRole,

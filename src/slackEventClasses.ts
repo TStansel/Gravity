@@ -978,12 +978,32 @@ export class NewMessageEvent
 
       let mostSimilarQuestion = questions[0];
       //console.log(`most similar question: ${mostSimilarQuestion}`);
-      let mostSimilarQuestionULID = mostSimilarQuestion[
-        "SlackQuestionID" as keyof JSON
-      ] as string;
 
-      let getQuestionSql =
-        "select SlackAnswerUUID from SlackQuestion where SlackQuestionUUID = :SlackQuestionUUID";
+      let getMostSimilarQuestionUlidSql = `select SlackQuestionUUID
+      from
+      SlackQuestion inner join SlackChannel on SlackQuestion.SlackChannelUUID = SlackChannel.SlackChannelUUID
+      where
+      SlackQuestion.Ts = :messageTs and
+      SlackChannel.ChannelID = :channelID`;
+
+      let getMostSimilarQuestionUlidResult = await data.query(
+        getMostSimilarQuestionUlidSql,
+        {
+          messageTs: mostSimilarQuestion["messageTs" as keyof JSON] as string,
+          channelID: mostSimilarQuestion["channelID" as keyof JSON] as string,
+        }
+      );
+
+      if (
+        getMostSimilarQuestionUlidResult.records[0].SlackQuestionUUID === null
+      ) {
+        console.log("could not find questionUUID in sql database");
+      }
+
+      let mostSimilarQuestionULID =
+        getMostSimilarQuestionUlidResult.records[0].SlackQuestionUUID;
+
+      let getQuestionSql = `select SlackAnswerUUID from SlackQuestion where SlackQuestionUUID = :SlackQuestionUUID`;
 
       let getQuestionResult = await data.query(getQuestionSql, {
         SlackQuestionUUID: mostSimilarQuestionULID,
@@ -1159,6 +1179,32 @@ export class NewMessageEvent
           mostRecentAboveXQuestion["similarity" as keyof JSON]
         ) as number;
 
+        let getRecentQuestionUlidSql = `select SlackQuestionUUID
+        from
+        SlackQuestion inner join SlackChannel on SlackQuestion.SlackChannelUUID = SlackChannel.SlackChannelUUID
+        where
+        SlackQuestion.Ts = :messageTs and
+        SlackChannel.ChannelID = :channelID`;
+
+        let getRecentQuestionUlidResult = await data.query(
+          getRecentQuestionUlidSql,
+          {
+            messageTs: mostRecentAboveXQuestion[
+              "messageTs" as keyof JSON
+            ] as string,
+            channelID: mostRecentAboveXQuestion[
+              "channelID" as keyof JSON
+            ] as string,
+          }
+        );
+
+        if (getRecentQuestionUlidResult.records[0].SlackQuestionUUID === null) {
+          console.log("could not find questionUUID in sql database");
+        }
+
+        let mostSimilarQuestionULID =
+          getRecentQuestionUlidResult.records[0].SlackQuestionUUID;
+
         recentQuestionULID = mostRecentAboveXQuestion[
           "SlackQuestionID" as keyof JSON
         ] as string;
@@ -1211,7 +1257,7 @@ export class NewMessageEvent
           console.log(
             "answer link for more recent similar question exists in DB"
           );
-          console.log(getQuestionResult.records[0])
+          console.log(getQuestionResult.records[0]);
           isRecentAnswerInDb = true;
 
           let getAnswerLinkSql =
