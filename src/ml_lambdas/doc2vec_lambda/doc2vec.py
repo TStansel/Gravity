@@ -97,6 +97,7 @@ def callRds(channelID):
                   select SlackQuestionUUID, TextVector, Ts from SlackQuestion 
                   inner join SlackChannel on SlackQuestion.SlackChannelUUID=SlackChannel.SlackChannelUUID 
                   where SlackChannel.ChannelID = :channelID
+                  limit 60
                  """
 
     params = [{'name': 'channelID', 'value': {'stringValue': channelID}}]
