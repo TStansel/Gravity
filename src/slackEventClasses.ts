@@ -117,7 +117,6 @@ export class HelpfulButton extends SlackEvent {
         workspaceID: this.workspaceID,
       });
 
-
       if (
         getBotTokenResult.records.length !== 1 ||
         !getBotTokenResult.records[0].BotToken
@@ -191,7 +190,6 @@ export class HelpfulButton extends SlackEvent {
       } as AxiosRequestConfig<any>;
 
       const addEmojiReactionRes = await axios(addEmojiReactionConfig);
-
 
       let increamentUpvotesSql = `update SlackAnswer 
             join SlackQuestion on SlackAnswer.SlackAnswerUUID = SlackQuestion.SlackAnswerUUID
@@ -1031,7 +1029,6 @@ export class NewMessageEvent
         } as AxiosRequestConfig<any>;
         const getLinkRes = await axios(getLinkConfig);
         answerLink = getLinkRes.data.permalink;
-
       } else {
         console.log("answer is in DB");
         isAnswerInDb = true;
@@ -1057,7 +1054,6 @@ export class NewMessageEvent
           parseFloat(a["SlackQuestionTs" as keyof JSON] as string) -
           parseFloat(b["SlackQuestionTs" as keyof JSON] as string)
       );
-
 
       // Find most recent question above 60% simlarity
       let mostRecentAboveXQuestion: JSON | undefined = undefined;
@@ -1167,7 +1163,6 @@ export class NewMessageEvent
           "SlackQuestionID" as keyof JSON
         ] as string;
 
-
         let getQuestionSql =
           "select SlackAnswerUUID from SlackQuestion where SlackQuestionUUID = :SlackQuestionUUID";
 
@@ -1216,6 +1211,7 @@ export class NewMessageEvent
           console.log(
             "answer link for more recent similar question exists in DB"
           );
+          console.log(getQuestionResult.records[0])
           isRecentAnswerInDb = true;
 
           let getAnswerLinkSql =
@@ -1226,9 +1222,8 @@ export class NewMessageEvent
               .SlackAnswerUUID as string,
           });
           recentAnswerLink = getAnswerLinkResult.records[0].AnswerLink;
-          console.log(recentAnswerLink)
+          console.log(recentAnswerLink);
         }
-        
 
         msgParams = {
           channel: this.channelID,
@@ -1469,6 +1464,23 @@ export class AppAddedEvent extends SlackEvent {
       }
 
       let botToken = getBotTokenResult.records[0].BotToken;
+
+      // Send App Added Message
+      let msgParams = {
+        channel: this.channelID,
+        text: "Thank you for adding me to your channel!\n Here are some emoji's and their meanings you will see as you use me:\n\t:arrows_counterclockwise: means I'm working on finding an answer to that question\n\t:white_check_mark: means I helped answer that question\n\t:question: means I was unable to answer that question\nCheck out the about section of my app to help you get started too!\nFeel free to start using me right away, but I will be more helpful after a minute or two.",
+      };
+
+      let msgConfig = {
+        method: "post",
+        url: "https://slack.com/api/chat.postMessage",
+        headers: {
+          Authorization: "Bearer " + botToken,
+          "Content-Type": "application/json",
+        },
+        data: msgParams,
+      } as AxiosRequestConfig<any>;
+      const msgRes = await axios(msgConfig);
 
       let workspaceUUID: string;
 
