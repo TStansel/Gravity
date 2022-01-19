@@ -2,6 +2,7 @@ import numpy as np
 import json
 import boto3
 import os
+from tempfile import TemporaryFile
 
 
 secretArn = os.environ["AURORA_SECRET_ARN"]
@@ -9,6 +10,7 @@ resourceArn = os.environ["AURORA_RESOURCE_ARN"]
 runtime = boto3.client('runtime.sagemaker')
 sqs = boto3.client('sqs')
 rdsData = boto3.client('rds-data')
+dynamodb = boto3.client('dynamodb')
 
 
 def lambda_handler(event=None, context=None):
@@ -30,58 +32,72 @@ def lambda_handler(event=None, context=None):
     print("slackJson:")
     print(slackJson)
     if slackJson["type"] == "MARKEDANSWEREVENT":
-      if not nlp(slackJson['parentMsgText']):
-        print("Parent of marked message is not a question!")
-        return
+        if not nlp(slackJson['parentMsgText']):
+            print("Parent of marked message is not a question!")
+            return
     else:
-      if not nlp(slackJson["text"]):
-          print("Message is not a question")
-          return
+        if not nlp(slackJson["text"]):
+            print("Message is not a question")
+            return
 
     ENDPOINT_NAME = os.environ['ENDPOINT_NAME']
-    
+
     vectorizer_text_field = "parentMsgText" if slackJson["type"] == "MARKEDANSWEREVENT" else "text"
     payload = json.dumps({"inputs": slackJson[vectorizer_text_field]})
     response = runtime.invoke_endpoint(
         EndpointName=ENDPOINT_NAME, ContentType='application/json', Body=payload)["Body"].read()
-    new_vector = np.array(json.loads(response)[0], dtype=np.float64) 
-
+    new_vector = np.array(json.loads(response)[0], dtype=np.float64)
 
     if slackJson["type"] == "NEWMESSAGEEVENT":
-      print("NEWMESSAGEEVENT")
-      questionObjects = callRds(slackJson["channelID"])
-      print(len(questionObjects))
-      print(questionObjects)
-      similarities = []
-      for question in questionObjects:
-        similarity = cosine_similarity(new_vector, np.array((question["TextVector"]), dtype=np.float64))
-        if similarity >= .6:
-          similarities.append({"similarity": similarity, "SlackQuestionID": question["SlackQuestionID"], "SlackQuestionTs": question["Ts"]})
-      slackJson["vectors"] = sorted(similarities, key=lambda d: d['similarity'], reverse=True)
-      return write_to_sqs(slackJson, sqs)
+        print("NEWMESSAGEEVENT")
+        questionObjects = callRds(slackJson["channelID"])
+        print(len(questionObjects))
+        print(questionObjects)
+        similarities = []
+        for question in questionObjects:
+            similarity = cosine_similarity(new_vector, np.array(
+                (question["TextVector"]), dtype=np.float64))
+            if similarity >= .6:
+                similarities.append(
+                    {"similarity": similarity, "SlackQuestionID": question["SlackQuestionID"], "SlackQuestionTs": question["Ts"]})
+        slackJson["vectors"] = sorted(
+            similarities, key=lambda d: d['similarity'], reverse=True)
+        return write_to_sqs(slackJson, sqs)
 
     if slackJson["type"] == "MARKEDANSWEREVENT":
-      print("MARKEDANSWEREVENT")
-      slackJson["vectors"] = list(new_vector)
-      return write_to_sqs(slackJson, sqs)
+        print("MARKEDANSWEREVENT")
+        slackJson["vectors"] = list(new_vector)
+        print(write_to_dynamo(slackJson, new_vector, dynamodb))
+        return write_to_sqs(slackJson, sqs)
 
     if slackJson["type"] == "APPADDEDMESSAGEPROCESSING":
-      print("APPADDEDMESSAGEPROCESSING")
-      slackJson["vectors"] = list(new_vector)
-      return write_to_sqs(slackJson, sqs)
+        print("APPADDEDMESSAGEPROCESSING")
+        slackJson["vectors"] = list(new_vector)
+        return write_to_sqs(slackJson, sqs)
 
     print("incoming event did not match any event types")
     return
 
+
 def write_to_sqs(slackJson, sqs):
-  response = sqs.send_message(
-    QueueUrl=os.environ['ML_OUTPUT_SQS_URL'],
-    MessageBody=(
-      json.dumps(slackJson)
+    response = sqs.send_message(
+        QueueUrl=os.environ['ML_OUTPUT_SQS_URL'],
+        MessageBody=(
+            json.dumps(slackJson)
+        )
     )
-  )
-  print(response['MessageId'])
-  return True
+    print(response['MessageId'])
+    return True
+
+
+def write_to_dynamo(slackJson, vector, dynamo_client):
+    channelID = slackJson['channelID']
+    workspaceID = slackJson['workspaceID']
+    messageTs = slackJson['messageID']
+    response = dynamo_client.put_item(TableName="questionTable", Item={"workspaceID": {'S': workspaceID}, "channelID#ts": {
+                           'S': "{channelID}#{ts}".format(channelID=channelID, ts=messageTs)}, "vector": {'B': vector.tobytes()}})
+    return response
+    
 
 
 def nlp(string):
