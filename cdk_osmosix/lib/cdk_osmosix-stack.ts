@@ -9,6 +9,7 @@ import * as sqs from "aws-cdk-lib/aws-sqs";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources";
 import * as lambda from "aws-cdk-lib/aws-lambda";
+import * as dynamodb from "aws-cdk-lib/aws-dynamodb"
 // import * as sqs from 'aws-cdk-lib/aws-sqs';
 
 export class CdkOsmosixStack extends Stack {
@@ -27,6 +28,16 @@ export class CdkOsmosixStack extends Stack {
       },
       defaultDatabaseName: "osmosix",
       enableDataApi: true, // Optional - will be automatically set if you call grantDataApiAccess()
+    });
+
+    const dynamoQuestionTable = new dynamodb.Table(this, "questionTable", {
+     partitionKey: {
+       name: "workspaceID", type: dynamodb.AttributeType.STRING
+     },
+     sortKey: {
+       name: "channelID#ts", type: dynamodb.AttributeType.STRING
+     },
+     billingMode: dynamodb.BillingMode.PROVISIONED, 
     });
 
     const secret = secretsmanager.Secret.fromSecretAttributes(
@@ -190,6 +201,7 @@ export class CdkOsmosixStack extends Stack {
         role: myRole,
       }
     );
+    dynamoQuestionTable.grantReadWriteData(pythonMlLambda);
 
     myRole.addManagedPolicy(
       iam.ManagedPolicy.fromManagedPolicyArn(
