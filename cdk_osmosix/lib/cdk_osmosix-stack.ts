@@ -31,7 +31,6 @@ export class CdkOsmosixStack extends Stack {
     });
     
     const dynamoQuestionTable = new dynamodb.Table(this, "questionTable", {
-      tableName: "questionTable",
       partitionKey: {
         name: "workspaceID",
         type: dynamodb.AttributeType.STRING,
