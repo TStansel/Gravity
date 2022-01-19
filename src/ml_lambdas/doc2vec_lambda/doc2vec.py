@@ -12,6 +12,7 @@ sqs = boto3.client('sqs')
 rdsData = boto3.client('rds-data')
 dynamodb = boto3.resource('dynamodb', region_name="us-east-2")
 DYNAMO_TABLE_NAME = os.environ['DYNAMO_TABLE_NAME']
+table = dynamodb.Table(DYNAMO_TABLE_NAME)
 
 
 
@@ -63,7 +64,7 @@ def lambda_handler(event=None, context=None):
         #         similarities.append(
         #             {"similarity": similarity, "SlackQuestionID": question["SlackQuestionID"], "SlackQuestionTs": question["Ts"]})
         similar_questions = get_similar_questions_dynamo(
-            new_vector, slackJson['workspaceID'], slackJson['channelID'], dynamodb)
+            new_vector, slackJson['workspaceID'], slackJson['channelID'], table)
 
         if len(similar_questions) > 0:
           slackJson["vectors"] = sorted(
@@ -74,12 +75,12 @@ def lambda_handler(event=None, context=None):
 
     if slackJson["type"] == "MARKEDANSWEREVENT":
         print("MARKEDANSWEREVENT")
-        print(write_to_dynamo(slackJson, new_vector, dynamodb))
+        print(write_to_dynamo(slackJson, new_vector, table))
         return write_to_sqs(slackJson, sqs)
 
     if slackJson["type"] == "APPADDEDMESSAGEPROCESSING":
         print("APPADDEDMESSAGEPROCESSING")
-        print(write_to_dynamo(slackJson, new_vector, dynamodb))
+        print(write_to_dynamo(slackJson, new_vector, table))
         return write_to_sqs(slackJson, sqs)
 
     print("incoming event did not match any event types")
@@ -97,17 +98,16 @@ def write_to_sqs(slackJson, sqs):
     return True
 
 
-def write_to_dynamo(slackJson, vector, dynamo_client):
+def write_to_dynamo(slackJson, vector, table):
     channelID = slackJson['channelID']
     workspaceID = slackJson['workspaceID']
     messageTs = slackJson['messageID']
-    response = dynamo_client.put_item(TableName=DYNAMO_TABLE_NAME, Item={"workspaceID": {'S': workspaceID}, "channelID#ts": {
+    response = table.put_item(TableName=DYNAMO_TABLE_NAME, Item={"workspaceID": {'S': workspaceID}, "channelID#ts": {
         'S': "{channelID}#{ts}".format(channelID=channelID, ts=messageTs)}, "vector": {'B': vector.tobytes()}, "messageTs": {'S': messageTs}})
     return response
 
 
-def get_similar_questions_dynamo(new_message_vector, workspaceID, channelID, dynamo_client):
-    table = dynamo_client.Table(DYNAMO_TABLE_NAME)
+def get_similar_questions_dynamo(new_message_vector, workspaceID, channelID, table):
 
     similar_questions = []
 
