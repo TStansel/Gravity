@@ -29,7 +29,7 @@ export class CdkOsmosixStack extends Stack {
       defaultDatabaseName: "osmosix",
       enableDataApi: true, // Optional - will be automatically set if you call grantDataApiAccess()
     });
-
+    
     const dynamoQuestionTable = new dynamodb.Table(this, "questionTable", {
       tableName: "questionTable",
       partitionKey: {
@@ -61,6 +61,15 @@ export class CdkOsmosixStack extends Stack {
       }
     );
 
+    const prodClientSecret = secretsmanager.Secret.fromSecretAttributes(
+      this,
+      "prodClientSecret",
+      {
+        secretCompleteArn:
+          "arn:aws:secretsmanager:us-east-2:579534454884:secret:OSMOSIX_PROD_CLIENT-ahkUSC",
+      }
+    );
+
     const dbSecret = secretsmanager.Secret.fromSecretAttributes(
       this,
       "DbSecret",
@@ -80,6 +89,12 @@ export class CdkOsmosixStack extends Stack {
           .toString(),
         OSMOSIX_DEV_CLIENT_SECRET: devClientSecret
           .secretValueFromJson("OSMOSIX_DEV_CLIENT_SECRET")
+          .toString(),
+        OSMOSIX_PROD_CLIENT_ID: prodClientSecret
+          .secretValueFromJson("OSMOSIX_PROD_CLIENT_ID")
+          .toString(),
+        OSMOSIX_PROD_CLIENT_SECRET: prodClientSecret
+          .secretValueFromJson("OSMOSIX_PROD_CLIENT_SECRET")
           .toString(),
         AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
         AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,

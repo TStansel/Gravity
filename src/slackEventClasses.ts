@@ -1175,8 +1175,6 @@ export class NewMessageEvent
           SlackQuestionUUID: recentQuestionULID,
         });
 
-        let recentAnswerLink: string;
-
         if (getQuestionResult.records[0].SlackAnswerUUID === null) {
           // Answer is null in DB
           console.log("answer of similar recent question in DB is null");
@@ -1228,7 +1226,9 @@ export class NewMessageEvent
               .SlackAnswerUUID as string,
           });
           recentAnswerLink = getAnswerLinkResult.records[0].AnswerLink;
+          console.log(recentAnswerLink)
         }
+        
 
         msgParams = {
           channel: this.channelID,
