@@ -20,6 +20,11 @@ export class CdkOsmosixStack extends Stack {
     const auroraCluster = new rds.ServerlessCluster(this, "OsmosixCdkCluster", {
       engine: rds.DatabaseClusterEngine.AURORA_MYSQL,
       vpc,
+      scaling: {
+        autoPause: Duration.hours(20),
+        minCapacity: rds.AuroraCapacityUnit.ACU_8,
+        maxCapacity: rds.AuroraCapacityUnit.ACU_32
+      },
       defaultDatabaseName: "osmosix",
       enableDataApi: true, // Optional - will be automatically set if you call grantDataApiAccess()
     });
