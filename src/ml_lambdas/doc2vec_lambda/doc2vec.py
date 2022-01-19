@@ -2,7 +2,7 @@ import numpy as np
 import json
 import boto3
 import os
-from tempfile import TemporaryFile
+from boto3.dynamodb.conditions import Key
 
 
 secretArn = os.environ["AURORA_SECRET_ARN"]
@@ -50,29 +50,30 @@ def lambda_handler(event=None, context=None):
 
     if slackJson["type"] == "NEWMESSAGEEVENT":
         print("NEWMESSAGEEVENT")
-        questionObjects = callRds(slackJson["channelID"])
-        print(len(questionObjects))
-        print(questionObjects)
-        similarities = []
-        for question in questionObjects:
-            similarity = cosine_similarity(new_vector, np.array(
-                (question["TextVector"]), dtype=np.float64))
-            if similarity >= .6:
-                similarities.append(
-                    {"similarity": similarity, "SlackQuestionID": question["SlackQuestionID"], "SlackQuestionTs": question["Ts"]})
+        # questionObjects = callRds(slackJson["channelID"])
+        # print(len(questionObjects))
+        # print(questionObjects)
+        # similarities = []
+        # for question in questionObjects:
+        #     similarity = cosine_similarity(new_vector, np.array(
+        #         (question["TextVector"]), dtype=np.float64))
+        #     if similarity >= .6:
+        #         similarities.append(
+        #             {"similarity": similarity, "SlackQuestionID": question["SlackQuestionID"], "SlackQuestionTs": question["Ts"]})
+        similar_questions = get_similar_questions_dynamo(
+            new_vector, slackJson['workspaceID'], slackJson['channelID'], dynamodb)
         slackJson["vectors"] = sorted(
-            similarities, key=lambda d: d['similarity'], reverse=True)
+            similar_questions, key=lambda d: d['similarity'], reverse=True)
         return write_to_sqs(slackJson, sqs)
 
     if slackJson["type"] == "MARKEDANSWEREVENT":
         print("MARKEDANSWEREVENT")
-        slackJson["vectors"] = list(new_vector)
         print(write_to_dynamo(slackJson, new_vector, dynamodb))
         return write_to_sqs(slackJson, sqs)
 
     if slackJson["type"] == "APPADDEDMESSAGEPROCESSING":
         print("APPADDEDMESSAGEPROCESSING")
-        slackJson["vectors"] = list(new_vector)
+        print(write_to_dynamo(slackJson, new_vector, dynamodb))
         return write_to_sqs(slackJson, sqs)
 
     print("incoming event did not match any event types")
@@ -95,9 +96,44 @@ def write_to_dynamo(slackJson, vector, dynamo_client):
     workspaceID = slackJson['workspaceID']
     messageTs = slackJson['messageID']
     response = dynamo_client.put_item(TableName="questionTable", Item={"workspaceID": {'S': workspaceID}, "channelID#ts": {
-                           'S': "{channelID}#{ts}".format(channelID=channelID, ts=messageTs)}, "vector": {'B': vector.tobytes()}})
+        'S': "{channelID}#{ts}".format(channelID=channelID, ts=messageTs)}, "vector": {'B': vector.tobytes()}, "messageTs": {'S': messageTs}})
     return response
-    
+
+
+def get_similar_questions_dynamo(new_message_vector, workspaceID, channelID, dynamo_client):
+    table = dynamo_client.Table('questionTable')
+
+    similar_questions = []
+
+    response = table.query(
+        KeyConditionExpression=Key(workspaceID) & Key(
+            'channelID#ts').begins_with(channelID)
+    )
+    startkey = response.get('LastEvaluatedKey', None)
+    similar_questions.extend(process_batch(
+        response['Items'], workspaceID, channelID, new_message_vector))
+
+    while startkey is not None:
+        response = table.query(
+            ExclusiveStartKey=startkey,
+            KeyConditionExpression=Key(workspaceID) & Key(
+                'channelID#ts').begins_with(channelID)
+        )
+        startkey = response.get('LastEvaluatedKey', None)
+        similar_questions.extend(process_batch(
+            response['Items'], workspaceID, channelID, new_message_vector))
+
+
+def process_batch(batch_items, workspaceID, channelID, new_message_vector):
+    print("processing batch of size: " + len(batch_items))
+    similar_questions = []
+    for question in batch_items:
+        similarity = cosine_similarity(
+            new_message_vector, np.frombuffer(question['vector']))
+        if similarity >= .6:
+            similar_questions.append({"similarity": similarity, "workspaceID": workspaceID,
+                                      "channelID": channelID, "messageTs": question['messageTs']})
+    return similar_questions
 
 
 def nlp(string):
@@ -108,29 +144,29 @@ def cosine_similarity(v1, v2):
     return np.dot(v1, v2)/(np.linalg.norm(v1)*np.linalg.norm(v2))
 
 
-def callRds(channelID):
-    sqlStatement = """
-                  select SlackQuestionUUID, TextVector, Ts from SlackQuestion 
-                  inner join SlackChannel on SlackQuestion.SlackChannelUUID=SlackChannel.SlackChannelUUID 
-                  where SlackChannel.ChannelID = :channelID
-                  limit 60
-                 """
+# def callRds(channelID):
+#     sqlStatement = """
+#                   select SlackQuestionUUID, TextVector, Ts from SlackQuestion 
+#                   inner join SlackChannel on SlackQuestion.SlackChannelUUID=SlackChannel.SlackChannelUUID 
+#                   where SlackChannel.ChannelID = :channelID
+#                   limit 60
+#                  """
 
-    params = [{'name': 'channelID', 'value': {'stringValue': channelID}}]
+#     params = [{'name': 'channelID', 'value': {'stringValue': channelID}}]
 
-    response = rdsData.execute_statement(
-        resourceArn=resourceArn,
-        secretArn=secretArn,
-        database='osmosix',
-        sql=sqlStatement,
-        parameters=params
-    )
-    oldQuestions = []
-    for row in response["records"]:
-        qUUID = row[0]["stringValue"]
-        vector = row[1]["stringValue"]
-        ts = row[2]["stringValue"]
-        oldQuestions.append(
-            {"SlackQuestionID": qUUID, "Ts": ts, "TextVector": json.loads(vector)})
+#     response = rdsData.execute_statement(
+#         resourceArn=resourceArn,
+#         secretArn=secretArn,
+#         database='osmosix',
+#         sql=sqlStatement,
+#         parameters=params
+#     )
+#     oldQuestions = []
+#     for row in response["records"]:
+#         qUUID = row[0]["stringValue"]
+#         vector = row[1]["stringValue"]
+#         ts = row[2]["stringValue"]
+#         oldQuestions.append(
+#             {"SlackQuestionID": qUUID, "Ts": ts, "TextVector": json.loads(vector)})
 
-    return oldQuestions
+#     return oldQuestions

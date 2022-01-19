@@ -220,6 +220,7 @@ export class CdkOsmosixStack extends Stack {
       }
     );
     dynamoQuestionTable.grantWriteData(pythonMlLambda);
+    dynamoQuestionTable.grantReadData(pythonMlLambda);
 
     myRole.addManagedPolicy(
       iam.ManagedPolicy.fromManagedPolicyArn(
