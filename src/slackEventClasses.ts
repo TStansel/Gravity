@@ -853,6 +853,7 @@ export class NewMessageEvent
       let getChannelNameResult = await data.query(getChannelNameSql, {
         channelID: this.channelID,
       });
+      console.log(getChannelNameResult)
       if (getChannelNameResult.records.length === 0) {
         // Channel doesn't exist in database
         return {
@@ -1065,7 +1066,6 @@ export class NewMessageEvent
         mostSimilarQuestion["similarity" as keyof JSON]
       ) as number;
 
-      // TODO: How are we passing the TS
       // Sort questions by TS
       questions = questions.sort(
         (a, b) =>
@@ -1088,7 +1088,7 @@ export class NewMessageEvent
         }
       }
 
-      // TODO: Add logic to check if mostRecentAboveXQuestion is same as mostSimilar and then only send one
+      console.log("Most Recent:",mostRecentAboveXQuestion)
 
       if (
         mostRecentAboveXQuestion &&
@@ -1180,9 +1180,10 @@ export class NewMessageEvent
           mostRecentAboveXQuestion["similarity" as keyof JSON]
         ) as number;
 
-        let recentQuestionULID = mostRecentAboveXQuestion[
+        recentQuestionULID = mostRecentAboveXQuestion[
           "SlackQuestionID" as keyof JSON
         ] as string;
+
 
         let getQuestionSql =
           "select SlackAnswerUUID from SlackQuestion where SlackQuestionUUID = :SlackQuestionUUID";
@@ -1410,6 +1411,8 @@ export class NewMessageEvent
           Upvotes: 0,
         });
 
+        console.log("Insert Answer Res",insertAnswerResult)
+
         let updateQuestionSql =
           "update SlackQuestion set SlackAnswerUUID = :SlackAnswerUUID where SlackQuestionUUID = :SlackQuestionUUID";
 
@@ -1417,7 +1420,8 @@ export class NewMessageEvent
           SlackAnswerUUID: answerULID,
           SlackQuestionUUID: recentQuestionULID,
         });
-        console.log(updateQuestionResult);
+        console.log("recent ULID", recentQuestionULID)
+        console.log("Update Question Res",updateQuestionResult);
       }
     } catch (e) {
       return {
