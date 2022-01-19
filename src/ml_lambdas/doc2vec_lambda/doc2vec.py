@@ -64,8 +64,12 @@ def lambda_handler(event=None, context=None):
         #             {"similarity": similarity, "SlackQuestionID": question["SlackQuestionID"], "SlackQuestionTs": question["Ts"]})
         similar_questions = get_similar_questions_dynamo(
             new_vector, slackJson['workspaceID'], slackJson['channelID'], dynamodb)
-        slackJson["vectors"] = sorted(
-            similar_questions, key=lambda d: d['similarity'], reverse=True)
+
+        if len(similar_questions) > 0:
+          slackJson["vectors"] = sorted(
+              similar_questions, key=lambda d: d['similarity'], reverse=True)
+        else:
+          slackJson["vectors"] = []
         return write_to_sqs(slackJson, sqs)
 
     if slackJson["type"] == "MARKEDANSWEREVENT":
@@ -125,10 +129,16 @@ def get_similar_questions_dynamo(new_message_vector, workspaceID, channelID, dyn
         similar_questions.extend(process_batch(
             response['Items'], workspaceID, channelID, new_message_vector))
 
+    return similar_questions
+
 
 def process_batch(batch_items, workspaceID, channelID, new_message_vector):
     print("processing batch of size: " + str(len(batch_items)))
     similar_questions = []
+
+    if len(batch_items) == 0:
+      return similar_questions
+
     for question in batch_items:
         similarity = cosine_similarity(
             new_message_vector, np.frombuffer(question['vector']))
