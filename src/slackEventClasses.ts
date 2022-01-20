@@ -1011,7 +1011,7 @@ export class NewMessageEvent
         console.log("answer is null in DB");
         // Answer is null in DB
         let messageTS = mostSimilarQuestion[
-          "SlackQuestionTs" as keyof JSON
+          "messageTs" as keyof JSON
         ] as string;
 
         let repliesConfig = {
@@ -1117,7 +1117,7 @@ export class NewMessageEvent
           isRecentAnswerInDb = false;
           console.log("answer of similar recent question in DB is null");
           let recentQuestionTS = mostRecentQuestion[
-            "SlackQuestionTs" as keyof JSON
+            "messageTs" as keyof JSON
           ] as string;
 
           let repliesConfig = {
