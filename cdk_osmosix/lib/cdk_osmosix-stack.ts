@@ -54,7 +54,7 @@ export class CdkOsmosixStack extends Stack {
 
     const prodSigningSecret = secretsmanager.Secret.fromSecretAttributes(
       this,
-      "osmosixSlackSigningSecret",
+      "osmosixSlackProdSigningSecret",
       {
         secretCompleteArn:
           "arn:aws:secretsmanager:us-east-2:579534454884:secret:OSMOSIX_SLACK_SIGNING_SECRET-g0YuJ8",
