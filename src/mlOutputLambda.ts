@@ -48,9 +48,15 @@ export const lambdaHandler: SQSHandler = async (
   //Class Result should be either a new message, app added, or marked answer
   console.log("Slack Result:", classResult.value);
 
-  let workResult = await classResult.value.doMLWork(
-    slackJson["vectors" as keyof JSON] as string | JSON
-  );
+  let workResult; 
+
+  if(vectorResult!== undefined){
+    workResult= await classResult.value.doMLWork(
+      slackJson["vectors" as keyof JSON] as unknown as undefined | JSON
+    );
+  }else{
+    workResult= await classResult.value.doMLWork(undefined);
+  }
 
   if (workResult.type === "error") {
     // Network Call in Class failed

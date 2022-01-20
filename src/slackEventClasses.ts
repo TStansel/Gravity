@@ -624,7 +624,7 @@ export class MarkedAnswerEvent
     return { type: "success", value: "Marked Answer sent to SQS sucessfully" };
   }
 
-  async doMLWork(parentVector: string): Promise<Result<string>> {
+  async doMLWork(parentVector: undefined): Promise<Result<string>> {
     console.log("Marked Answer: ML Work");
     try {
       let getBotTokenSql = `select SlackToken.BotToken from SlackToken 
@@ -759,8 +759,8 @@ export class MarkedAnswerEvent
       let qULID = ulid();
 
       // insert Question
-      let insertQuestionSql = `insert into SlackQuestion (SlackQuestionUUID, SlackAnswerUUID, SlackChannelUUID, SlackUserUUID, Ts, TextVector) 
-      values (:SlackQuestionUUID, :SlackAnswerUUID, :SlackChannelUUID, :SlackUserUUID, :Ts, :TextVector)`;
+      let insertQuestionSql = `insert into SlackQuestion (SlackQuestionUUID, SlackAnswerUUID, SlackChannelUUID, SlackUserUUID, Ts) 
+      values (:SlackQuestionUUID, :SlackAnswerUUID, :SlackChannelUUID, :SlackUserUUID, :Ts)`;
       //console.log(JSON.stringify(parentVector));
       let insertQuestionResult = await data.query(insertQuestionSql, {
         SlackQuestionUUID: qULID,
@@ -768,7 +768,6 @@ export class MarkedAnswerEvent
         SlackChannelUUID: ULIDs.SlackChannelUUID,
         SlackUserUUID: ULIDs.SlackUserUUID,
         Ts: this.messageID,
-        TextVector: JSON.stringify(parentVector),
       });
     } catch (e) {
       return {
@@ -1824,28 +1823,25 @@ export class AppAddedMessageProcessing implements MachineLearningIsWorkable {
     };
   }
 
-  async doMLWork(vector: string): Promise<Result<string>> {
+  async doMLWork(vector: undefined): Promise<Result<string>> {
     console.log("App Added: ML Work");
     try {
       let insertQuestionSql = `insert into SlackQuestion (SlackQuestionUUID,
     SlackAnswerUUID,
     SlackChannelUUID,
     SlackUserUUID,
-    Ts,
-    TextVector)
+    Ts)
     values (:SlackQuestionUUID,
       NULL,
       (select SlackChannelUUID from SlackChannel where ChannelID = :slackChannelID limit 1),
       (select SlackUserUUID from SlackUser where SlackID = :slackID limit 1),
-      :Ts,
-      NULL)`;
+      :Ts)`;
 
       let insertQuestionResult = await data.query(insertQuestionSql, {
         SlackQuestionUUID: ulid(),
         slackChannelID: this.channelID,
         slackID: this.userID,
         Ts: this.messageID,
-        TextVector: JSON.stringify(vector),
       });
     } catch (e) {
       return {
@@ -1864,5 +1860,5 @@ export class AppAddedMessageProcessing implements MachineLearningIsWorkable {
 
 export interface MachineLearningIsWorkable {
   type: string;
-  doMLWork(vectors: string | JSON): Promise<Result<string>>;
+  doMLWork(vectors: undefined | JSON): Promise<Result<string>>;
 }
