@@ -1443,6 +1443,41 @@ export class AppAddedEvent extends SlackEvent {
     return message.hasOwnProperty("thread_ts");
   }
 
+  batchSendToSqs(channelMessages: any[]): Promise<ServiceOutputTypes>[] {
+    let promises: Promise<ServiceOutputTypes>[] = [];
+    let batch_size = 5;
+    for (let i = 0; i < channelMessages.length; i += batch_size) {
+      //console.log("hit for loop");
+
+      let channelMessagesBatch = channelMessages.slice(i, i + batch_size);
+      //console.log(channelMessagesBatch);
+      let sqsSendBatchMessageEntries: SendMessageBatchRequestEntry[] =
+        channelMessagesBatch.map((message, index) => ({
+          Id: String(index),
+          MessageBody: JSON.stringify(
+            new AppAddedMessageProcessing(
+              this.channelID,
+              this.workspaceID,
+              this.userID,
+              message.thread_ts,
+              message.ts,
+              message.text
+            )
+          ),
+        }));
+
+      //console.log(sqsSendBatchMessageEntries);
+      let sqsSendBatchMessageInput: SendMessageBatchCommandInput = {
+        Entries: sqsSendBatchMessageEntries,
+        QueueUrl: process.env.PROCESS_EVENTS_ML_SQS_URL,
+      };
+      let command = new SendMessageBatchCommand(sqsSendBatchMessageInput);
+      promises.push(client.send(command));
+    }
+    return promises;
+  }
+
+
   async doWork(): Promise<Result<string>> {
     console.log("App Added Do Work");
     try {
@@ -1664,10 +1699,11 @@ export class AppAddedEvent extends SlackEvent {
       }
 
       cursor = null;
-      let channelMessages = [];
+      let sqsPromises: Promise<ServiceOutputTypes>[] = [];
 
       do {
         let cursorParam;
+        let channelMessages = [];
 
         // Logic to send no cursor paramater the first call
         if (cursor !== null) {
@@ -1697,6 +1733,7 @@ export class AppAddedEvent extends SlackEvent {
             channelMessages.push(message);
           }
         }
+        sqsPromises = sqsPromises.concat(this.batchSendToSqs(channelMessages));
         // // TODO: Test if filtering below is filtering out non-parent messages
         // channelMessages = channelMessages.concat(
         //   (getChannelMessagesResult.data.messages).filter(message  => {if (message.thread_ts)})
@@ -1734,37 +1771,8 @@ export class AppAddedEvent extends SlackEvent {
         }
       } while (cursor !== null); // When done paginating cursor will be set to null
 
-      let promises: Promise<ServiceOutputTypes>[] = [];
-      let batch_size = 5;
-      for (let i = 0; i < channelMessages.length; i += batch_size) {
-        //console.log("hit for loop");
-
-        let channelMessagesBatch = channelMessages.slice(i, i + batch_size);
-        //console.log(channelMessagesBatch);
-        let sqsSendBatchMessageEntries: SendMessageBatchRequestEntry[] =
-          channelMessagesBatch.map((message, index) => ({
-            Id: String(index),
-            MessageBody: JSON.stringify(
-              new AppAddedMessageProcessing(
-                this.channelID,
-                this.workspaceID,
-                this.userID,
-                message.thread_ts,
-                message.ts,
-                message.text
-              )
-            ),
-          }));
-
-        //console.log(sqsSendBatchMessageEntries);
-        let sqsSendBatchMessageInput: SendMessageBatchCommandInput = {
-          Entries: sqsSendBatchMessageEntries,
-          QueueUrl: process.env.PROCESS_EVENTS_ML_SQS_URL,
-        };
-        let command = new SendMessageBatchCommand(sqsSendBatchMessageInput);
-        promises.push(client.send(command));
-      }
-      let responses = await Promise.all(promises);
+      
+      let responses = await Promise.all(sqsPromises);
     } catch (e) {
       return {
         type: "error",
