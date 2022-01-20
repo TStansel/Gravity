@@ -132,7 +132,7 @@ export class CdkOsmosixStack extends Stack {
         handler: "lambdaHandler",
         environment: {
           SLACK_SIGNING_SECRET: prodSigningSecret
-            .secretValueFromJson("OSMOSIX_PROD_SIGNING_SECRET")
+            .secretValueFromJson("OSMOSIX_SLACK_SIGNING_SECRET")
             .toString(),
             
           REVERSE_PROXY_SQS_URL: reverseProxySqs.queueUrl,
