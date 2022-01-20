@@ -65,23 +65,18 @@ def lambda_handler(event=None, context=None):
         similar_questions = get_similar_questions_dynamo(
             new_vector, slackJson['workspaceID'], slackJson['channelID'], table)
 
-        if len(similar_questions) > 0:
-            slackJson["vectors"] = sorted(
-                similar_questions, key=lambda d: d['similarity'], reverse=True)
-        else:
-            slackJson["vectors"] = []
+        return_questions = find_similar_questions(similar_questions)
+        slackJson['vectors'] = return_questions
         return write_to_sqs(slackJson, sqs)
 
     if slackJson["type"] == "MARKEDANSWEREVENT":
         print("MARKEDANSWEREVENT")
         print(write_to_dynamo(slackJson, new_vector, table))
-        slackJson["vectors"] = []
         return write_to_sqs(slackJson, sqs)
 
     if slackJson["type"] == "APPADDEDMESSAGEPROCESSING":
         print("APPADDEDMESSAGEPROCESSING")
         print(write_to_dynamo(slackJson, new_vector, table))
-        slackJson["vectors"] = []
         return write_to_sqs(slackJson, sqs)
 
     print("incoming event did not match any event types")
@@ -109,7 +104,6 @@ def write_to_dynamo(slackJson, vector, table):
 
 
 def get_similar_questions_dynamo(new_message_vector, workspaceID, channelID, table):
-
     similar_questions = []
 
     response = table.query(
@@ -142,11 +136,26 @@ def process_batch(batch_items, workspaceID, channelID, new_message_vector):
 
     for question in batch_items:
         similarity = cosine_similarity(
-            new_message_vector, np.frombuffer(question['vector']))
+            new_message_vector, np.frombuffer(bytes(question['vector'])))
         if similarity >= .6:
             similar_questions.append({"similarity": similarity, "workspaceID": workspaceID,
-                                      "channelID": channelID, "messageTs": question['messageTs']})
+                                      "messageTs": float(question['messageTs'])})
     return similar_questions
+
+
+def find_similar_questions(similar_questions):
+  questions_dict = {}
+  if len(similar_questions) == 0:
+    return questions_dict
+  most_similar_question = max(similar_questions, key=lambda x: x['similarity'])
+  most_recent_question = max(similar_questions, key=lambda x: ["messageTs"])
+  if most_similar_question['messageTs'] != most_recent_question['messageTs']:
+    # most similar question is not also most recent question, add to dict
+    questions_dict['mostRecent'] = most_recent_question
+  questions_dict['mostSimilar'] = most_similar_question
+  return questions_dict
+  
+
 
 
 def nlp(string):
