@@ -52,6 +52,15 @@ export class CdkOsmosixStack extends Stack {
       }
     );
 
+    const prodSigningSecret = secretsmanager.Secret.fromSecretAttributes(
+      this,
+      "osmosixSlackSigningSecret",
+      {
+        secretCompleteArn:
+          "arn:aws:secretsmanager:us-east-2:579534454884:secret:OSMOSIX_SLACK_SIGNING_SECRET-g0YuJ8",
+      }
+    );
+
     const devClientSecret = secretsmanager.Secret.fromSecretAttributes(
       this,
       "devClientSecret",
@@ -122,9 +131,10 @@ export class CdkOsmosixStack extends Stack {
         entry: "../src/slackReroute.ts",
         handler: "lambdaHandler",
         environment: {
-          SLACK_SIGNING_SECRET: secret
-            .secretValueFromJson("OSMOSIX_DEV_SIGNING_SECRET")
+          SLACK_SIGNING_SECRET: prodSigningSecret
+            .secretValueFromJson("OSMOSIX_PROD_SIGNING_SECRET")
             .toString(),
+            
           REVERSE_PROXY_SQS_URL: reverseProxySqs.queueUrl,
           AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
           AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
