@@ -916,7 +916,7 @@ export class NewMessageEvent
 
       const addEmojiReactionRes = await axios(addEmojiReactionConfig);
 
-      if (!questions.hasOwnProperty("mostSimiliar")) {
+      if (!questions.hasOwnProperty("mostSimilar")) {
         // We have no suggestion that meets our criteria
         let removeEmojiReactionParams = {
           channel: this.channelID,
@@ -1068,7 +1068,7 @@ export class NewMessageEvent
       let recentAnswerLink: string = "";
       let recentQuestionULID: string = "";
       if (
-        questions.hasOwnProperty("mostSimiliar") &&
+        questions.hasOwnProperty("mostSimilar") &&
         questions.hasOwnProperty("mostRecent")
       ) {
         // We have both suggestions
@@ -1277,7 +1277,7 @@ export class NewMessageEvent
         };
       }
 
-      if (questions.hasOwnProperty("mostSimiliar")) {
+      if (questions.hasOwnProperty("mostSimilar")) {
         // We just have one suggestion
         msgParams = {
           channel: this.channelID,
