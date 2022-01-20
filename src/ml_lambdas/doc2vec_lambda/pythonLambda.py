@@ -64,7 +64,6 @@ def lambda_handler(event=None, context=None):
         #             {"similarity": similarity, "SlackQuestionID": question["SlackQuestionID"], "SlackQuestionTs": question["Ts"]})
         similar_questions = get_similar_questions_dynamo(
             new_vector, slackJson['workspaceID'], slackJson['channelID'], table)
-        print(similar_questions)
         return_questions = find_similar_questions(similar_questions)
         slackJson['vectors'] = return_questions
         return write_to_sqs(slackJson, sqs)
@@ -149,9 +148,6 @@ def find_similar_questions(similar_questions):
     return questions_dict
   most_similar_question = max(similar_questions, key=lambda x: x['similarity'])
   most_recent_question = max(similar_questions, key=lambda x: float(x["messageTs"]))
-  print(most_recent_question)
-  print(most_similar_question['messageTs'])
-  print(most_recent_question['messageTs'])
   if most_similar_question['messageTs'] != most_recent_question['messageTs']:
     # most similar question is not also most recent question, add to dict
     questions_dict['mostRecent'] = most_recent_question

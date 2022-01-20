@@ -1073,6 +1073,7 @@ export class NewMessageEvent
         questions.hasOwnProperty("mostRecent")
       ) {
         // We have both suggestions
+        console.log("both most similar and most recent!");
         let mostRecentQuestion = questions[
           "mostRecent" as keyof JSON
         ] as unknown as JSON;
@@ -1279,7 +1280,7 @@ export class NewMessageEvent
         };
       }
 
-      if (questions.hasOwnProperty("mostSimilar")) {
+      if (questions.hasOwnProperty("mostSimilar") && !questions.hasOwnProperty("mostRecent")) {
         // We just have one suggestion
         msgParams = {
           channel: this.channelID,
