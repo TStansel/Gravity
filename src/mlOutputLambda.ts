@@ -51,11 +51,11 @@ export const lambdaHandler: SQSHandler = async (
   let workResult; 
 
   if(vectorResult!== undefined){
-    workResult= await classResult.value.doMLWork(
+    workResult = await classResult.value.doMLWork(
       slackJson["vectors" as keyof JSON] as unknown as undefined | JSON
     );
   }else{
-    workResult= await classResult.value.doMLWork(undefined);
+    workResult = await classResult.value.doMLWork(undefined);
   }
 
   if (workResult.type === "error") {
