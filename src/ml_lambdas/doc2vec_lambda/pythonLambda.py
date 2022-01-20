@@ -139,7 +139,7 @@ def process_batch(batch_items, workspaceID, channelID, new_message_vector):
             new_message_vector, np.frombuffer(bytes(question['vector'])))
         if similarity >= .6:
             similar_questions.append({"similarity": similarity, "workspaceID": workspaceID,
-                                      "messageTs": float(question['messageTs'])})
+                                      "messageTs": question['messageTs']})
     return similar_questions
 
 
@@ -148,7 +148,7 @@ def find_similar_questions(similar_questions):
   if len(similar_questions) == 0:
     return questions_dict
   most_similar_question = max(similar_questions, key=lambda x: x['similarity'])
-  most_recent_question = max(similar_questions, key=lambda x: ["messageTs"])
+  most_recent_question = max(similar_questions, key=lambda x: float(["messageTs"]))
   if most_similar_question['messageTs'] != most_recent_question['messageTs']:
     # most similar question is not also most recent question, add to dict
     questions_dict['mostRecent'] = most_recent_question
