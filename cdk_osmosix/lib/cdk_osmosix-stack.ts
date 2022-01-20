@@ -255,6 +255,7 @@ export class CdkOsmosixStack extends Stack {
       this,
       "mlOutputLambda",
       {
+        timeout: Duration.seconds(30),
         entry: "../src/mlOutputLambda.ts",
         handler: "lambdaHandler",
         bundling: {

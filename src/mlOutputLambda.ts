@@ -103,14 +103,6 @@ function verifyVectors(slackJson: JSON): Result<string> {
     };
   }
 
-  if (!Array.isArray(slackJson["vectors" as keyof JSON])) {
-    console.log("newmessageevent vector does not match!");
-    return {
-      type: "error",
-      error: new Error("Vectors type does not match SlackEvent Type"),
-    };
-  }
-
   return { type: "success", value: "Vectors matches SlackEvent Type" };
 }
 
