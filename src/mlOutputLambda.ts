@@ -35,9 +35,12 @@ export const lambdaHandler: SQSHandler = async (
     return;
   }
 
-  let vectorResult = verifyVectors(slackJson);
+  let vectorResult;
+  if (classResult.value.type === "NEWMESSAGEEVENT") {
+    vectorResult = verifyVectors(slackJson);
+  }
 
-  if (vectorResult.type === "error") {
+  if (vectorResult !== undefined && vectorResult.type === "error") {
     console.log(vectorResult.error.message);
     return;
   }
@@ -46,7 +49,7 @@ export const lambdaHandler: SQSHandler = async (
   console.log("Slack Result:", classResult.value);
 
   let workResult = await classResult.value.doMLWork(
-    slackJson["vectors" as keyof JSON] as string | JSON[]
+    slackJson["vectors" as keyof JSON] as string | JSON
   );
 
   if (workResult.type === "error") {
@@ -94,35 +97,12 @@ function verifyVectors(slackJson: JSON): Result<string> {
     };
   }
 
-  switch (slackJson["type" as keyof JSON]) {
-    case "APPADDEDMESSAGEPROCESSING": {
-      if (!Array.isArray(slackJson["vectors" as keyof JSON])) {
-        return {
-          type: "error",
-          error: new Error("Vectors type does not match SlackEvent Type"),
-        };
-      }
-      break;
-    }
-    case "NEWMESSAGEEVENT": {
-      if (!Array.isArray(slackJson["vectors" as keyof JSON])) {
-        console.log("newmessageevent vector does not match!");
-        return {
-          type: "error",
-          error: new Error("Vectors type does not match SlackEvent Type"),
-        };
-      }
-      break;
-    }
-    case "MARKEDANSWEREVENT": {
-      if (!Array.isArray(slackJson["vectors" as keyof JSON])) {
-        return {
-          type: "error",
-          error: new Error("Vectors type does not match SlackEvent Type"),
-        };
-      }
-      break;
-    }
+  if (!Array.isArray(slackJson["vectors" as keyof JSON])) {
+    console.log("newmessageevent vector does not match!");
+    return {
+      type: "error",
+      error: new Error("Vectors type does not match SlackEvent Type"),
+    };
   }
 
   return { type: "success", value: "Vectors matches SlackEvent Type" };

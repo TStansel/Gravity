@@ -876,7 +876,7 @@ export class NewMessageEvent
     return { type: "success", value: "New Message sent to SQS sucessfully" };
   }
 
-  async doMLWork(questions: JSON[]): Promise<Result<string>> {
+  async doMLWork(questions: JSON): Promise<Result<string>> {
     console.log("New Message: ML Work");
     try {
       let getBotTokenSql = `select SlackToken.BotToken from SlackToken 
@@ -917,7 +917,8 @@ export class NewMessageEvent
 
       const addEmojiReactionRes = await axios(addEmojiReactionConfig);
 
-      if (questions.length === 0) {
+      if (!questions.hasOwnProperty("mostSimiliar")) {
+        // We have no suggestion that meets our criteria
         let removeEmojiReactionParams = {
           channel: this.channelID,
           timestamp: this.messageID,
@@ -976,8 +977,9 @@ export class NewMessageEvent
         };
       }
 
-      let mostSimilarQuestion = questions[0];
-      //console.log(`most similar question: ${mostSimilarQuestion}`);
+      let mostSimilarQuestion = questions[
+        "mostSimilar" as keyof JSON
+      ] as unknown as JSON;
 
       let getMostSimilarQuestionUlidSql = `select SlackQuestionUUID
       from
@@ -990,15 +992,9 @@ export class NewMessageEvent
         getMostSimilarQuestionUlidSql,
         {
           messageTs: mostSimilarQuestion["messageTs" as keyof JSON] as string,
-          channelID: mostSimilarQuestion["channelID" as keyof JSON] as string,
+          channelID: this.channelID,
         }
       );
-
-      if (
-        getMostSimilarQuestionUlidResult.records[0].SlackQuestionUUID === null
-      ) {
-        console.log("could not find questionUUID in sql database");
-      }
 
       let mostSimilarQuestionULID =
         getMostSimilarQuestionUlidResult.records[0].SlackQuestionUUID;
@@ -1068,146 +1064,47 @@ export class NewMessageEvent
         mostSimilarQuestion["similarity" as keyof JSON]
       ) as number;
 
-      // Sort questions by TS
-      questions = questions.sort(
-        (a, b) =>
-          parseFloat(a["SlackQuestionTs" as keyof JSON] as string) -
-          parseFloat(b["SlackQuestionTs" as keyof JSON] as string)
-      );
-
-      // Find most recent question above 60% simlarity
-      let mostRecentAboveXQuestion: JSON | undefined = undefined;
-      for (let i = 0; i < questions.length; i++) {
-        if (
-          (Number(questions[i]["similarity" as keyof JSON]) as number) > 0.6
-        ) {
-          console.log("found most recent question above .6 score!");
-          mostRecentAboveXQuestion = questions[i];
-          break;
-        }
-      }
-
-      //console.log("Most Recent:",mostRecentAboveXQuestion)
-
-      if (
-        mostRecentAboveXQuestion &&
-        (mostRecentAboveXQuestion[
-          "SlackQuestionTs" as keyof JSON
-        ] as string) ===
-          (mostSimilarQuestion["SlackQuestionTs" as keyof JSON] as string)
-      ) {
-        // most recent question is the same as most similar question
-        console.log(
-          "most recent question is the same as most similar question"
-        );
-        mostRecentAboveXQuestion = undefined; // so below if statement triggers
-      }
-
       let msgParams;
-      let isRecentAnswerInDb: boolean = false;
+      let isRecentAnswerInDb: boolean = true;
       let recentAnswerLink: string = "";
       let recentQuestionULID: string = "";
+      if (
+        questions.hasOwnProperty("mostSimiliar") &&
+        questions.hasOwnProperty("mostRecent")
+      ) {
+        // We have both suggestions
+        let mostRecentQuestion = questions[
+          "mostRecent" as keyof JSON
+        ] as unknown as JSON;
 
-      if (mostRecentAboveXQuestion === undefined) {
-        console.log("no most recent and similar question found");
-        msgParams = {
-          channel: this.channelID,
-          user: this.userID,
-          username: "Osmosix Bot",
-          text: "I think I might have an answer for you!",
-          blocks: [
-            {
-              type: "section",
-              text: {
-                type: "mrkdwn",
-                text: "I think I might have an answer for you!",
-              },
-            },
-            {
-              type: "divider",
-            },
-            {
-              type: "section",
-              text: {
-                type: "mrkdwn",
-                text:
-                  "Similarity score: " +
-                  Math.round(similarityScore * 100) / 100 +
-                  " <" +
-                  answerLink +
-                  "|View thread>",
-              },
-            },
-            {
-              type: "actions",
-              elements: [
-                {
-                  type: "button",
-                  text: {
-                    type: "plain_text",
-                    text: "Helpful",
-                  },
-                  value: mostSimilarQuestionULID + " " + this.messageID,
-                  action_id: "helpful",
-                },
-                {
-                  type: "button",
-                  text: {
-                    type: "plain_text",
-                    text: "Not Helpful",
-                  },
-                  value: mostSimilarQuestionULID + " " + this.messageID,
-                  action_id: "nothelpful",
-                },
-                {
-                  type: "button",
-                  style: "danger",
-                  text: {
-                    type: "plain_text",
-                    text: "Dismiss",
-                  },
-                  value: mostSimilarQuestionULID + " " + this.messageID,
-                  action_id: "dismiss",
-                },
-              ],
-            },
-          ],
-        };
-      } else {
-        console.log("found a more recent similar question");
-        let recentSimilarityScore = Number(
-          mostRecentAboveXQuestion["similarity" as keyof JSON]
-        ) as number;
+        let getMostRecentQuestionUlidSql = `select SlackQuestionUUID
+      from
+      SlackQuestion inner join SlackChannel on SlackQuestion.SlackChannelUUID = SlackChannel.SlackChannelUUID
+      where
+      SlackQuestion.Ts = :messageTs and
+      SlackChannel.ChannelID = :channelID`;
 
-        let getRecentQuestionUlidSql = `select SlackQuestionUUID
-        from
-        SlackQuestion inner join SlackChannel on SlackQuestion.SlackChannelUUID = SlackChannel.SlackChannelUUID
-        where
-        SlackQuestion.Ts = :messageTs and
-        SlackChannel.ChannelID = :channelID`;
-
-        let getRecentQuestionUlidResult = await data.query(
-          getRecentQuestionUlidSql,
+        let getMostRecentQuestionUlidResult = await data.query(
+          getMostRecentQuestionUlidSql,
           {
-            messageTs: mostRecentAboveXQuestion[
-              "messageTs" as keyof JSON
-            ] as string,
-            channelID: mostRecentAboveXQuestion[
-              "channelID" as keyof JSON
-            ] as string,
+            messageTs: mostRecentQuestion["messageTs" as keyof JSON] as string,
+            channelID: this.channelID,
           }
         );
 
-        if (getRecentQuestionUlidResult.records[0].SlackQuestionUUID === null) {
-          console.log("could not find questionUUID in sql database");
+        recentQuestionULID =
+          getMostRecentQuestionUlidResult.records[0].SlackQuestionUUID;
+        if (recentQuestionULID === null) {
+          console.log("Most Recent Question missing from Db");
+          return {
+            type: "success",
+            value: "Most Recent Question missing from Db",
+          };
         }
 
-        let mostSimilarQuestionULID =
-          getRecentQuestionUlidResult.records[0].SlackQuestionUUID;
-
-        recentQuestionULID = mostRecentAboveXQuestion[
-          "SlackQuestionID" as keyof JSON
-        ] as string;
+        let recentSimilarityScore = Number(
+          mostRecentQuestion["similarity" as keyof JSON]
+        ) as number;
 
         let getQuestionSql =
           "select SlackAnswerUUID from SlackQuestion where SlackQuestionUUID = :SlackQuestionUUID";
@@ -1218,8 +1115,9 @@ export class NewMessageEvent
 
         if (getQuestionResult.records[0].SlackAnswerUUID === null) {
           // Answer is null in DB
+          isRecentAnswerInDb = false;
           console.log("answer of similar recent question in DB is null");
-          let recentQuestionTS = mostRecentAboveXQuestion[
+          let recentQuestionTS = mostRecentQuestion[
             "SlackQuestionTs" as keyof JSON
           ] as string;
 
@@ -1257,8 +1155,6 @@ export class NewMessageEvent
           console.log(
             "answer link for more recent similar question exists in DB"
           );
-          console.log(getQuestionResult.records[0]);
-          isRecentAnswerInDb = true;
 
           let getAnswerLinkSql =
             "select AnswerLink from SlackAnswer where SlackAnswerUUID = :SlackAnswerUUID";
@@ -1268,7 +1164,6 @@ export class NewMessageEvent
               .SlackAnswerUUID as string,
           });
           recentAnswerLink = getAnswerLinkResult.records[0].AnswerLink;
-          console.log(recentAnswerLink);
         }
 
         msgParams = {
@@ -1375,6 +1270,73 @@ export class NewMessageEvent
                     text: "Dismiss",
                   },
                   value: recentQuestionULID + " " + this.messageID,
+                  action_id: "dismiss",
+                },
+              ],
+            },
+          ],
+        };
+      }
+
+      if (questions.hasOwnProperty("mostSimiliar")) {
+        // We just have one suggestion
+        msgParams = {
+          channel: this.channelID,
+          user: this.userID,
+          username: "Osmosix Bot",
+          text: "I think I might have an answer for you!",
+          blocks: [
+            {
+              type: "section",
+              text: {
+                type: "mrkdwn",
+                text: "I think I might have an answer for you!",
+              },
+            },
+            {
+              type: "divider",
+            },
+            {
+              type: "section",
+              text: {
+                type: "mrkdwn",
+                text:
+                  "Similarity score: " +
+                  Math.round(similarityScore * 100) / 100 +
+                  " <" +
+                  answerLink +
+                  "|View thread>",
+              },
+            },
+            {
+              type: "actions",
+              elements: [
+                {
+                  type: "button",
+                  text: {
+                    type: "plain_text",
+                    text: "Helpful",
+                  },
+                  value: mostSimilarQuestionULID + " " + this.messageID,
+                  action_id: "helpful",
+                },
+                {
+                  type: "button",
+                  text: {
+                    type: "plain_text",
+                    text: "Not Helpful",
+                  },
+                  value: mostSimilarQuestionULID + " " + this.messageID,
+                  action_id: "nothelpful",
+                },
+                {
+                  type: "button",
+                  style: "danger",
+                  text: {
+                    type: "plain_text",
+                    text: "Dismiss",
+                  },
+                  value: mostSimilarQuestionULID + " " + this.messageID,
                   action_id: "dismiss",
                 },
               ],
@@ -1901,5 +1863,6 @@ export class AppAddedMessageProcessing implements MachineLearningIsWorkable {
 /* --------  Interface -------- */
 
 export interface MachineLearningIsWorkable {
-  doMLWork(vectors: string | JSON[]): Promise<Result<string>>;
+  type: string;
+  doMLWork(vectors: string | JSON): Promise<Result<string>>;
 }
