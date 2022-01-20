@@ -1027,6 +1027,7 @@ export class NewMessageEvent
           },
         } as AxiosRequestConfig<any>;
         const repliesRes = await axios(repliesConfig);
+        console.log(repliesRes)
 
         let answerTs = repliesRes.data.messages[1].ts as string;
 
@@ -1133,6 +1134,7 @@ export class NewMessageEvent
             },
           } as AxiosRequestConfig<any>;
           const repliesRes = await axios(repliesConfig);
+          console.log(repliesRes)
 
           let answerTs = repliesRes.data.messages[1].ts as string;
 
