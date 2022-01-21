@@ -109,7 +109,7 @@ export class HelpfulButton extends SlackEvent {
         SlackQuestionUUID: this.oldQuestionUUID,
       });
 
-      let getBotTokenSql = `select SlackToken.BotToken from SlackToken 
+      let getBotTokenSql = `select SlackToken.BotToken, SlackWorkspace.CustomEmoji from SlackToken 
       join SlackWorkspace on SlackToken.SlackWorkspaceUUID = SlackWorkspace.SlackWorkspaceUUID 
       where SlackWorkspace.WorkspaceID = :workspaceID`;
 
@@ -153,12 +153,20 @@ export class HelpfulButton extends SlackEvent {
 
       const successfulRes = await axios(successfulConfig);
 
+      let isCustomEmojiAdded = getBotTokenResult.records[0].CustomEmoji as boolean;
+
+      let emojiCode = "arrows_counterclockiwise";
+
+      if(isCustomEmojiAdded){
+        emojiCode = "loading-logo"
+      }
+
       // Updating the parent message with the check mark reaction
 
       let removeEmojiReactionParams = {
         channel: this.channelID,
         timestamp: this.messageID,
-        name: "arrows_counterclockwise",
+        name: emojiCode,
       };
 
       let removeEmojiReactionConfig = {
@@ -265,7 +273,7 @@ export class NotHelpfulButton extends SlackEvent {
 
       const dismissRes = await axios(dismissConfig);
 
-      let getBotTokenSql = `select SlackToken.BotToken from SlackToken 
+      let getBotTokenSql = `select SlackToken.BotToken, SlackWorkspace.CustomEmoji from SlackToken 
       join SlackWorkspace on SlackToken.SlackWorkspaceUUID = SlackWorkspace.SlackWorkspaceUUID 
       where SlackWorkspace.WorkspaceID = :workspaceID`;
 
@@ -285,12 +293,20 @@ export class NotHelpfulButton extends SlackEvent {
 
       let botToken = getBotTokenResult.records[0].BotToken;
 
+      let isCustomEmojiAdded = getBotTokenResult.records[0].CustomEmoji as boolean;
+
+      let emojiCode = "arrows_counterclockiwise";
+
+      if(isCustomEmojiAdded){
+        emojiCode = "loading-logo"
+      }
+
       // Updating the parent message with the question mark reaction
 
       let removeEmojiReactionParams = {
         channel: this.channelID,
         timestamp: this.messageID,
-        name: "arrows_counterclockwise",
+        name: emojiCode,
       };
 
       let removeEmojiReactionConfig = {
@@ -396,7 +412,7 @@ export class DismissButton extends SlackEvent {
 
       const dismissRes = await axios(dismissConfig);
 
-      let getBotTokenSql = `select SlackToken.BotToken from SlackToken 
+      let getBotTokenSql = `select SlackToken.BotToken, SlackWorkspace.CustomEmoji from SlackToken 
       join SlackWorkspace on SlackToken.SlackWorkspaceUUID = SlackWorkspace.SlackWorkspaceUUID 
       where SlackWorkspace.WorkspaceID = :workspaceID`;
 
@@ -416,12 +432,20 @@ export class DismissButton extends SlackEvent {
 
       let botToken = getBotTokenResult.records[0].BotToken;
 
+      let isCustomEmojiAdded = getBotTokenResult.records[0].CustomEmoji as boolean;
+
+      let emojiCode = "arrows_counterclockiwise";
+
+      if(isCustomEmojiAdded){
+        emojiCode = "loading-logo"
+      }
+
       // Updating the parent message with the question mark reaction
 
       let removeEmojiReactionParams = {
         channel: this.channelID,
         timestamp: this.messageID,
-        name: "arrows_counterclockwise",
+        name: emojiCode,
       };
 
       let removeEmojiReactionConfig = {
@@ -685,6 +709,24 @@ export class MarkedAnswerEvent
 
       const addEmojiReactionRes = await axios(addEmojiReactionConfig);
 
+      let addMarkedEmojiReactionParams = {
+        channel: this.channelID,
+        timestamp: this.messageID,
+        name: "white_check_mark",
+      };
+
+      let addMarkedEmojiReactionConfig = {
+        method: "post",
+        url: "https://slack.com/api/reactions.add",
+        headers: {
+          Authorization: "Bearer " + botToken,
+          "Content-Type": "application/json",
+        },
+        data: addMarkedEmojiReactionParams,
+      } as AxiosRequestConfig<any>;
+
+      const addMarkedEmojiReactionRes = await axios(addMarkedEmojiReactionConfig);
+
       // let msgParams = {
       //   channel: this.userID,
       //   text: "Thank you for marking an answer and for making Osmosix more accurate!",
@@ -878,7 +920,7 @@ export class NewMessageEvent
   async doMLWork(questions: JSON): Promise<Result<string>> {
     console.log("New Message: ML Work");
     try {
-      let getBotTokenSql = `select SlackToken.BotToken from SlackToken 
+      let getBotTokenSql = `select SlackToken.BotToken, SlackWorkspace.CustomEmoji from SlackToken 
       join SlackWorkspace on SlackToken.SlackWorkspaceUUID = SlackWorkspace.SlackWorkspaceUUID 
       where SlackWorkspace.WorkspaceID = :workspaceID`;
 
@@ -898,10 +940,18 @@ export class NewMessageEvent
 
       let botToken = getBotTokenResult.records[0].BotToken as string;
 
+      let isCustomEmojiAdded = getBotTokenResult.records[0].CustomEmoji as boolean;
+
+      let emojiCode = "arrows_counterclockiwise";
+
+      if(isCustomEmojiAdded){
+        emojiCode = "loading-logo"
+      }
+
       let addEmojiReactionParams = {
         channel: this.channelID,
         timestamp: this.messageID,
-        name: "arrows_counterclockwise",
+        name: emojiCode,
       };
 
       let addEmojiReactionConfig = {
@@ -921,7 +971,7 @@ export class NewMessageEvent
         let removeEmojiReactionParams = {
           channel: this.channelID,
           timestamp: this.messageID,
-          name: "arrows_counterclockwise",
+          name: emojiCode,
         };
 
         let removeEmojiReactionConfig = {
@@ -1493,7 +1543,7 @@ export class AppAddedEvent extends SlackEvent {
 
       //console.log("getWorkspaceresult: ", getWorkspaceResult);
 
-      let getBotTokenSql = `select SlackToken.BotToken from SlackToken 
+      let getBotTokenSql = `select SlackToken.BotToken, SlackWorkspace.CustomEmoji from SlackToken 
     join SlackWorkspace on SlackToken.SlackWorkspaceUUID = SlackWorkspace.SlackWorkspaceUUID 
     where SlackWorkspace.WorkspaceID = :workspaceID`;
 
@@ -1510,10 +1560,18 @@ export class AppAddedEvent extends SlackEvent {
 
       let botToken = getBotTokenResult.records[0].BotToken;
 
+      let isCustomEmojiAdded = getBotTokenResult.records[0].CustomEmoji as boolean;
+
+      let emojiCode = ":arrows_counterclockiwise:";
+
+      if(isCustomEmojiAdded){
+        emojiCode = ":loading-logo:"
+      }
+
       // Send App Added Message
       let msgParams = {
         channel: this.channelID,
-        text: "Thank you for adding me to your channel!\n Here are some emoji's and their meanings you will see as you use me:\n\t:arrows_counterclockwise: means I'm working on finding an answer to that question\n\t:white_check_mark: means I helped answer that question\n\t:question: means I was unable to answer that question\nCheck out the about section of my app to help you get started too!\nFeel free to start using me right away, but I will be more helpful after a minute or two.",
+        text: "Thank you for adding me to your channel!\n Here are some emoji's and their meanings you will see as you use me:\n\t"+emojiCode+" means I'm working on finding an answer to that question\n\t:white_check_mark: means I helped answer that question\n\t:question: means I was unable to answer that question\nCheck out the about section of my app to help you get started too!\nFeel free to start using me right away, but I will be more helpful after a minute or two.",
       };
 
       let msgConfig = {
