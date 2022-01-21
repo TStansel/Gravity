@@ -133,11 +133,8 @@ export class HelpfulButton extends SlackEvent {
         thread_ts: this.messageID,
         channel: this.channelID,
         text:
-          "<@" +
-          this.userID +
-          "> Marked <" +
           getLinkResult.records[0].AnswerLink +
-          "|this thread> as helpful.",
+          "|This thread> was marked as helpful.",
       };
 
       // Posting the confirmed answer to the users question
