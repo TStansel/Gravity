@@ -158,7 +158,7 @@ export class HelpfulButton extends SlackEvent {
       let emojiCode = "arrows_counterclockiwise";
 
       if(isCustomEmojiAdded){
-        emojiCode = "loading-logo"
+        emojiCode = "osmosix-loading"
       }
 
       // Updating the parent message with the check mark reaction
@@ -298,7 +298,7 @@ export class NotHelpfulButton extends SlackEvent {
       let emojiCode = "arrows_counterclockiwise";
 
       if(isCustomEmojiAdded){
-        emojiCode = "loading-logo"
+        emojiCode = "osmosix-loading"
       }
 
       // Updating the parent message with the question mark reaction
@@ -437,7 +437,7 @@ export class DismissButton extends SlackEvent {
       let emojiCode = "arrows_counterclockiwise";
 
       if(isCustomEmojiAdded){
-        emojiCode = "loading-logo"
+        emojiCode = "osmosix-loading"
       }
 
       // Updating the parent message with the question mark reaction
@@ -935,7 +935,7 @@ export class NewMessageEvent
       let emojiCode = "arrows_counterclockiwise";
 
       if(isCustomEmojiAdded){
-        emojiCode = "loading-logo"
+        emojiCode = "osmosix-loading"
       }
 
       let addEmojiReactionParams = {
@@ -1000,7 +1000,7 @@ export class NewMessageEvent
       let emojiCode = "arrows_counterclockiwise";
 
       if(isCustomEmojiAdded){
-        emojiCode = "loading-logo"
+        emojiCode = "osmosix-loading"
       }
 
       let addEmojiReactionParams = {
@@ -1620,7 +1620,7 @@ export class AppAddedEvent extends SlackEvent {
       let emojiCode = ":arrows_counterclockiwise:";
 
       if(isCustomEmojiAdded){
-        emojiCode = ":loading-logo:"
+        emojiCode = ":osmosix-loading:"
       }
 
       // Send App Added Message
