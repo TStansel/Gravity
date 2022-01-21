@@ -151,12 +151,13 @@ export class HelpfulButton extends SlackEvent {
 
       const successfulRes = await axios(successfulConfig);
 
-      let isCustomEmojiAdded = getBotTokenResult.records[0].CustomEmoji as boolean;
+      let isCustomEmojiAdded = getBotTokenResult.records[0]
+        .CustomEmoji as boolean;
 
       let emojiCode = "arrows_counterclockiwise";
 
-      if(isCustomEmojiAdded){
-        emojiCode = "osmosix-loading"
+      if (isCustomEmojiAdded) {
+        emojiCode = "osmosix-loading";
       }
 
       // Updating the parent message with the check mark reaction
@@ -291,12 +292,13 @@ export class NotHelpfulButton extends SlackEvent {
 
       let botToken = getBotTokenResult.records[0].BotToken;
 
-      let isCustomEmojiAdded = getBotTokenResult.records[0].CustomEmoji as boolean;
+      let isCustomEmojiAdded = getBotTokenResult.records[0]
+        .CustomEmoji as boolean;
 
       let emojiCode = "arrows_counterclockiwise";
 
-      if(isCustomEmojiAdded){
-        emojiCode = "osmosix-loading"
+      if (isCustomEmojiAdded) {
+        emojiCode = "osmosix-loading";
       }
 
       // Updating the parent message with the question mark reaction
@@ -430,12 +432,13 @@ export class DismissButton extends SlackEvent {
 
       let botToken = getBotTokenResult.records[0].BotToken;
 
-      let isCustomEmojiAdded = getBotTokenResult.records[0].CustomEmoji as boolean;
+      let isCustomEmojiAdded = getBotTokenResult.records[0]
+        .CustomEmoji as boolean;
 
       let emojiCode = "arrows_counterclockiwise";
 
-      if(isCustomEmojiAdded){
-        emojiCode = "osmosix-loading"
+      if (isCustomEmojiAdded) {
+        emojiCode = "osmosix-loading";
       }
 
       // Updating the parent message with the question mark reaction
@@ -723,7 +726,9 @@ export class MarkedAnswerEvent
         data: addMarkedEmojiReactionParams,
       } as AxiosRequestConfig<any>;
 
-      const addMarkedEmojiReactionRes = await axios(addMarkedEmojiReactionConfig);
+      const addMarkedEmojiReactionRes = await axios(
+        addMarkedEmojiReactionConfig
+      );
 
       // let msgParams = {
       //   channel: this.userID,
@@ -900,7 +905,7 @@ export class NewMessageEvent
         };
       }
 
-      if(!this.text.includes("?")){
+      if (!this.text.includes("?")) {
         // Message is not a question
         return {
           type: "success",
@@ -928,12 +933,13 @@ export class NewMessageEvent
 
       let botToken = getBotTokenResult.records[0].BotToken as string;
 
-      let isCustomEmojiAdded = getBotTokenResult.records[0].CustomEmoji as boolean;
+      let isCustomEmojiAdded = getBotTokenResult.records[0]
+        .CustomEmoji as boolean;
 
       let emojiCode = "arrows_counterclockiwise";
 
-      if(isCustomEmojiAdded){
-        emojiCode = "osmosix-loading"
+      if (isCustomEmojiAdded) {
+        emojiCode = "osmosix-loading";
       }
 
       let addEmojiReactionParams = {
@@ -993,12 +999,13 @@ export class NewMessageEvent
 
       let botToken = getBotTokenResult.records[0].BotToken as string;
 
-      let isCustomEmojiAdded = getBotTokenResult.records[0].CustomEmoji as boolean;
+      let isCustomEmojiAdded = getBotTokenResult.records[0]
+        .CustomEmoji as boolean;
 
       let emojiCode = "arrows_counterclockiwise";
 
-      if(isCustomEmojiAdded){
-        emojiCode = "osmosix-loading"
+      if (isCustomEmojiAdded) {
+        emojiCode = "osmosix-loading";
       }
 
       let addEmojiReactionParams = {
@@ -1130,7 +1137,7 @@ export class NewMessageEvent
           },
         } as AxiosRequestConfig<any>;
         const repliesRes = await axios(repliesConfig);
-        console.log(repliesRes)
+        console.log(repliesRes);
 
         let answerTs = repliesRes.data.messages[1].ts as string;
 
@@ -1238,7 +1245,7 @@ export class NewMessageEvent
             },
           } as AxiosRequestConfig<any>;
           const repliesRes = await axios(repliesConfig);
-          console.log(repliesRes)
+          console.log(repliesRes);
 
           let answerTs = repliesRes.data.messages[1].ts as string;
 
@@ -1383,7 +1390,10 @@ export class NewMessageEvent
         };
       }
 
-      if (questions.hasOwnProperty("mostSimilar") && !questions.hasOwnProperty("mostRecent")) {
+      if (
+        questions.hasOwnProperty("mostSimilar") &&
+        !questions.hasOwnProperty("mostRecent")
+      ) {
         // We just have one suggestion
         msgParams = {
           channel: this.channelID,
@@ -1583,7 +1593,6 @@ export class AppAddedEvent extends SlackEvent {
     return promises;
   }
 
-
   async doWork(): Promise<Result<string>> {
     console.log("App Added Do Work");
     try {
@@ -1613,30 +1622,36 @@ export class AppAddedEvent extends SlackEvent {
 
       let botToken = getBotTokenResult.records[0].BotToken;
 
-      let isCustomEmojiAdded = getBotTokenResult.records[0].CustomEmoji as boolean;
+      let isCustomEmojiAdded = getBotTokenResult.records[0]
+        .CustomEmoji as boolean;
 
       let emojiCode = ":arrows_counterclockiwise:";
 
-      if(isCustomEmojiAdded){
-        emojiCode = ":osmosix-loading:"
+      if (isCustomEmojiAdded) {
+        emojiCode = ":osmosix-loading:";
       }
 
-      // Send App Added Message
-      let msgParams = {
-        channel: this.channelID,
-        text: "Thank you for adding me to your channel!\n Here are some emoji's and their meanings you will see as you use me:\n\t"+emojiCode+" means I'm working on finding an answer to that question\n\t:white_check_mark: means I helped answer that question\n\t:question: means I was unable to answer that question\nCheck out the about section of my app to help you get started too!\nFeel free to start using me right away, but I will be more helpful after a minute or two.",
-      };
+      if (this.workspaceID !== "T07QTAG4S") {
+        // Send App Added Message
+        let msgParams = {
+          channel: this.channelID,
+          text:
+            "Thank you for adding me to your channel!\n Here are some emoji's and their meanings you will see as you use me:\n\t" +
+            emojiCode +
+            " means I'm working on finding an answer to that question\n\t:white_check_mark: means I helped answer that question\n\t:question: means I was unable to answer that question\nCheck out the about section of my app to help you get started too!\nFeel free to start using me right away, but I will be more helpful after a minute or two.",
+        };
 
-      let msgConfig = {
-        method: "post",
-        url: "https://slack.com/api/chat.postMessage",
-        headers: {
-          Authorization: "Bearer " + botToken,
-          "Content-Type": "application/json",
-        },
-        data: msgParams,
-      } as AxiosRequestConfig<any>;
-      const msgRes = await axios(msgConfig);
+        let msgConfig = {
+          method: "post",
+          url: "https://slack.com/api/chat.postMessage",
+          headers: {
+            Authorization: "Bearer " + botToken,
+            "Content-Type": "application/json",
+          },
+          data: msgParams,
+        } as AxiosRequestConfig<any>;
+        const msgRes = await axios(msgConfig);
+      }
 
       let workspaceUUID: string;
 
@@ -1885,7 +1900,6 @@ export class AppAddedEvent extends SlackEvent {
         }
       } while (cursor !== null); // When done paginating cursor will be set to null
 
-      
       let responses = await Promise.all(sqsPromises);
     } catch (e) {
       return {
