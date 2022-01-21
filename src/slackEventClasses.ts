@@ -901,6 +901,61 @@ export class NewMessageEvent
           value: "Cannot process NewMessage: Message is not a parent message",
         };
       }
+
+      if(!this.text.includes("?")){
+        // Message is not a question
+        return {
+          type: "success",
+          value: "Cannot process NewMessage: Message is not a question",
+        };
+      }
+
+      let getBotTokenSql = `select SlackToken.BotToken, SlackWorkspace.CustomEmoji from SlackToken 
+      join SlackWorkspace on SlackToken.SlackWorkspaceUUID = SlackWorkspace.SlackWorkspaceUUID 
+      where SlackWorkspace.WorkspaceID = :workspaceID`;
+
+      let getBotTokenResult = await data.query(getBotTokenSql, {
+        workspaceID: this.workspaceID,
+      });
+
+      if (
+        getBotTokenResult.records.length !== 1 ||
+        !getBotTokenResult.records[0].BotToken
+      ) {
+        return {
+          type: "success",
+          value: "New Message ML Work: Missing Bot Token",
+        };
+      }
+
+      let botToken = getBotTokenResult.records[0].BotToken as string;
+
+      let isCustomEmojiAdded = getBotTokenResult.records[0].CustomEmoji as boolean;
+
+      let emojiCode = "arrows_counterclockiwise";
+
+      if(isCustomEmojiAdded){
+        emojiCode = "loading-logo"
+      }
+
+      let addEmojiReactionParams = {
+        channel: this.channelID,
+        timestamp: this.messageID,
+        name: emojiCode,
+      };
+
+      let addEmojiReactionConfig = {
+        method: "post",
+        url: "https://slack.com/api/reactions.add",
+        headers: {
+          Authorization: "Bearer " + botToken,
+          "Content-Type": "application/json",
+        },
+        data: addEmojiReactionParams,
+      } as AxiosRequestConfig<any>;
+
+      const addEmojiReactionRes = await axios(addEmojiReactionConfig);
+
       const command = new SendMessageCommand({
         MessageBody: JSON.stringify(this),
         QueueUrl: process.env.PROCESS_EVENTS_ML_SQS_URL,
