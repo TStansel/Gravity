@@ -154,7 +154,7 @@ export class HelpfulButton extends SlackEvent {
       let isCustomEmojiAdded = getBotTokenResult.records[0]
         .CustomEmoji as boolean;
 
-      let emojiCode = "arrows_counterclockiwise";
+      let emojiCode = "arrows_counterclockwise";
 
       if (isCustomEmojiAdded) {
         emojiCode = "osmosix-loading";
@@ -295,7 +295,7 @@ export class NotHelpfulButton extends SlackEvent {
       let isCustomEmojiAdded = getBotTokenResult.records[0]
         .CustomEmoji as boolean;
 
-      let emojiCode = "arrows_counterclockiwise";
+      let emojiCode = "arrows_counterclockwise";
 
       if (isCustomEmojiAdded) {
         emojiCode = "osmosix-loading";
@@ -435,7 +435,7 @@ export class DismissButton extends SlackEvent {
       let isCustomEmojiAdded = getBotTokenResult.records[0]
         .CustomEmoji as boolean;
 
-      let emojiCode = "arrows_counterclockiwise";
+      let emojiCode = "arrows_counterclockwise";
 
       if (isCustomEmojiAdded) {
         emojiCode = "osmosix-loading";
@@ -936,7 +936,7 @@ export class NewMessageEvent
       let isCustomEmojiAdded = getBotTokenResult.records[0]
         .CustomEmoji as boolean;
 
-      let emojiCode = "arrows_counterclockiwise";
+      let emojiCode = "arrows_counterclockwise";
 
       if (isCustomEmojiAdded) {
         emojiCode = "osmosix-loading";
@@ -1002,7 +1002,7 @@ export class NewMessageEvent
       let isCustomEmojiAdded = getBotTokenResult.records[0]
         .CustomEmoji as boolean;
 
-      let emojiCode = "arrows_counterclockiwise";
+      let emojiCode = "arrows_counterclockwise";
 
       if (isCustomEmojiAdded) {
         emojiCode = "osmosix-loading";
@@ -1625,7 +1625,7 @@ export class AppAddedEvent extends SlackEvent {
       let isCustomEmojiAdded = getBotTokenResult.records[0]
         .CustomEmoji as boolean;
 
-      let emojiCode = ":arrows_counterclockiwise:";
+      let emojiCode = ":arrows_counterclockwise:";
 
       if (isCustomEmojiAdded) {
         emojiCode = ":osmosix-loading:";
