@@ -10,15 +10,24 @@ import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+import { BuildConfig } from "./build-config";
 // import * as sqs from 'aws-cdk-lib/aws-sqs';
 
 export class CdkOsmosixStack extends Stack {
-  constructor(scope: Construct, id: string, props?: StackProps) {
-    super(scope, id, props);
+  constructor(scope: Construct, id: string, stackProps: StackProps, buildConfig: BuildConfig) {
+    super(scope, id, stackProps);
 
-    const vpc = new ec2.Vpc(this, "dbVpc");
+    const isProd: boolean = buildConfig.Environment === "prod";
 
-    const auroraCluster = new rds.ServerlessCluster(this, "OsmosixCdkCluster", {
+    function name(name: string): string {
+      return id + "-" + name;
+    }
+
+    const vpc = new ec2.Vpc(this, "dbVpc", {
+      natGateways: 1
+    });
+
+    const auroraCluster = new rds.ServerlessCluster(this, name("OsmosixCdkCluster"), {
       engine: rds.DatabaseClusterEngine.AURORA_MYSQL,
       vpc,
       scaling: {
@@ -30,7 +39,7 @@ export class CdkOsmosixStack extends Stack {
       enableDataApi: true, // Optional - will be automatically set if you call grantDataApiAccess()
     });
     
-    const dynamoQuestionTable = new dynamodb.Table(this, "questionTable", {
+    const dynamoQuestionTable = new dynamodb.Table(this, name("questionTable"), {
       partitionKey: {
         name: "workspaceID",
         type: dynamodb.AttributeType.STRING,
@@ -43,67 +52,43 @@ export class CdkOsmosixStack extends Stack {
     });
 
     
-    const secret = secretsmanager.Secret.fromSecretAttributes(
+    const slackSigningSecret = secretsmanager.Secret.fromSecretAttributes(
       this,
-      "osmosixSlackSigningSecret",
+      name("osmosixSlackSigningSecret"),
       {
         secretCompleteArn:
-          "arn:aws:secretsmanager:us-east-2:579534454884:secret:OSMOSIX_DEV_SIGNING_SECRET-5rg0ga",
+          buildConfig.Parameters.SlackSigningSecretArn,
       }
     );
 
-    const prodSigningSecret = secretsmanager.Secret.fromSecretAttributes(
+    const slackClientSecret = secretsmanager.Secret.fromSecretAttributes(
       this,
-      "osmosixSlackProdSigningSecret",
+      name("devClientSecret"),
       {
         secretCompleteArn:
-          "arn:aws:secretsmanager:us-east-2:579534454884:secret:OSMOSIX_SLACK_SIGNING_SECRET-g0YuJ8",
-      }
-    );
-
-    const devClientSecret = secretsmanager.Secret.fromSecretAttributes(
-      this,
-      "devClientSecret",
-      {
-        secretCompleteArn:
-          "arn:aws:secretsmanager:us-east-2:579534454884:secret:OSMOSIX_DEV_CLIENT-Fm23o2",
-      }
-    );
-
-    const prodClientSecret = secretsmanager.Secret.fromSecretAttributes(
-      this,
-      "prodClientSecret",
-      {
-        secretCompleteArn:
-          "arn:aws:secretsmanager:us-east-2:579534454884:secret:OSMOSIX_PROD_CLIENT-ahkUSC",
+          buildConfig.Parameters.OsmosixClientSecretArn,
       }
     );
 
     const dbSecret = secretsmanager.Secret.fromSecretAttributes(
       this,
-      "DbSecret",
+      name("DbSecret"),
       {
         secretCompleteArn:
-          "arn:aws:secretsmanager:us-east-2:579534454884:secret:rds-db-credentials/cluster-DQL4LFXEKFCFKUZQSVOBH2N2PQ/admin-HRqeZ2",
+          buildConfig.Parameters.AuroraServerlessSecretArn,
       }
     );
 
-    const oauthLambda = new nodelambda.NodejsFunction(this, "oauthLambda", {
+    const oauthLambda = new nodelambda.NodejsFunction(this, name("oauthLambda"), {
       entry: "../src/oauth.ts",
       handler: "lambdaHandler",
       timeout: Duration.seconds(30),
       environment: {
-        OSMOSIX_DEV_CLIENT_ID: devClientSecret
-          .secretValueFromJson("OSMOSIX_DEV_CLIENT_ID")
+        OSMOSIX_CLIENT_ID: slackClientSecret
+          .secretValueFromJson("OSMOSIX_CLIENT_ID")
           .toString(),
-        OSMOSIX_DEV_CLIENT_SECRET: devClientSecret
-          .secretValueFromJson("OSMOSIX_DEV_CLIENT_SECRET")
-          .toString(),
-        OSMOSIX_PROD_CLIENT_ID: prodClientSecret
-          .secretValueFromJson("OSMOSIX_PROD_CLIENT_ID")
-          .toString(),
-        OSMOSIX_PROD_CLIENT_SECRET: prodClientSecret
-          .secretValueFromJson("OSMOSIX_PROD_CLIENT_SECRET")
+        OSMOSIX_CLIENT_SECRET: slackClientSecret
+          .secretValueFromJson("OSMOSIX_CLIENT_SECRET")
           .toString(),
         AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
         AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
@@ -119,19 +104,20 @@ export class CdkOsmosixStack extends Stack {
     });
     dbSecret.grantRead(oauthLambda);
 
-    const reverseProxySqs = new sqs.Queue(this, "ReverseProxyQueue", {
+    const reverseProxySqs = new sqs.Queue(this, name("ReverseProxyQueue"), {
       encryption: sqs.QueueEncryption.KMS_MANAGED,
       receiveMessageWaitTime: Duration.seconds(20), // This makes SQS long polling, check to make sure does not slow things down
+      visibilityTimeout: Duration.seconds(1200),
     });
 
     const slackRerouteLambda = new nodelambda.NodejsFunction(
       this,
-      "SlackReroute",
+      name("SlackReroute"),
       {
         entry: "../src/slackReroute.ts",
         handler: "lambdaHandler",
         environment: {
-          SLACK_SIGNING_SECRET: prodSigningSecret
+          SLACK_SIGNING_SECRET: slackSigningSecret
             .secretValueFromJson("OSMOSIX_SLACK_SIGNING_SECRET")
             .toString(),
             
@@ -152,7 +138,7 @@ export class CdkOsmosixStack extends Stack {
     reverseProxySqs.grantSendMessages(slackRerouteLambda);
     dbSecret.grantRead(slackRerouteLambda);
 
-    const api = new apigateway.LambdaRestApi(this, "LambdaProxyApi", {
+    const api = new apigateway.LambdaRestApi(this, name("LambdaProxyApi"), {
       handler: slackRerouteLambda,
       proxy: false,
     });
@@ -164,14 +150,15 @@ export class CdkOsmosixStack extends Stack {
       .addResource("oauth")
       .addMethod("GET", new apigateway.LambdaIntegration(oauthLambda));
 
-    const processEventsMlSqs = new sqs.Queue(this, "processEventsMlSqs", {
+    const processEventsMlSqs = new sqs.Queue(this, name("processEventsMlSqs"), {
       encryption: sqs.QueueEncryption.KMS_MANAGED,
       receiveMessageWaitTime: Duration.seconds(20), // This makes SQS long polling, check to make sure does not slow things down
+      visibilityTimeout: Duration.seconds(600),
     });
 
     const slackEventWork = new nodelambda.NodejsFunction(
       this,
-      "SlackEventWork",
+      name("SlackEventWork"),
       {
         entry: "../src/slackEventWork.ts",
         handler: "lambdaHandler",
@@ -202,18 +189,19 @@ export class CdkOsmosixStack extends Stack {
     slackEventWork.addEventSource(slackEventSqsSource);
     processEventsMlSqs.grantSendMessages(slackEventWork);
 
-    const mlOutputSqs = new sqs.Queue(this, "mlOutputSqs", {
+    const mlOutputSqs = new sqs.Queue(this, name("mlOutputSqs"), {
       encryption: sqs.QueueEncryption.KMS_MANAGED,
       receiveMessageWaitTime: Duration.seconds(20), // This makes SQS long polling, check to make sure does not slow things down
+      visibilityTimeout: Duration.seconds(1200),
     });
 
-    const myRole = new iam.Role(this, "My Role", {
+    const myRole = new iam.Role(this, name("My Role"), {
       assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
     });
 
     const pythonMlLambda = new lambda.DockerImageFunction(
       this,
-      "pythonMlLambda",
+      name("pythonMlLambda"),
       {
         code: lambda.DockerImageCode.fromImageAsset(
           "../src/ml_lambdas/doc2vec_lambda"
@@ -226,7 +214,7 @@ export class CdkOsmosixStack extends Stack {
             "huggingface-pytorch-inference-2022-01-17-20-16-16-413",
           DYNAMO_TABLE_NAME: dynamoQuestionTable.tableName
         },
-        timeout: Duration.seconds(300),
+        timeout: Duration.seconds(60),
         role: myRole,
       }
     );
@@ -253,7 +241,7 @@ export class CdkOsmosixStack extends Stack {
 
     const mlOutputLambda = new nodelambda.NodejsFunction(
       this,
-      "mlOutputLambda",
+      name("mlOutputLambda"),
       {
         timeout: Duration.seconds(30),
         entry: "../src/mlOutputLambda.ts",

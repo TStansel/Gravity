@@ -25,6 +25,39 @@
     "@aws-cdk/core:target-partitions": [
       "aws",
       "aws-cn"
-    ]
+    ],
+
+    "dev": {
+      "AWSAccountID": "579534454884",
+      "AWSProfileName": "cdk-dev",
+      "AWSProfileRegion": "us-east-2",
+
+      "App": "config-1-context",
+      "Environment": "dev",
+      "Version": "0.0.0",
+      "Build": "0",
+
+      "BuildParameters": {
+        "SlackSigningSecretArn": "arn:aws:secretsmanager:us-east-2:579534454884:secret:OSMOSIX_DEV_SIGNING_SECRET-5rg0ga",
+        "OsmosixClientSecretArn": "arn:aws:secretsmanager:us-east-2:579534454884:secret:OSMOSIX_DEV_CLIENT-Fm23o2",
+        "AuroraServerlessSecretArn": "arn:aws:secretsmanager:us-east-2:579534454884:secret:config1contextdevosmosixOsm-xjI7BRlFzYvk-Gi0yoq"
+      }
+    },
+    "prod": {
+      "AWSAccountID": "579534454884",
+      "AWSProfileName": "cdk-prod",
+      "AWSProfileRegion": "us-east-2",
+
+      "App": "config-1-context",
+      "Environment": "prod",
+      "Version": "0.0.0",
+      "Build": "0",
+
+      "BuildParameters": {
+        "SlackSigningSecretArn": "arn:aws:secretsmanager:us-east-2:579534454884:secret:OSMOSIX_SLACK_SIGNING_SECRET-g0YuJ8",
+        "OsmosixClientSecretArn": "arn:aws:secretsmanager:us-east-2:579534454884:secret:OSMOSIX_PROD_CLIENT-ahkUSC",
+        "AuroraServerlessSecretArn": "arn:aws:secretsmanager:us-east-2:579534454884:secret:config1contextprodosmosixOs-4kXaOtKvE7E8-vkrorf"
+      }
+    }
   }
 }

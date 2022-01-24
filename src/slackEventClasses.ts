@@ -1856,9 +1856,9 @@ export class AppAddedEvent extends SlackEvent {
 
         const getChannelMessagesResult = await axios(getChannelMessagesConfig);
 
-        // This code should ensure that only messages with a thread get sent to ML processing
+        // This code should ensure that only messages with a thread and no files get sent to ML processing
         for (const message of getChannelMessagesResult.data.messages) {
-          if (message.thread_ts && message.type && message.type === "message") {
+          if (message.thread_ts && message.type && message.type === "message" && !message.files) {
             channelMessages.push(message);
           }
         }
