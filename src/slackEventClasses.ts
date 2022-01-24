@@ -1574,7 +1574,7 @@ export class AppAddedEvent extends SlackEvent {
             new AppAddedMessageProcessing(
               this.channelID,
               this.workspaceID,
-              this.userID,
+              message.user,
               message.thread_ts,
               message.ts,
               message.text
