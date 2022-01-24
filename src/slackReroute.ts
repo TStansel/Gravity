@@ -270,6 +270,13 @@ function fromSlackEventsApi(event: APIGatewayProxyEventV2): Result<SlackEvent> {
       return hasMessageProperties;
     }
 
+    if(slackEvent.event.files){
+      return {
+        type: "error",
+        error: new Error("incoming slack Events API new message event had attached file"),
+      };
+    }
+
     let thread_ts: string | null;
     if (slackEvent.event.thread_ts) {
       thread_ts = slackEvent.event.thread_ts;
