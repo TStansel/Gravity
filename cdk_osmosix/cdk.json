@@ -1,0 +1,63 @@
+{
+  "app": "npx ts-node --prefer-ts-exts bin/cdk_osmosix.ts",
+  "watch": {
+    "include": [
+      "**"
+    ],
+    "exclude": [
+      "README.md",
+      "cdk*.json",
+      "**/*.d.ts",
+      "**/*.js",
+      "tsconfig.json",
+      "package*.json",
+      "yarn.lock",
+      "node_modules",
+      "test"
+    ]
+  },
+  "context": {
+    "@aws-cdk/aws-apigateway:usagePlanKeyOrderInsensitiveId": true,
+    "@aws-cdk/core:stackRelativeExports": true,
+    "@aws-cdk/aws-rds:lowercaseDbIdentifier": true,
+    "@aws-cdk/aws-lambda:recognizeVersionProps": true,
+    "@aws-cdk/aws-cloudfront:defaultSecurityPolicyTLSv1.2_2021": true,
+    "@aws-cdk/core:target-partitions": [
+      "aws",
+      "aws-cn"
+    ],
+
+    "dev": {
+      "AWSAccountID": "579534454884",
+      "AWSProfileName": "cdk-dev",
+      "AWSProfileRegion": "us-east-2",
+
+      "App": "config-1-context",
+      "Environment": "dev",
+      "Version": "0.0.0",
+      "Build": "0",
+
+      "BuildParameters": {
+        "SlackSigningSecretArn": "arn:aws:secretsmanager:us-east-2:579534454884:secret:OSMOSIX_DEV_SIGNING_SECRET-5rg0ga",
+        "OsmosixClientSecretArn": "arn:aws:secretsmanager:us-east-2:579534454884:secret:OSMOSIX_DEV_CLIENT-Fm23o2",
+        "AuroraServerlessSecretArn": "arn:aws:secretsmanager:us-east-2:579534454884:secret:devosmosixOsmosixCdkCluster-0Ix8wZeC9BDE-etIY25"
+      }
+    },
+    "prod": {
+      "AWSAccountID": "579534454884",
+      "AWSProfileName": "cdk-prod",
+      "AWSProfileRegion": "us-east-2",
+
+      "App": "config-1-context",
+      "Environment": "prod",
+      "Version": "0.0.0",
+      "Build": "0",
+
+      "BuildParameters": {
+        "SlackSigningSecretArn": "arn:aws:secretsmanager:us-east-2:579534454884:secret:OSMOSIX_SLACK_SIGNING_SECRET-g0YuJ8",
+        "OsmosixClientSecretArn": "arn:aws:secretsmanager:us-east-2:579534454884:secret:OSMOSIX_PROD_CLIENT-ahkUSC",
+        "AuroraServerlessSecretArn": "arn:aws:secretsmanager:us-east-2:579534454884:secret:prodosmosixOsmosixCdkCluste-MrhvOrQxo6ap-HfW9zR"
+      }
+    }
+  }
+}
