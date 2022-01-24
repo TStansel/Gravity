@@ -25,12 +25,9 @@ export const lambdaHandler = async (
     let code = event.queryStringParameters.code;
     let clientID = process.env.OSMOSIX_CLIENT_ID;
     let clientSecret = process.env.OSMOSIX_CLIENT_SECRET;
-    let redirect_uri =
-      "https://xcnait2t2f.execute-api.us-east-2.amazonaws.com/prod/oauth";
 
     let oauthParams = {
       code: code,
-      redirect_uri: redirect_uri,
       client_id: clientID,
       client_secret: clientSecret,
     };
