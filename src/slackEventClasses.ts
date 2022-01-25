@@ -936,7 +936,7 @@ export class NewMessageEvent
       let isCustomEmojiAdded = getBotTokenResult.records[0]
         .CustomEmoji as boolean;
 
-      let emojiCode = "mag";
+      let emojiCode = "arrows_counterclockwise";
 
       if (isCustomEmojiAdded) {
         emojiCode = "osmosix-loading";
