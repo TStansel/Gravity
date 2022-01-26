@@ -154,7 +154,7 @@ export class HelpfulButton extends SlackEvent {
       let isCustomEmojiAdded = getBotTokenResult.records[0]
         .CustomEmoji as boolean;
 
-      let emojiCode = "arrows_counterclockwise";
+      let emojiCode = "hourglass_flowing_sand";
 
       if (isCustomEmojiAdded) {
         emojiCode = "osmosix-loading";
@@ -295,7 +295,7 @@ export class NotHelpfulButton extends SlackEvent {
       let isCustomEmojiAdded = getBotTokenResult.records[0]
         .CustomEmoji as boolean;
 
-      let emojiCode = "arrows_counterclockwise";
+      let emojiCode = "hourglass_flowing_sand";
 
       if (isCustomEmojiAdded) {
         emojiCode = "osmosix-loading";
@@ -435,7 +435,7 @@ export class DismissButton extends SlackEvent {
       let isCustomEmojiAdded = getBotTokenResult.records[0]
         .CustomEmoji as boolean;
 
-      let emojiCode = "arrows_counterclockwise";
+      let emojiCode = "hourglass_flowing_sand";
 
       if (isCustomEmojiAdded) {
         emojiCode = "osmosix-loading";
@@ -936,7 +936,7 @@ export class NewMessageEvent
       let isCustomEmojiAdded = getBotTokenResult.records[0]
         .CustomEmoji as boolean;
 
-      let emojiCode = "arrows_counterclockwise";
+      let emojiCode = "hourglass_flowing_sand";
 
       if (isCustomEmojiAdded) {
         emojiCode = "osmosix-loading";
@@ -1002,7 +1002,7 @@ export class NewMessageEvent
       let isCustomEmojiAdded = getBotTokenResult.records[0]
         .CustomEmoji as boolean;
 
-      let emojiCode = "arrows_counterclockwise";
+      let emojiCode = "hourglass_flowing_sand";
 
       if (isCustomEmojiAdded) {
         emojiCode = "osmosix-loading";
@@ -1282,13 +1282,13 @@ export class NewMessageEvent
           channel: this.channelID,
           user: this.userID,
           username: "Osmosix Bot",
-          text: "I think I might have an answer for you!",
+          text: "Here are some threads you might find helpful!",
           blocks: [
             {
               type: "section",
               text: {
                 type: "mrkdwn",
-                text: "I think I might have an answer for you!",
+                text: "Here are some threads you might find helpful!",
               },
             },
             {
@@ -1300,9 +1300,9 @@ export class NewMessageEvent
               text: {
                 type: "mrkdwn",
                 text:
-                  "Similarity score: " +
+                  "_Similarity score: " +
                   Math.round(similarityScore * 100) / 100 +
-                  " <" +
+                  "_ <" +
                   answerLink +
                   "|View thread>",
               },
@@ -1346,9 +1346,9 @@ export class NewMessageEvent
               text: {
                 type: "mrkdwn",
                 text:
-                  "Recent Similarity score: " +
+                  "_Similarity score: " +
                   Math.round(recentSimilarityScore * 100) / 100 +
-                  " <" +
+                  "_ <" +
                   recentAnswerLink +
                   "|View thread>",
               },
@@ -1399,13 +1399,13 @@ export class NewMessageEvent
           channel: this.channelID,
           user: this.userID,
           username: "Osmosix Bot",
-          text: "I think I might have an answer for you!",
+          text: "Here is a thread you might find helpful!",
           blocks: [
             {
               type: "section",
               text: {
                 type: "mrkdwn",
-                text: "I think I might have an answer for you!",
+                text: "Here is a thread you might find helpful!",
               },
             },
             {
@@ -1416,9 +1416,9 @@ export class NewMessageEvent
               text: {
                 type: "mrkdwn",
                 text:
-                  "Similarity score: " +
+                  "_Similarity score: " +
                   Math.round(similarityScore * 100) / 100 +
-                  " <" +
+                  "_ <" +
                   answerLink +
                   "|View thread>",
               },
@@ -1625,7 +1625,7 @@ export class AppAddedEvent extends SlackEvent {
       let isCustomEmojiAdded = getBotTokenResult.records[0]
         .CustomEmoji as boolean;
 
-      let emojiCode = ":arrows_counterclockwise:";
+      let emojiCode = ":hourglass_flowing_sand:";
 
       if (isCustomEmojiAdded) {
         emojiCode = ":osmosix-loading:";
@@ -1636,9 +1636,9 @@ export class AppAddedEvent extends SlackEvent {
         let msgParams = {
           channel: this.channelID,
           text:
-            "Thank you for adding me to your channel!\n Here are some emoji's and their meanings you will see as you use me:\n\t" +
+            "Thank you for adding me to your channel! I am here to help answer your questions. If you ask a question that I know something about, I will quietly let you know!\n\nHere are some emoji's you will see as you use me:\n\t" +
             emojiCode +
-            " means I'm working on finding an answer to that question\n\t:white_check_mark: means I helped answer that question\n\t:question: means I was unable to answer that question\nCheck out the about section of my app to help you get started too!\nFeel free to start using me right away, but I will be more helpful after a minute or two.",
+            " means I'm working to help answer the question\n\t:white_check_mark: means I helped answer the question\n\t:question: means the question still needs an answer\n\nCheck out the about section of my app to help you get started too!\nFeel free to start using me right away, but I will be more helpful after a minute or two.",
         };
 
         let msgConfig = {
