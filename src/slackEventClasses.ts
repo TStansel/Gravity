@@ -1626,27 +1626,25 @@ export class AppAddedEvent extends SlackEvent {
         emojiCode = ":osmosix-loading:";
       }
 
-      if (this.workspaceID !== "T07QTAG4S") {
-        // Send App Added Message
-        let msgParams = {
-          channel: this.channelID,
-          text:
-            "Thank you for adding me to your channel! I am here to help answer your questions. If you ask a question that I know something about, I will quietly let you know!\n\nHere are some emoji's you will see as you use me:\n\t" +
-            emojiCode +
-            " means I'm working to help answer the question\n\t:white_check_mark: means I helped answer the question\n\t:question: means the question still needs an answer\n\nCheck out the about section of my app to help you get started too!\nFeel free to start using me right away, but I will be more helpful after a minute or two.",
-        };
+      // Send App Added Message
+      let msgParams = {
+        channel: this.channelID,
+        text:
+          "Thank you for adding me to your channel! I am here to help answer your questions. If you ask a question that I know something about, I will quietly let you know!\n\nHere are some emoji's you will see as you use me:\n\t" +
+          emojiCode +
+          " means I'm working to help answer the question\n\t:white_check_mark: means I helped answer the question\n\t:question: means the question still needs an answer\n\nCheck out the about section of my app to help you get started too!\nFeel free to start using me right away, but I will be more helpful after a minute or two.",
+      };
 
-        let msgConfig = {
-          method: "post",
-          url: "https://slack.com/api/chat.postMessage",
-          headers: {
-            Authorization: "Bearer " + botToken,
-            "Content-Type": "application/json",
-          },
-          data: msgParams,
-        } as AxiosRequestConfig<any>;
-        const msgRes = await axios(msgConfig);
-      }
+      let msgConfig = {
+        method: "post",
+        url: "https://slack.com/api/chat.postMessage",
+        headers: {
+          Authorization: "Bearer " + botToken,
+          "Content-Type": "application/json",
+        },
+        data: msgParams,
+      } as AxiosRequestConfig<any>;
+      const msgRes = await axios(msgConfig);
 
       let workspaceUUID: string;
 

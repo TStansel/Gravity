@@ -47,10 +47,6 @@ export const lambdaHandler = async (
   }
 
   console.log(slackEvent)
-  if(slackEvent.type !== "APPADDEDEVENT" && slackEvent.workspaceID == "T07QTAG4S"){
-    console.log("Halting events for Pura")
-    return buildResponse(200,"Halting Events for Pura")
-  }
 
   const command = new SendMessageCommand({
     MessageBody: JSON.stringify(slackEvent),
