@@ -960,6 +960,8 @@ export class NewMessageEvent
 
       const addEmojiReactionRes = await axios(addEmojiReactionConfig);
 
+      
+
       const command = new SendMessageCommand({
         MessageBody: JSON.stringify(this),
         QueueUrl: process.env.PROCESS_EVENTS_ML_SQS_URL,

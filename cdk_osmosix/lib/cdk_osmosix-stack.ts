@@ -178,6 +178,7 @@ export class CdkOsmosixStack extends Stack {
           PROCESS_EVENTS_ML_SQS_URL: processEventsMlSqs.queueUrl,
           AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
           AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+          DYNAMO_TABLE_NAME: dynamoMessageTable.tableName
         },
         bundling: {
           minify: false,
