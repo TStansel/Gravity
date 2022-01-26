@@ -39,13 +39,15 @@ export const lambdaHandler = async (
     let workspaceID = oauthRes.data.team.id as string;
     let workspaceName = oauthRes.data.team.name as string;
     let workspaceUUID = ulid();
+    let appUserID = oauthRes.data.bot_user_id;
 
-    let insertWorkspaceSql = `insert into SlackWorkspace (SlackWorkspaceUUID, WorkspaceID, Name) values (:SlackWorkspaceUUID, :WorkspaceID, :Name)`;
+    let insertWorkspaceSql = `insert into SlackWorkspace (SlackWorkspaceUUID, WorkspaceID, Name, AppUserID) values (:SlackWorkspaceUUID, :WorkspaceID, :Name, :AppUserID)`;
 
     let insertWorkspaceResult = await data.query(insertWorkspaceSql, {
       SlackWorkspaceUUID: workspaceUUID,
       WorkspaceID: workspaceID,
       Name: workspaceName,
+      AppUserID: appUserID
     });
 
     let insertTokenSql = `insert into SlackToken (SlackTokenUUID, SlackWorkspaceUUID, BotToken) values (:SlackTokenUUID, :SlackWorkspaceUUID, :BotToken)`;
