@@ -30,14 +30,14 @@ export const lambdaHandler = async (
   event: APIGatewayProxyEventV2
 ): Promise<APIGatewayProxyResultV2> => {
   customLog(event, "DEBUG");
-  customLog("test of just text", "DEBUG");
+
   // Inspect the event passed from API gateway to determine what action to perform
   // If the request did not constitute a valid action return null
 
   let slackEventResult = determineEvent(event);
   if (slackEventResult.type === "error") {
-    console.log(
-      `Could not determine event type: ${slackEventResult.error.message}`
+    customLog(
+      `Could not determine event type: ${slackEventResult.error.message}`, "ERROR"
     );
     return buildResponse(401, "Access Denied", true);
   }
@@ -47,7 +47,7 @@ export const lambdaHandler = async (
     return buildResponse(200, slackEvent.challenge);
   }
 
-  console.log(slackEvent)
+  customLog(slackEvent, "DEBUG");
 
   const command = new SendMessageCommand({
     MessageBody: JSON.stringify(slackEvent),
@@ -57,7 +57,7 @@ export const lambdaHandler = async (
   try {
     const response = await client.send(command);
   } catch (e) {
-    console.log(`failed to send to SQS! error: ${e}`);
+    customLog(`failed to send to SQS! error: ${e}`, "ERROR");
     return buildResponse(500, "Failed to queue for processing");
   }
 
@@ -69,11 +69,11 @@ export const lambdaHandler = async (
   ) {
     // For slack interactivity, the user sees an error unless we only return the status code and header
     // Check buildResponse for the code on this
-    console.log(slackEvent.constructor.name);
+    customLog(slackEvent.constructor.name, "DEBUG");
     return buildResponse(200, "request queued for processing",false, true);
   }
 
-  console.log(slackEvent.constructor.name);
+  customLog(slackEvent.constructor.name, "DEBUG");
   return buildResponse(200, "request queued for processing");
 };
 
@@ -89,14 +89,14 @@ class UrlVerificationEvent {
 function determineEvent(
   event: APIGatewayProxyEventV2
 ): Result<SlackEvent> | Result<UrlVerificationEvent> {
-  console.log("determining event");
+  customLog("determining event", "DEBUG");
 
   // Determine if request is from Slack
   let verifyResult = verifyRequestIsFromSlack(event);
   if (verifyResult.type === "error") {
     return verifyResult;
   }
-  console.log("request verified");
+  customLog("request verified", "DEBUG");
 
   let urlVerificationResult = isUrlVerification(event);
   if (urlVerificationResult.type === "success") {
@@ -180,7 +180,7 @@ function isUrlVerification(
   event: APIGatewayProxyEventV2
 ): Result<UrlVerificationEvent> {
   if (!(event.headers["Content-Type"] === "application/json") || !event.body) {
-    console.log("event not encoded as json/has no event.body");
+    customLog("event not encoded as json/has no event.body", "DEBUG");
     return {
       type: "error",
       error: new Error("event not encoded as json/has no event.body"),
@@ -214,7 +214,7 @@ function isUrlVerification(
 
 function fromSlackEventsApi(event: APIGatewayProxyEventV2): Result<SlackEvent> {
   if (!(event.headers["Content-Type"] === "application/json") || !event.body) {
-    console.log("event not encoded as json/has no event.body");
+    customLog("event not encoded as json/has no event.body", "DEBUG");
     return {
       type: "error",
       error: new Error("event not encoded as json/has no event.body"),
@@ -316,7 +316,7 @@ function fromSlackInteractivity(
 
   const slackEvent = qs.parse(event.body);
 
-  console.log(slackEvent);
+  customLog(slackEvent, "DEBUG");
 
   let hasPayloadProperty = checkObjHasProperties(slackEvent, ["payload"]);
 
