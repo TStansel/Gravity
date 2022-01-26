@@ -9,7 +9,7 @@ CREATE TABLE SlackWorkspace(
   	WorkspaceID varchar(255) NOT NULL,
   	Name varchar(255) NOT NULL,
 	CustomEmoji BIT DEFAULT 0 NOT NULL,
-	AppUserID varchar(255) NOT NULL
+	AppUserID varchar(255) NOT NULL,
   	PRIMARY KEY (SlackWorkspaceUUID)
 );
 CREATE TABLE SlackToken(
@@ -45,7 +45,5 @@ CREATE TABLE SlackQuestion(
     FOREIGN KEY (SlackChannelUUID) REFERENCES SlackChannel(SlackChannelUUID),
   	FOREIGN KEY (SlackUserUUID) REFERENCES SlackUser(SlackUserUUID)
 );
-
-test
 
 
