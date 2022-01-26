@@ -1008,24 +1008,6 @@ export class NewMessageEvent
         emojiCode = "osmosix-loading";
       }
 
-      let addEmojiReactionParams = {
-        channel: this.channelID,
-        timestamp: this.messageID,
-        name: emojiCode,
-      };
-
-      let addEmojiReactionConfig = {
-        method: "post",
-        url: "https://slack.com/api/reactions.add",
-        headers: {
-          Authorization: "Bearer " + botToken,
-          "Content-Type": "application/json",
-        },
-        data: addEmojiReactionParams,
-      } as AxiosRequestConfig<any>;
-
-      const addEmojiReactionRes = await axios(addEmojiReactionConfig);
-
       if (!questions.hasOwnProperty("mostSimilar")) {
         // We have no suggestion that meets our criteria
         let removeEmojiReactionParams = {

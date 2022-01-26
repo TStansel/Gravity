@@ -311,7 +311,7 @@ function fromSlackInteractivity(
   ) {
     return {
       type: "error",
-      error: new Error("event not encoded as json/has no event.body"),
+      error: new Error("event not encoded as application/x-www-form-urlencoded/has no event.body"),
     };
   }
 

@@ -48,7 +48,19 @@ export class CdkOsmosixStack extends Stack {
         name: "channelID#ts",
         type: dynamodb.AttributeType.STRING,
       },
-      billingMode: dynamodb.BillingMode.PROVISIONED,
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+    });
+
+    const dynamoMessageTable = new dynamodb.Table(this, name("messageTable"), {
+      partitionKey: {
+        name: "workspaceID",
+        type: dynamodb.AttributeType.STRING,
+      },
+      sortKey: {
+        name: "channelID#ts",
+        type: dynamodb.AttributeType.STRING
+      },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST
     });
 
     
@@ -185,7 +197,7 @@ export class CdkOsmosixStack extends Stack {
         batchSize: 1,
       }
     );
-
+    dynamoMessageTable.grantWriteData(slackEventWork);
     slackEventWork.addEventSource(slackEventSqsSource);
     processEventsMlSqs.grantSendMessages(slackEventWork);
 
