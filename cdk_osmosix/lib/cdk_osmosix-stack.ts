@@ -104,6 +104,7 @@ export class CdkOsmosixStack extends Stack {
           .toString(),
         AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
         AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+        ENVIRONMENT: buildConfig.Environment
       },
       bundling: {
         minify: false,
@@ -136,6 +137,7 @@ export class CdkOsmosixStack extends Stack {
           REVERSE_PROXY_SQS_URL: reverseProxySqs.queueUrl,
           AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
           AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+          ENVIRONMENT: buildConfig.Environment
         },
         bundling: {
           minify: false,
@@ -178,7 +180,8 @@ export class CdkOsmosixStack extends Stack {
           PROCESS_EVENTS_ML_SQS_URL: processEventsMlSqs.queueUrl,
           AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
           AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
-          DYNAMO_TABLE_NAME: dynamoMessageTable.tableName
+          DYNAMO_TABLE_NAME: dynamoMessageTable.tableName,
+          ENVIRONMENT: buildConfig.Environment
         },
         bundling: {
           minify: false,
@@ -225,7 +228,8 @@ export class CdkOsmosixStack extends Stack {
           AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
           ENDPOINT_NAME:
             "huggingface-pytorch-inference-2022-01-17-20-16-16-413",
-          DYNAMO_TABLE_NAME: dynamoQuestionTable.tableName
+          DYNAMO_TABLE_NAME: dynamoQuestionTable.tableName,
+          ENVIRONMENT: buildConfig.Environment
         },
         timeout: Duration.seconds(60),
         role: myRole,
@@ -270,6 +274,7 @@ export class CdkOsmosixStack extends Stack {
         environment: {
           AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
           AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+          ENVIRONMENT: buildConfig.Environment
         },
       }
     );
