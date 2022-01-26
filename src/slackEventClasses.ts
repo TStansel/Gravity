@@ -960,8 +960,6 @@ export class NewMessageEvent
 
       const addEmojiReactionRes = await axios(addEmojiReactionConfig);
 
-      
-
       const command = new SendMessageCommand({
         MessageBody: JSON.stringify(this),
         QueueUrl: process.env.PROCESS_EVENTS_ML_SQS_URL,
@@ -1589,7 +1587,7 @@ export class AppAddedEvent extends SlackEvent {
 
       //console.log("getWorkspaceresult: ", getWorkspaceResult);
 
-      let getBotTokenSql = `select SlackToken.BotToken, SlackWorkspace.CustomEmoji from SlackToken 
+      let getBotTokenSql = `select SlackToken.BotToken, SlackWorkspace.CustomEmoji, SlackWorkspace.AppUserID from SlackToken 
     join SlackWorkspace on SlackToken.SlackWorkspaceUUID = SlackWorkspace.SlackWorkspaceUUID 
     where SlackWorkspace.WorkspaceID = :workspaceID`;
 
@@ -1608,6 +1606,19 @@ export class AppAddedEvent extends SlackEvent {
 
       let isCustomEmojiAdded = getBotTokenResult.records[0]
         .CustomEmoji as boolean;
+
+      if (!getBotTokenResult.records[0].AppUserID) {
+        return { type: "success", value: "App Added Work: Missing AppUserID" };
+      }
+      let appUserId = getBotTokenResult.records[0].AppUserID as string;
+
+      if (appUserId !== this.userID) {
+        return {
+          type: "success",
+          value:
+            "App Added Work: userID of incoming event does not match AppUserID",
+        };
+      }
 
       let emojiCode = ":hourglass_flowing_sand:";
 
@@ -1717,7 +1728,8 @@ export class AppAddedEvent extends SlackEvent {
         });
       } else {
         console.log("Channel already in DB");
-        channelUUID = getChannelResult.records[0].SlackChannelUUID;
+        return { type: "success", value: "channel already in database" };
+        // channelUUID = getChannelResult.records[0].SlackChannelUUID;
       }
 
       let cursor = null;
@@ -1842,7 +1854,12 @@ export class AppAddedEvent extends SlackEvent {
 
         // This code should ensure that only messages with a thread and no files get sent to ML processing
         for (const message of getChannelMessagesResult.data.messages) {
-          if (message.thread_ts && message.type && message.type === "message" && !message.files) {
+          if (
+            message.thread_ts &&
+            message.type &&
+            message.type === "message" &&
+            !message.files
+          ) {
             channelMessages.push(message);
           }
         }

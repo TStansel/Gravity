@@ -251,6 +251,8 @@ function fromSlackEventsApi(event: APIGatewayProxyEventV2): Result<SlackEvent> {
       return hasMemberJoinedChannelProperties;
     }
 
+    
+
     let appAddedEvent = new AppAddedEvent(
       slackEvent.event.channel as string,
       slackEvent.event.team as string,
