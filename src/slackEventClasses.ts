@@ -9,6 +9,7 @@ import {
   ServiceOutputTypes,
 } from "@aws-sdk/client-sqs";
 import { ulid } from "ulid";
+import { customLog } from "./slackFunctions";
 // TODO move this data instatiation to above calling lambda handler to make sure happens once
 const data = require("data-api-client")({
   secretArn: process.env.AURORA_SECRET_ARN,
@@ -87,7 +88,7 @@ export class HelpfulButton extends SlackEvent {
   }
 
   async doWork(): Promise<Result<string>> {
-    console.log("Helpful do work");
+    customLog("Helpful do work","DEBUG");
     try {
       let dismissParams = {
         delete_original: "true",
@@ -258,7 +259,7 @@ export class NotHelpfulButton extends SlackEvent {
   }
 
   async doWork(): Promise<Result<string>> {
-    console.log("Not helpful do work");
+    customLog("Not helpful do work","DEBUG");
     try {
       let dismissParams = {
         delete_original: "true",
@@ -398,7 +399,7 @@ export class DismissButton extends SlackEvent {
   }
 
   async doWork(): Promise<Result<string>> {
-    console.log("Dismiss Button do work");
+    customLog("Dismiss Button do work","DEBUG");
     try {
       let dismissParams = {
         delete_original: "true",
@@ -557,7 +558,7 @@ export class MarkedAnswerEvent
   }
 
   async doWork(): Promise<Result<string>> {
-    console.log("Marked Answer do work");
+    customLog("Marked Answer do work","DEBUG");
     try {
       let getBotTokenSql = `select SlackToken.BotToken from SlackToken 
       join SlackWorkspace on SlackToken.SlackWorkspaceUUID = SlackWorkspace.SlackWorkspaceUUID 
@@ -637,7 +638,7 @@ export class MarkedAnswerEvent
         QueueUrl: process.env.PROCESS_EVENTS_ML_SQS_URL,
       });
       let response = await client.send(command);
-      console.log("Marked Answer in SQS", response);
+      customLog("Marked Answer in SQS" + response,"DEBUG");
       // Thank You MSG
       // Create Q and A
     } catch (e) {
@@ -650,7 +651,7 @@ export class MarkedAnswerEvent
   }
 
   async doMLWork(parentVector: undefined): Promise<Result<string>> {
-    console.log("Marked Answer: ML Work");
+    customLog("Marked Answer: ML Work","DEBUG");
     try {
       let getBotTokenSql = `select SlackToken.BotToken from SlackToken 
       join SlackWorkspace on SlackToken.SlackWorkspaceUUID = SlackWorkspace.SlackWorkspaceUUID 
@@ -759,7 +760,7 @@ export class MarkedAnswerEvent
         channelID: this.channelID,
         userID: this.userID,
       });
-      //console.log(getUUIDsResult)
+      //customLog(getUUIDsResult)
       if (
         getULIDsResult.records.length === 0 ||
         !getULIDsResult.records[0].SlackChannelUUID ||
@@ -806,7 +807,7 @@ export class MarkedAnswerEvent
       // insert Question
       let insertQuestionSql = `insert into SlackQuestion (SlackQuestionUUID, SlackAnswerUUID, SlackChannelUUID, SlackUserUUID, Ts) 
       values (:SlackQuestionUUID, :SlackAnswerUUID, :SlackChannelUUID, :SlackUserUUID, :Ts)`;
-      //console.log(JSON.stringify(parentVector));
+      //customLog(JSON.stringify(parentVector));
       let insertQuestionResult = await data.query(insertQuestionSql, {
         SlackQuestionUUID: qULID,
         SlackAnswerUUID: aULID,
@@ -876,7 +877,7 @@ export class NewMessageEvent
   }
 
   async doWork(): Promise<Result<string>> {
-    console.log("new Message do work");
+    customLog("new Message do work","DEBUG");
     try {
       let getChannelNameSql = `select SlackChannel.Name from SlackChannel 
         join SlackWorkspace on SlackChannel.SlackWorkspaceUUID = SlackWorkspace.SlackWorkspaceUUID
@@ -965,7 +966,7 @@ export class NewMessageEvent
         QueueUrl: process.env.PROCESS_EVENTS_ML_SQS_URL,
       });
       let response = await client.send(command);
-      //console.log("New Message in SQS", response);
+      //customLog("New Message in SQS", response);
       // Send Message to Slack
     } catch (e) {
       return {
@@ -977,7 +978,7 @@ export class NewMessageEvent
   }
 
   async doMLWork(questions: JSON): Promise<Result<string>> {
-    console.log("New Message: ML Work");
+    customLog("New Message: ML Work","DEBUG");
     try {
       let getBotTokenSql = `select SlackToken.BotToken, SlackWorkspace.CustomEmoji from SlackToken 
       join SlackWorkspace on SlackToken.SlackWorkspaceUUID = SlackWorkspace.SlackWorkspaceUUID 
@@ -1100,7 +1101,7 @@ export class NewMessageEvent
       let isAnswerInDb = false;
 
       if (getQuestionResult.records[0].SlackAnswerUUID === null) {
-        console.log("answer is null in DB");
+        customLog("answer is null in DB","DEBUG");
         // Answer is null in DB
         let messageTS = mostSimilarQuestion[
           "messageTs" as keyof JSON
@@ -1119,7 +1120,7 @@ export class NewMessageEvent
           },
         } as AxiosRequestConfig<any>;
         const repliesRes = await axios(repliesConfig);
-        console.log(repliesRes);
+        customLog("Message replies: "+repliesRes,"DEBUG");
 
         let answerTs = repliesRes.data.messages[1].ts as string;
 
@@ -1138,7 +1139,7 @@ export class NewMessageEvent
         const getLinkRes = await axios(getLinkConfig);
         answerLink = getLinkRes.data.permalink;
       } else {
-        console.log("answer is in DB");
+        customLog("Answer is in DB","DEBUG");
         isAnswerInDb = true;
 
         // TODO: Make this a SQL join with the above
@@ -1165,7 +1166,7 @@ export class NewMessageEvent
         questions.hasOwnProperty("mostRecent")
       ) {
         // We have both suggestions
-        console.log("both most similar and most recent!");
+        customLog("Both most similar and most recent!","DEBUG");
         let mostRecentQuestion = questions[
           "mostRecent" as keyof JSON
         ] as unknown as JSON;
@@ -1188,7 +1189,7 @@ export class NewMessageEvent
         recentQuestionULID =
           getMostRecentQuestionUlidResult.records[0].SlackQuestionUUID;
         if (recentQuestionULID === null) {
-          console.log("Most Recent Question missing from Db");
+          customLog("Most Recent Question missing from Db","DEBUG");
           return {
             type: "success",
             value: "Most Recent Question missing from Db",
@@ -1209,7 +1210,7 @@ export class NewMessageEvent
         if (getQuestionResult.records[0].SlackAnswerUUID === null) {
           // Answer is null in DB
           isRecentAnswerInDb = false;
-          console.log("answer of similar recent question in DB is null");
+          customLog("answer of similar recent question in DB is null","DEBUG");
           let recentQuestionTS = mostRecentQuestion[
             "messageTs" as keyof JSON
           ] as string;
@@ -1227,7 +1228,7 @@ export class NewMessageEvent
             },
           } as AxiosRequestConfig<any>;
           const repliesRes = await axios(repliesConfig);
-          console.log(repliesRes);
+          customLog("Message relpies: "+repliesRes,"DEBUG");
 
           let answerTs = repliesRes.data.messages[1].ts as string;
 
@@ -1246,8 +1247,8 @@ export class NewMessageEvent
           const getLinkRes = await axios(getLinkConfig);
           recentAnswerLink = getLinkRes.data.permalink;
         } else {
-          console.log(
-            "answer link for more recent similar question exists in DB"
+          customLog(
+            "Answer link for more recent similar question exists in DB","DEBUG"
           );
 
           let getAnswerLinkSql =
@@ -1456,7 +1457,7 @@ export class NewMessageEvent
       const msgRes = await axios(msgConfig);
 
       if (!isAnswerInDb) {
-        console.log("isAnswerInDb was false so inserting answer into DB");
+        customLog("isAnswerInDb was false so inserting answer into DB","DEBUG");
         let insertAnswerSql =
           "insert into SlackAnswer (SlackAnswerUUID, AnswerLink, Upvotes) values (:SlackAnswerUUID, :AnswerLink, :Upvotes)";
         let answerULID = ulid();
@@ -1477,7 +1478,7 @@ export class NewMessageEvent
       }
 
       if (!isRecentAnswerInDb) {
-        console.log("isRecentAnswerInDb was false so inserting answer into DB");
+        customLog("isRecentAnswerInDb was false so inserting answer into DB","DEBUG");
         let insertAnswerSql =
           "insert into SlackAnswer (SlackAnswerUUID, AnswerLink, Upvotes) values (:SlackAnswerUUID, :AnswerLink, :Upvotes)";
         let answerULID = ulid();
@@ -1545,10 +1546,10 @@ export class AppAddedEvent extends SlackEvent {
     let promises: Promise<ServiceOutputTypes>[] = [];
     let batch_size = 5;
     for (let i = 0; i < channelMessages.length; i += batch_size) {
-      //console.log("hit for loop");
+      //customLog("hit for loop");
 
       let channelMessagesBatch = channelMessages.slice(i, i + batch_size);
-      //console.log(channelMessagesBatch);
+      //customLog(channelMessagesBatch);
       let sqsSendBatchMessageEntries: SendMessageBatchRequestEntry[] =
         channelMessagesBatch.map((message, index) => ({
           Id: String(index),
@@ -1564,7 +1565,7 @@ export class AppAddedEvent extends SlackEvent {
           ),
         }));
 
-      //console.log(sqsSendBatchMessageEntries);
+      //customLog(sqsSendBatchMessageEntries);
       let sqsSendBatchMessageInput: SendMessageBatchCommandInput = {
         Entries: sqsSendBatchMessageEntries,
         QueueUrl: process.env.PROCESS_EVENTS_ML_SQS_URL,
@@ -1576,7 +1577,7 @@ export class AppAddedEvent extends SlackEvent {
   }
 
   async doWork(): Promise<Result<string>> {
-    console.log("App Added Do Work");
+    customLog("App Added Do Work","DEBUG");
     try {
       let getWorkspaceSql =
         "select * from SlackWorkspace where WorkspaceID = :workspaceID";
@@ -1585,7 +1586,7 @@ export class AppAddedEvent extends SlackEvent {
         workspaceID: this.workspaceID,
       });
 
-      //console.log("getWorkspaceresult: ", getWorkspaceResult);
+      //customLog("getWorkspaceresult: ", getWorkspaceResult);
 
       let getBotTokenSql = `select SlackToken.BotToken, SlackWorkspace.CustomEmoji, SlackWorkspace.AppUserID from SlackToken 
     join SlackWorkspace on SlackToken.SlackWorkspaceUUID = SlackWorkspace.SlackWorkspaceUUID 
@@ -1645,9 +1646,7 @@ export class AppAddedEvent extends SlackEvent {
         data: msgParams,
       } as AxiosRequestConfig<any>;
 
-      console.log(msgConfig);
       const msgRes = await axios(msgConfig);
-      console.log(msgRes);
       let workspaceUUID: string;
 
       if (getWorkspaceResult.records.length === 0) {
@@ -1697,7 +1696,7 @@ export class AppAddedEvent extends SlackEvent {
 
       // If the channel already exists skip the step of putting channel in DB
       if (getChannelResult.records.length === 0) {
-        console.log("Channel not in DB");
+        customLog("Channel not in DB","DEBUG");
         channelUUID = ulid();
 
         // Get needed info about Channel
@@ -1727,7 +1726,7 @@ export class AppAddedEvent extends SlackEvent {
           channelName: channelName,
         });
       } else {
-        console.log("Channel already in DB");
+        customLog("Channel already in DB","DEBUG");
         return { type: "success", value: "channel already in database" };
         // channelUUID = getChannelResult.records[0].SlackChannelUUID;
       }
@@ -1815,7 +1814,7 @@ export class AppAddedEvent extends SlackEvent {
           },
         ]);
 
-        //console.log("batchInsertSlackUsersParams: ", batchInsertSlackUsersParams);
+        //customLog("batchInsertSlackUsersParams: ", batchInsertSlackUsersParams);
 
         let batchInsertNewSlackUserResult = await data.query(
           batchInsertNewSlackUserSql,
@@ -1851,7 +1850,6 @@ export class AppAddedEvent extends SlackEvent {
         } as AxiosRequestConfig<any>;
 
         const getChannelMessagesResult = await axios(getChannelMessagesConfig);
-        console.log(getChannelMessagesResult);
         // This code should ensure that only messages with a thread and no files get sent to ML processing
         for (const message of getChannelMessagesResult.data.messages) {
           if (
@@ -1875,7 +1873,7 @@ export class AppAddedEvent extends SlackEvent {
           getChannelMessagesResult.data.response_metadata.next_cursor === ""
         ) {
           // Response has no next_cursor property set so we are done paginating!
-          //console.log("no cursor in response, done paginating");
+          //customLog("no cursor in response, done paginating");
           cursor = null;
         } else if (
           // Types here a bit confusing, channelMessages is list of JSON where ts is a string.
@@ -1887,9 +1885,9 @@ export class AppAddedEvent extends SlackEvent {
           60 * 60 * 24 * 365
         ) {
           // Oldest message in response is more than 1 year old, stop paginating!
-          /*console.log(
-            "Oldest message in response is more than 1 year old, stop paginating!"
-          );*/
+          customLog(
+            "Oldest message in response is more than 1 year old, stop paginating!","DEBUG"
+          );
           cursor = null;
         } else {
           cursor =
@@ -1897,7 +1895,7 @@ export class AppAddedEvent extends SlackEvent {
               /=/g,
               "%3D"
             );
-          //console.log("cursor found in result, encoding and paginating");
+          //customLog("cursor found in result, encoding and paginating");
         }
       } while (cursor !== null); // When done paginating cursor will be set to null
 
@@ -1961,7 +1959,7 @@ export class AppAddedMessageProcessing implements MachineLearningIsWorkable {
   }
 
   async doMLWork(vector: undefined): Promise<Result<string>> {
-    console.log("App Added: ML Work");
+    customLog("App Added: ML Work","DEBUG");
     try {
       let insertQuestionSql = `insert into SlackQuestion (SlackQuestionUUID,
     SlackAnswerUUID,
