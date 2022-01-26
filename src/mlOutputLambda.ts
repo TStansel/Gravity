@@ -9,29 +9,29 @@ import {
   ResultError,
   ResultSuccess,
 } from "./slackEventClasses";
-import { buildResponse } from "./slackFunctions";
+import { buildResponse,customLog } from "./slackFunctions";
 
 export const lambdaHandler: SQSHandler = async (
   event: SQSEvent
 ): Promise<void> => {
-  console.log("Ml Output: ", event);
+  customLog("Ml Output: "+ event,"DEBUG");
 
   let verifySQSResult = verifySQSEvent(event);
 
   if (verifySQSResult.type === "error") {
-    console.log(verifySQSResult.error.message);
+    customLog("Verifying SQS Result:"+verifySQSResult.error.message,"ERROR");
     return;
   }
 
   let slackEvent = event.Records[0];
 
   let slackJson = JSON.parse(slackEvent.body as string) as JSON;
-  console.log(slackJson);
+  customLog("Slack JSON: "+slackJson,"DEBUG");
 
   let classResult = determineClass(slackJson);
 
   if (classResult.type === "error") {
-    console.log(classResult.error.message);
+    customLog("Class Result Error: "+classResult.error.message, "ERROR");
     return;
   }
 
@@ -41,12 +41,12 @@ export const lambdaHandler: SQSHandler = async (
   }
 
   if (vectorResult !== undefined && vectorResult.type === "error") {
-    console.log(vectorResult.error.message);
+    customLog("Vector Result: "+vectorResult.error.message,"ERROR");
     return;
   }
 
   //Class Result should be either a new message, app added, or marked answer
-  console.log("Slack Result:", classResult.value);
+  customLog("Slack Result: "+ classResult.value,"ERROR");
 
   let workResult; 
 
@@ -62,7 +62,7 @@ export const lambdaHandler: SQSHandler = async (
     // Network Call in Class failed
     throw workResult.error;
   }
-  console.log(workResult.value);
+  customLog("Successful Call: "+workResult.value,"DEBUG");
   // Successful Call
   return;
 };
@@ -125,3 +125,4 @@ function verifySQSEvent(event: SQSEvent): Result<string> {
 
   return { type: "success", value: "SQSEvent has needed parameters" };
 }
+
