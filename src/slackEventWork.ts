@@ -17,41 +17,41 @@ import {
   ResultError,
   ResultSuccess,
 } from "./slackEventClasses";
-import { buildResponse } from "./slackFunctions";
+import { buildResponse, customLog } from "./slackFunctions";
 
 export const lambdaHandler: SQSHandler = async (
   event: SQSEvent
 ): Promise<void> => {
-  console.log("Event Work: ", event);
+  customLog(event, "DEBUG");
 
   if (event.Records.length !== 1) {
     // Access Denied
-    console.log("No events in the record");
+    customLog("No events in the record", "ERROR");
     return;
   }
   let slackEvent = event.Records[0];
 
   if (!slackEvent.hasOwnProperty("body")) {
     // Access Denied
-    console.log("Event does not have a body");
+    customLog("Event does not have a body", "ERROR");
     return;
   }
 
   let classResult = determineClass(JSON.parse(slackEvent.body as string));
 
   if (classResult.type === "error") {
-    console.log(classResult.error.message);
+    customLog(classResult.error.message, "ERROR");
     return;
   }
   // classResult is now one of the 6 objects
-  console.log("Slack Event:", classResult.value);
+  customLog(classResult.value, "WARN");
   let workResult = await classResult.value.doWork();
 
   if (workResult.type === "error") {
     // Network Call in Class failed
     throw workResult.error;
   }
-  console.log(workResult.value);
+  customLog(workResult.value, "DEBUG");
   // Successful Call
   return;
 };
