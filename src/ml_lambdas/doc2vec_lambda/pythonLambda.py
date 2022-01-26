@@ -16,30 +16,30 @@ table = dynamodb.Table(DYNAMO_TABLE_NAME)
 
 
 def lambda_handler(event=None, context=None):
-    print("Request Event", event)
+    custom_log(event, "DEBUG")
 
     if "Records" not in event:
-        print("Event is missing Records")
+        custom_log("Event is missing Records", "ERROR")
         return
 
     if len(event["Records"]) != 1:
-        print("Records length wrong")
+        custom_log("Records length wrong", "ERROR")
         return
 
     if ("body" not in event["Records"][0]):
-        print("Event is missing Body")
+        custom_log("Event is missing Body", "ERROR")
         return
 
     slackJson = json.loads(event["Records"][0]["body"])
-    print("slackJson:")
-    print(slackJson)
+
+    custom_log(slackJson, "DEBUG")
     if slackJson["type"] == "MARKEDANSWEREVENT":
         if not nlp(slackJson['parentMsgText']):
-            print("Parent of marked message is not a question!")
+            custom_log("Parent of marked message is not a question!", "DEBUG")
             return
     else:
         if not nlp(slackJson["text"]):
-            print("Message is not a question")
+            custom_log("Message is not a question", "DEBUG")
             return
 
     ENDPOINT_NAME = os.environ['ENDPOINT_NAME']
@@ -51,7 +51,7 @@ def lambda_handler(event=None, context=None):
     new_vector = np.array(json.loads(response)[0], dtype=np.float64)
 
     if slackJson["type"] == "NEWMESSAGEEVENT":
-        print("NEWMESSAGEEVENT")
+        custom_log("NEWMESSAGEEVENT", "WARN")
         # questionObjects = callRds(slackJson["channelID"])
         # print(len(questionObjects))
         # print(questionObjects)
@@ -69,16 +69,18 @@ def lambda_handler(event=None, context=None):
         return write_to_sqs(slackJson, sqs)
 
     if slackJson["type"] == "MARKEDANSWEREVENT":
-        print("MARKEDANSWEREVENT")
-        print(write_to_dynamo(slackJson, new_vector, table))
+        custom_log("MARKEDANSWEREVENT", "WARN")
+        dynamo_result = write_to_dynamo(slackJson, new_vector, table)
+        custom_log(dynamo_result, "DEBUG")
         return write_to_sqs(slackJson, sqs)
 
     if slackJson["type"] == "APPADDEDMESSAGEPROCESSING":
-        print("APPADDEDMESSAGEPROCESSING")
-        print(write_to_dynamo(slackJson, new_vector, table))
+        custom_log("APPADDEDMESSAGEPROCESSING", "WARN")
+        dynamo_result = write_to_dynamo(slackJson, new_vector, table)
+        custom_log(dynamo_result, "DEBUG")
         return write_to_sqs(slackJson, sqs)
 
-    print("incoming event did not match any event types")
+    custom_log("incoming event did not match any event types", "ERROR")
     return
 
 
@@ -89,7 +91,7 @@ def write_to_sqs(slackJson, sqs):
             json.dumps(slackJson)
         )
     )
-    print(response['MessageId'])
+    custom_log(response['MessageId'], "DEBUG")
     return True
 
 
@@ -127,7 +129,7 @@ def get_similar_questions_dynamo(new_message_vector, workspaceID, channelID, tab
 
 
 def process_batch(batch_items, workspaceID, channelID, new_message_vector):
-    print("processing batch of size: " + str(len(batch_items)))
+    custom_log("processing batch of size: " + str(len(batch_items)), "DEBUG")
     similar_questions = []
 
     if len(batch_items) == 0:
@@ -151,7 +153,7 @@ def find_similar_questions(similar_questions):
   if most_similar_question['messageTs'] != most_recent_question['messageTs']:
     # most similar question is not also most recent question, add to dict
     questions_dict['mostRecent'] = most_recent_question
-    print("most similar ts != most recent ts!")
+    custom_log("most similar ts != most recent ts!", "DEBUG")
   questions_dict['mostSimilar'] = most_similar_question
   return questions_dict
   
@@ -165,30 +167,23 @@ def nlp(string):
 def cosine_similarity(v1, v2):
     return np.dot(v1, v2)/(np.linalg.norm(v1)*np.linalg.norm(v2))
 
+# level can be one of ERROR, WARN, or DEBUG. ERROR and WARN are logged in prod and dev
+def custom_log(input, level):
+  env = None
+  if os.environ['ENVIRONMENT'] is not None:
+    env = os.environ['ENVIRONMENT']
+  else:
+    env = "dev"
 
-# def callRds(channelID):
-#     sqlStatement = """
-#                   select SlackQuestionUUID, TextVector, Ts from SlackQuestion
-#                   inner join SlackChannel on SlackQuestion.SlackChannelUUID=SlackChannel.SlackChannelUUID
-#                   where SlackChannel.ChannelID = :channelID
-#                   limit 60
-#                  """
+  if env == "prod":
+    if (level == "ERROR" or level == "WARN"):
+      print("level: {level} input: {input}".format(level=level, input=json.dumps(input)))
+  elif env == "dev":
+    if (level == "ERROR" or level == "WARN" or level == "DEBUG"):
+      print("level: {level} input: {input}".format(level=level, input=json.dumps(input)))
+    else:
+      print("invalid log level specified, please input one of ERROR, WARN, or DEBUG")
+  else:
+    print("no env was set, error!")
+  
 
-#     params = [{'name': 'channelID', 'value': {'stringValue': channelID}}]
-
-#     response = rdsData.execute_statement(
-#         resourceArn=resourceArn,
-#         secretArn=secretArn,
-#         database='osmosix',
-#         sql=sqlStatement,
-#         parameters=params
-#     )
-#     oldQuestions = []
-#     for row in response["records"]:
-#         qUUID = row[0]["stringValue"]
-#         vector = row[1]["stringValue"]
-#         ts = row[2]["stringValue"]
-#         oldQuestions.append(
-#             {"SlackQuestionID": qUUID, "Ts": ts, "TextVector": json.loads(vector)})
-
-#     return oldQuestions
