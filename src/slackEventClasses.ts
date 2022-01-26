@@ -1644,8 +1644,10 @@ export class AppAddedEvent extends SlackEvent {
         },
         data: msgParams,
       } as AxiosRequestConfig<any>;
-      const msgRes = await axios(msgConfig);
 
+      console.log(msgConfig);
+      const msgRes = await axios(msgConfig);
+      console.log(msgRes);
       let workspaceUUID: string;
 
       if (getWorkspaceResult.records.length === 0) {
@@ -1849,7 +1851,7 @@ export class AppAddedEvent extends SlackEvent {
         } as AxiosRequestConfig<any>;
 
         const getChannelMessagesResult = await axios(getChannelMessagesConfig);
-
+        console.log(getChannelMessagesResult);
         // This code should ensure that only messages with a thread and no files get sent to ML processing
         for (const message of getChannelMessagesResult.data.messages) {
           if (
