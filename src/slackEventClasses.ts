@@ -976,13 +976,13 @@ export class NewMessageEvent
 
       const addEmojiReactionRes = axios(addEmojiReactionConfig);
       promises.push(addEmojiReactionRes);
+      let responses = await Promise.all(promises);
 
       const command = new SendMessageCommand({
         MessageBody: JSON.stringify(this),
         QueueUrl: process.env.PROCESS_EVENTS_ML_SQS_URL,
       });
       let response = client.send(command);
-      let responses = await Promise.all(promises);
     } catch (e) {
       return {
         type: "error",
@@ -1465,12 +1465,11 @@ export class NewMessageEvent
           "insert into SlackAnswer (SlackAnswerUUID, AnswerLink, Upvotes) values (:SlackAnswerUUID, :AnswerLink, :Upvotes)";
         let answerULID = ulid();
 
-        let insertAnswerResult = data.query(insertAnswerSql, {
+        let insertAnswerResult = await data.query(insertAnswerSql, {
           SlackAnswerUUID: answerULID,
           AnswerLink: answerLink,
           Upvotes: 0,
         });
-        promises.push(insertAnswerResult);
 
         let updateQuestionSql =
           "update SlackQuestion set SlackAnswerUUID = :SlackAnswerUUID where SlackQuestionUUID = :SlackQuestionUUID";
@@ -1491,12 +1490,11 @@ export class NewMessageEvent
           "insert into SlackAnswer (SlackAnswerUUID, AnswerLink, Upvotes) values (:SlackAnswerUUID, :AnswerLink, :Upvotes)";
         let answerULID = ulid();
 
-        let insertAnswerResult = data.query(insertAnswerSql, {
+        let insertAnswerResult = await data.query(insertAnswerSql, {
           SlackAnswerUUID: answerULID,
           AnswerLink: recentAnswerLink as string,
           Upvotes: 0,
         });
-        promises.push(insertAnswerResult);
 
         let updateQuestionSql =
           "update SlackQuestion set SlackAnswerUUID = :SlackAnswerUUID where SlackQuestionUUID = :SlackQuestionUUID";
@@ -1861,6 +1859,7 @@ export class AppAddedEvent extends SlackEvent {
         } as AxiosRequestConfig<any>;
 
         const getChannelMessagesResult = await axios(getChannelMessagesConfig);
+        let axiosResponses = await Promise.all(promises);
         // This code should ensure that only messages with a thread and no files get sent to ML processing
         for (const message of getChannelMessagesResult.data.messages) {
           if (
@@ -1910,7 +1909,6 @@ export class AppAddedEvent extends SlackEvent {
         }
       } while (cursor !== null); // When done paginating cursor will be set to null
 
-      let axiosResponses = await Promise.all(promises);
       let responses = await Promise.all(sqsPromises);
     } catch (e) {
       return {

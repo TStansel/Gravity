@@ -46,7 +46,7 @@ export const lambdaHandler: SQSHandler = async (
   }
 
   //Class Result should be either a new message, app added, or marked answer
-  customLog("Slack Result: "+ classResult.value,"ERROR");
+  customLog(classResult.value,"DEBUG");
 
   let workResult; 
 
