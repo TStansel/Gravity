@@ -187,3 +187,30 @@ def custom_log(input, level):
     print("no env was set, error!")
   
 
+
+# def callRds(channelID):
+#     sqlStatement = """
+#                   select SlackQuestionUUID, TextVector, Ts from SlackQuestion
+#                   inner join SlackChannel on SlackQuestion.SlackChannelUUID=SlackChannel.SlackChannelUUID
+#                   where SlackChannel.ChannelID = :channelID
+#                   limit 60
+#                  """
+
+#     params = [{'name': 'channelID', 'value': {'stringValue': channelID}}]
+
+#     response = rdsData.execute_statement(
+#         resourceArn=resourceArn,
+#         secretArn=secretArn,
+#         database='osmosix',
+#         sql=sqlStatement,
+#         parameters=params
+#     )
+#     oldQuestions = []
+#     for row in response["records"]:
+#         qUUID = row[0]["stringValue"]
+#         vector = row[1]["stringValue"]
+#         ts = row[2]["stringValue"]
+#         oldQuestions.append(
+#             {"SlackQuestionID": qUUID, "Ts": ts, "TextVector": json.loads(vector)})
+
+#     return oldQuestions

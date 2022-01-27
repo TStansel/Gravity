@@ -982,7 +982,7 @@ export class NewMessageEvent
         MessageBody: JSON.stringify(this),
         QueueUrl: process.env.PROCESS_EVENTS_ML_SQS_URL,
       });
-      let response = client.send(command);
+      let response = await client.send(command);
     } catch (e) {
       return {
         type: "error",
@@ -1505,8 +1505,9 @@ export class NewMessageEvent
         });
         promises.push(updateQuestionResult);
 
-        let responses = await Promise.all(promises);
+        
       }
+      let responses = await Promise.all(promises);
     } catch (e) {
       return {
         type: "error",
