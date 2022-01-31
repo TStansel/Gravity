@@ -805,12 +805,11 @@ export class MarkedAnswerEvent
       let insertAnswerSql =
         "insert into SlackAnswer (SlackAnswerUUID, AnswerLink, Upvotes) values (:SlackAnswerUUID, :AnswerLink, :Upvotes)";
 
-      let insertAnswerResult = data.query(insertAnswerSql, {
+      let insertAnswerResult = await data.query(insertAnswerSql, {
         SlackAnswerUUID: aULID,
         AnswerLink: link,
         Upvotes: 0,
       });
-      promises.push(insertAnswerResult);
 
       let qULID = ulid();
 
@@ -818,14 +817,13 @@ export class MarkedAnswerEvent
       let insertQuestionSql = `insert into SlackQuestion (SlackQuestionUUID, SlackAnswerUUID, SlackChannelUUID, SlackUserUUID, Ts) 
       values (:SlackQuestionUUID, :SlackAnswerUUID, :SlackChannelUUID, :SlackUserUUID, :Ts)`;
       //customLog(JSON.stringify(parentVector));
-      let insertQuestionResult = data.query(insertQuestionSql, {
+      let insertQuestionResult = await data.query(insertQuestionSql, {
         SlackQuestionUUID: qULID,
         SlackAnswerUUID: aULID,
         SlackChannelUUID: ULIDs.SlackChannelUUID,
         SlackUserUUID: ULIDs.SlackUserUUID,
         Ts: this.messageID,
       });
-      promises.push(insertQuestionResult);
 
       let responses = await Promise.all(promises);
     } catch (e) {
