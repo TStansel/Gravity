@@ -9,6 +9,8 @@ import {
   AppAddedEvent,
   Result,
 } from "./slackEventClasses";
+import { DynamoDBClient, PutItemCommand, PutItemCommandInput, DeleteItemCommand, DeleteItemCommandInput } from "@aws-sdk/client-dynamodb";
+const dynamodb = new DynamoDBClient({ region: "us-east-2" });
 
 export function buildResponse(
   status: number,
@@ -72,4 +74,38 @@ export function customLog(input: any, level: string): void {
   } else {
     console.log("no env was set, error!");
   }
+}
+
+export async function writeToDynamoDB(workspaceID: string, channelID: string, messageID: string, status: string){
+  const params = {
+    TableName: process.env.DYNAMO_TABLE_NAME as string,
+    Item: {
+        workspaceID: { S: workspaceID },
+        "channelID#ts": { S: channelID+"#"+messageID },
+        messageTs: { S: messageID },
+        status: { S: status }
+    }
+  } as PutItemCommandInput;
+
+  const command = new PutItemCommand(params);
+
+  const dynamoResult = await dynamodb.send(command);
+
+  return dynamoResult;
+}
+
+export async function deleteItemInDynamoDB( workspaceID: string, channelID: string, messageID: string){
+  const params = {
+    TableName: process.env.DYNAMO_TABLE_NAME as string,
+    Key: {
+        workspaceID: { S: workspaceID },
+        "channelID#ts": { S: channelID+"#"+messageID }
+    }
+  } as DeleteItemCommandInput;
+
+  const command = new DeleteItemCommand(params);
+
+  const dynamoResult = await dynamodb.send(command);
+
+  return dynamoResult;
 }

@@ -222,6 +222,8 @@ function fromSlackEventsApi(event: APIGatewayProxyEventV2): Result<SlackEvent> {
   }
 
   const slackEvent = JSON.parse(event.body);
+  customLog("SlackEvent Parsed","DEBUG")
+  customLog(slackEvent,"DEBUG")
 
   let hasEventsApiProperties = checkObjHasProperties(slackEvent, [
     "token",

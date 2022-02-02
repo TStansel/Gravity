@@ -9,7 +9,7 @@ import {
   ServiceOutputTypes,
 } from "@aws-sdk/client-sqs";
 import { ulid } from "ulid";
-import { customLog } from "./slackFunctions";
+import { customLog, deleteItemInDynamoDB, writeToDynamoDB } from "./slackFunctions";
 // TODO move this data instatiation to above calling lambda handler to make sure happens once
 const data = require("data-api-client")({
   secretArn: process.env.AURORA_SECRET_ARN,
@@ -214,6 +214,9 @@ export class HelpfulButton extends SlackEvent {
         SlackQuestionUUID: this.oldQuestionUUID,
       });
       promises.push(increamentUpvotesResult);
+
+      let dynamoPromise = await deleteItemInDynamoDB(this.workspaceID, this.channelID, this.messageID);
+
       let responses = await Promise.all(promises);
     } catch (e) {
       return {
@@ -536,7 +539,7 @@ export class MarkedAnswerEvent
   async sendBadMessage(botToken: string): Promise<void> {
     let msgParams = {
       channel: this.userID,
-      text: "Uh oh! Thank you for marking an answer, but please make sure to only mark answers for your questions, in threads where the parent message is a question, and in channels where the Osmosix app has been added.",
+      text: "Uh oh! Thank you for marking an answer, but please make sure to only mark answers for your questions, in threads where the parent message is a question, and in channels where the Gravity app has been added.",
     };
 
     let msgConfig = {
@@ -1064,6 +1067,13 @@ export class NewMessageEvent
         const addEmojiReactionRes = axios(addEmojiReactionConfig);
         promises.push(addEmojiReactionRes);
 
+        let promise = await writeToDynamoDB(
+          this.workspaceID,
+          this.channelID,
+          this.messageID,
+          "NOTANSWERED"
+        );
+
         let responses = await Promise.all(promises);
 
         return {
@@ -1261,7 +1271,7 @@ export class NewMessageEvent
         msgParams = {
           channel: this.channelID,
           user: this.userID,
-          username: "Osmosix Bot",
+          username: "Gravity Bot",
           text: "Here are some threads you might find helpful!",
           blocks: [
             {
@@ -1378,7 +1388,7 @@ export class NewMessageEvent
         msgParams = {
           channel: this.channelID,
           user: this.userID,
-          username: "Osmosix Bot",
+          username: "Gravity Bot",
           text: "Here is a thread you might find helpful!",
           blocks: [
             {
@@ -1502,9 +1512,15 @@ export class NewMessageEvent
           SlackQuestionUUID: recentQuestionULID,
         });
         promises.push(updateQuestionResult);
-
-        
       }
+
+      let promise = await writeToDynamoDB(
+        this.workspaceID,
+        this.channelID,
+        this.messageID,
+        "NOTANSWERED"
+      );
+
       let responses = await Promise.all(promises);
     } catch (e) {
       return {
