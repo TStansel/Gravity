@@ -911,7 +911,7 @@ export class NewMessageEvent
         let dynamoPromise = await getItemFromDynamoDB(
           this.workspaceID,
           this.channelID,
-          this.messageID
+          this.parentMsgID
         );
         console.log(dynamoPromise);
         // Message is not a parent message
