@@ -129,8 +129,7 @@ export async function getItemFromDynamoDB(
     Key: {
       workspaceID: { S: workspaceID },
       "channelID#ts": { S: channelID + "#" + messageID },
-    },
-    ConsistentRead: true
+    }
   } as GetItemCommandInput;
 
   const command = new GetItemCommand(params);
