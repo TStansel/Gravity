@@ -201,7 +201,7 @@ export class CdkOsmosixStack extends Stack {
         batchSize: 1,
       }
     );
-    dynamoMessageTable.grantWriteData(slackEventWork);
+    dynamoMessageTable.grantReadWriteData(slackEventWork);
     slackEventWork.addEventSource(slackEventSqsSource);
     processEventsMlSqs.grantSendMessages(slackEventWork);
 
