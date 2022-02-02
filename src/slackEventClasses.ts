@@ -9,7 +9,12 @@ import {
   ServiceOutputTypes,
 } from "@aws-sdk/client-sqs";
 import { ulid } from "ulid";
-import { customLog, deleteItemInDynamoDB, writeToDynamoDB } from "./slackFunctions";
+import {
+  customLog,
+  deleteItemInDynamoDB,
+  getItemFromDynamoDB,
+  writeToDynamoDB,
+} from "./slackFunctions";
 // TODO move this data instatiation to above calling lambda handler to make sure happens once
 const data = require("data-api-client")({
   secretArn: process.env.AURORA_SECRET_ARN,
@@ -215,7 +220,11 @@ export class HelpfulButton extends SlackEvent {
       });
       promises.push(increamentUpvotesResult);
 
-      let dynamoPromise = await deleteItemInDynamoDB(this.workspaceID, this.channelID, this.messageID);
+      let dynamoPromise = await deleteItemInDynamoDB(
+        this.workspaceID,
+        this.channelID,
+        this.messageID
+      );
 
       let responses = await Promise.all(promises);
     } catch (e) {
@@ -899,6 +908,12 @@ export class NewMessageEvent
         typeof this.parentMsgID === "string" &&
         this.messageID !== this.parentMsgID
       ) {
+        let dynamoPromise = await getItemFromDynamoDB(
+          this.workspaceID,
+          this.channelID,
+          this.messageID
+        );
+        console.log(dynamoPromise);
         // Message is not a parent message
         return {
           type: "success",
