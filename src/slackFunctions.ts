@@ -126,7 +126,7 @@ export async function getItemFromDynamoDB(
 ) {
   const params = {
     TableName: process.env.DYNAMO_TABLE_NAME as string,
-    KeyConiditionExpression:
+    KeyConditionExpression:
       "workspaceID = " +
       workspaceID +
       " AND channelID#ts = " +
