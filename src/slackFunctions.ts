@@ -9,6 +9,7 @@ import {
   AppAddedEvent,
   Result,
 } from "./slackEventClasses";
+import { DynamoDBClient, PutItemCommand, PutItemCommandInput, PutItemInput } from "@aws-sdk/client-dynamodb";
 
 export function buildResponse(
   status: number,
@@ -72,4 +73,21 @@ export function customLog(input: any, level: string): void {
   } else {
     console.log("no env was set, error!");
   }
+}
+
+export async function writeToDynamoDB( dynamodb: DynamoDBClient ,workspaceID: string, channelID: string, messageID: string, status: string){
+  let params = {
+    TableName: process.env.DYNAMO_TABLE_NAME as string,
+    Item: {
+        workspaceID: { S: workspaceID },
+        "channelID#ts": { S: channelID+"#"+messageID },
+        messageTs: { S: messageID },
+        status: { S: status }
+    }
+  } as PutItemInput;
+
+  const command = new PutItemCommand(params);
+
+  const dynamoResult = await dynamodb.send(command);
+  return dynamoResult;
 }
