@@ -5,8 +5,8 @@ import {
   PutItemCommandInput,
   DeleteItemCommand,
   DeleteItemCommandInput,
-  QueryCommand,
-  QueryCommandInput,
+  GetItemCommand,
+  GetItemCommandInput,
 } from "@aws-sdk/client-dynamodb";
 const dynamodb = new DynamoDBClient({ region: "us-east-2" });
 
@@ -126,16 +126,14 @@ export async function getItemFromDynamoDB(
 ) {
   const params = {
     TableName: process.env.DYNAMO_TABLE_NAME as string,
-    KeyConditionExpression:
-      "workspaceID = :workspaceID AND channelID#ts = :channelID#:ts",
-    ExpressionAttributeValues: {
-      ":workspaceID": { S: workspaceID },
-      ":channelID": { S: channelID },
-      ":ts": { S: messageID },
+    Key: {
+      workspaceID: { S: workspaceID },
+      "channelID#ts": { S: channelID + "#" + messageID },
     },
-  } as QueryCommandInput;
+    ConsistentRead: true
+  } as GetItemCommandInput;
 
-  const command = new QueryCommand(params);
+  const command = new GetItemCommand(params);
 
   const dynamoResult = await dynamodb.send(command);
 
