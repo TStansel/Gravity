@@ -274,10 +274,12 @@ export class CdkOsmosixStack extends Stack {
         environment: {
           AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
           AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
-          ENVIRONMENT: buildConfig.Environment
+          ENVIRONMENT: buildConfig.Environment,
+          DYNAMO_TABLE_NAME: dynamoMessageTable.tableName,
         },
       }
     );
+    dynamoMessageTable.grantWriteData(mlOutputLambda);
     dbSecret.grantRead(mlOutputLambda);
     const mlOutputSqsSource = new lambdaEventSources.SqsEventSource(
       mlOutputSqs,
