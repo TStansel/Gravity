@@ -9,13 +9,7 @@ import {
   ServiceOutputTypes,
 } from "@aws-sdk/client-sqs";
 import { ulid } from "ulid";
-import { customLog, writeToDynamoDB } from "./slackFunctions";
-import {
-  DynamoDBClient,
-  PutItemCommand,
-  PutItemCommandInput,
-  PutItemInput,
-} from "@aws-sdk/client-dynamodb";
+import { customLog, deleteItemInDynamoDB, writeToDynamoDB } from "./slackFunctions";
 // TODO move this data instatiation to above calling lambda handler to make sure happens once
 const data = require("data-api-client")({
   secretArn: process.env.AURORA_SECRET_ARN,
@@ -23,7 +17,6 @@ const data = require("data-api-client")({
   database: "osmosix", // set a default database
 });
 const client = new SQSClient({});
-const dynamodb = new DynamoDBClient({ region: "us-east-2" });
 
 /* --------  Types -------- */
 // These types are used so we can levarage Typescripts type system instead of throwing error which
@@ -221,6 +214,9 @@ export class HelpfulButton extends SlackEvent {
         SlackQuestionUUID: this.oldQuestionUUID,
       });
       promises.push(increamentUpvotesResult);
+
+      let dynamoPromise = await deleteItemInDynamoDB(this.workspaceID, this.channelID, this.messageID);
+
       let responses = await Promise.all(promises);
     } catch (e) {
       return {
@@ -1072,7 +1068,6 @@ export class NewMessageEvent
         promises.push(addEmojiReactionRes);
 
         let promise = await writeToDynamoDB(
-          dynamodb,
           this.workspaceID,
           this.channelID,
           this.messageID,
@@ -1520,7 +1515,6 @@ export class NewMessageEvent
       }
 
       let promise = await writeToDynamoDB(
-        dynamodb,
         this.workspaceID,
         this.channelID,
         this.messageID,
