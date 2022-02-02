@@ -904,6 +904,26 @@ export class NewMessageEvent
     try {
       let promises = [] as AxiosPromise<any>[];
 
+      let getBotTokenSql = `select SlackToken.BotToken, SlackWorkspace.CustomEmoji from SlackToken 
+      join SlackWorkspace on SlackToken.SlackWorkspaceUUID = SlackWorkspace.SlackWorkspaceUUID 
+      where SlackWorkspace.WorkspaceID = :workspaceID`;
+
+      let getBotTokenResult = await data.query(getBotTokenSql, {
+        workspaceID: this.workspaceID,
+      });
+
+      if (
+        getBotTokenResult.records.length !== 1 ||
+        !getBotTokenResult.records[0].BotToken
+      ) {
+        return {
+          type: "success",
+          value: "New Message ML Work: Missing Bot Token",
+        };
+      }
+
+      let botToken = getBotTokenResult.records[0].BotToken as string;
+
       if (
         typeof this.parentMsgID === "string" &&
         this.messageID !== this.parentMsgID
@@ -913,7 +933,50 @@ export class NewMessageEvent
           this.channelID,
           this.parentMsgID
         );
-        console.log(dynamoPromise);
+        if (dynamoPromise.Item !== undefined) {
+          let getParentConfig = {
+            method: "get",
+            url:
+              "https://slack.com/api/conversations.history?channel=" +
+              this.channelID +
+              "&limit=1&inclusive=true&latest=" +
+              this.parentMsgID,
+            headers: {
+              Authorization: "Bearer " + botToken,
+              "Content-Type": "application/json",
+            },
+          } as AxiosRequestConfig<any>;
+          const getParentRes = await axios(getParentConfig);
+
+          let automatedAnswer = new MarkedAnswerEvent(
+            this.channelID,
+            this.workspaceID,
+            this.parentMsgID,
+            getParentRes.data.messages[0].text,
+            this.messageID,
+            this.userID,
+            this.text
+          );
+
+          const command = new SendMessageCommand({
+            MessageBody: JSON.stringify(automatedAnswer),
+            QueueUrl: process.env.PROCESS_EVENTS_ML_SQS_URL,
+          });
+          let response = await client.send(command);
+
+          let deleteDynamoPromise = await deleteItemInDynamoDB(
+            this.workspaceID,
+            this.channelID,
+            this.parentMsgID
+          );
+
+          return {
+            type: "success",
+            value:
+              "NewMessage: Threaded message's parent was in table. Marked Answer Event was sent to SQS",
+          };
+        }
+
         // Message is not a parent message
         return {
           type: "success",
@@ -944,26 +1007,6 @@ export class NewMessageEvent
           value: "Cannot process NewMessage: Channel does not exist in DB",
         };
       }
-
-      let getBotTokenSql = `select SlackToken.BotToken, SlackWorkspace.CustomEmoji from SlackToken 
-      join SlackWorkspace on SlackToken.SlackWorkspaceUUID = SlackWorkspace.SlackWorkspaceUUID 
-      where SlackWorkspace.WorkspaceID = :workspaceID`;
-
-      let getBotTokenResult = await data.query(getBotTokenSql, {
-        workspaceID: this.workspaceID,
-      });
-
-      if (
-        getBotTokenResult.records.length !== 1 ||
-        !getBotTokenResult.records[0].BotToken
-      ) {
-        return {
-          type: "success",
-          value: "New Message ML Work: Missing Bot Token",
-        };
-      }
-
-      let botToken = getBotTokenResult.records[0].BotToken as string;
 
       let isCustomEmojiAdded = getBotTokenResult.records[0]
         .CustomEmoji as boolean;

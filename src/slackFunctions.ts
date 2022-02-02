@@ -87,8 +87,6 @@ export async function writeToDynamoDB(
     Item: {
       workspaceID: { S: workspaceID },
       "channelID#ts": { S: channelID + "#" + messageID },
-      messageTs: { S: messageID },
-      status: { S: status },
     },
   } as PutItemCommandInput;
 
