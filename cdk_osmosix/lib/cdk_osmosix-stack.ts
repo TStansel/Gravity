@@ -123,6 +123,12 @@ export class CdkOsmosixStack extends Stack {
       visibilityTimeout: Duration.seconds(1200),
     });
 
+    const analysisSqs = new sqs.Queue(this, name("analysisSqs"), {
+      encryption: sqs.QueueEncryption.KMS_MANAGED,
+      receiveMessageWaitTime: Duration.seconds(20), // This makes SQS long polling, check to make sure does not slow things down
+      visibilityTimeout: Duration.seconds(600),
+    });
+
     const slackRerouteLambda = new nodelambda.NodejsFunction(
       this,
       name("SlackReroute"),
@@ -137,7 +143,8 @@ export class CdkOsmosixStack extends Stack {
           REVERSE_PROXY_SQS_URL: reverseProxySqs.queueUrl,
           AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
           AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
-          ENVIRONMENT: buildConfig.Environment
+          ENVIRONMENT: buildConfig.Environment,
+          ANALYSIS_SQS_URL: analysisSqs.queueUrl
         },
         bundling: {
           minify: false,
@@ -289,6 +296,40 @@ export class CdkOsmosixStack extends Stack {
     );
     mlOutputLambda.addEventSource(mlOutputSqsSource);
 
+    const slackChannelAnalysisLambda = new nodelambda.NodejsFunction(
+      this,
+      name("slackChannelAnalysisLambda"),
+      {
+        timeout: Duration.seconds(30),
+        entry: "../src/slackChannelAnalysisLambda.ts",
+        handler: "lambdaHandler",
+        bundling: {
+          minify: false,
+          sourceMap: true,
+          sourceMapMode: nodelambda.SourceMapMode.INLINE,
+          sourcesContent: false,
+          target: "es2020",
+          tsconfig: "../tsconfig.json",
+        },
+        environment: {
+          AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+          AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+          ENVIRONMENT: buildConfig.Environment,
+          DYNAMO_TABLE_NAME: dynamoMessageTable.tableName,
+        },
+      }
+    );
+
+    const analysisSqsSource = new lambdaEventSources.SqsEventSource(
+      analysisSqs,
+      {
+        batchSize: 1,
+      }
+    );
+    slackChannelAnalysisLambda.addEventSource(analysisSqsSource);
+    dynamoQuestionTable.grantReadWriteData(slackChannelAnalysisLambda);
+
+    auroraCluster.grantDataApiAccess(slackChannelAnalysisLambda);
     auroraCluster.grantDataApiAccess(slackEventWork);
     auroraCluster.grantDataApiAccess(mlOutputLambda);
     auroraCluster.grantDataApiAccess(pythonMlLambda);

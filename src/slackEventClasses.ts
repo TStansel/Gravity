@@ -1906,10 +1906,10 @@ export class AppAddedEvent extends SlackEvent {
 
       cursor = null;
       let sqsPromises: Promise<ServiceOutputTypes>[] = [];
+      let channelMessages = [];
 
       do {
         let cursorParam;
-        let channelMessages = [];
 
         // Logic to send no cursor paramater the first call
         if (cursor !== null) {
@@ -1944,21 +1944,6 @@ export class AppAddedEvent extends SlackEvent {
             channelMessages.push(message);
           }
         }
-
-        let insertStatsSql =
-          "insert into SlackStats (SlackStatUUID, SlackChannelUUID, NumOfMessagesInYear, NumOfQualifiedQuestions, NumOfQuestionsAbove60, NumOfQuestionsAbove75) values (:statUUID, :channelUUID, :numOfMesages, NULL, NULL, NULL)";
-
-        let insertStatsParams = {
-          statUUID: ulid(),
-          channelUUID: channelUUID,
-          numOfMessages: channelMessages.length
-        }
-
-        let insertStatsResult = data.query(
-          insertStatsSql,
-          insertStatsParams
-        );
-        promises.push(insertStatsResult);
 
         sqsPromises = sqsPromises.concat(this.batchSendToSqs(channelMessages));
         // // TODO: Test if filtering below is filtering out non-parent messages
@@ -1997,6 +1982,24 @@ export class AppAddedEvent extends SlackEvent {
           //customLog("cursor found in result, encoding and paginating");
         }
       } while (cursor !== null); // When done paginating cursor will be set to null
+
+      let insertStatsSql =
+        "insert into SlackStats (SlackStatUUID, SlackChannelUUID, NumOfMessagesInYear, NumOfQualifiedQuestions, NumOfQuestionsAbove60, NumOfQuestionsAbove75) values (:statUUID, :channelUUID, :numOfMesages, NULL, NULL, NULL)";
+      const statUUID = ulid();
+      let insertStatsParams = {
+        statUUID: statUUID,
+        channelUUID: channelUUID,
+        numOfMessages: channelMessages.length,
+      };
+
+      let insertStatsResult = data.query(insertStatsSql, insertStatsParams);
+      promises.push(insertStatsResult);
+
+      const command = new SendMessageCommand({
+        MessageBody: JSON.stringify({ statUUID: statUUID, time: new Date() }),
+        QueueUrl: process.env.ANALYSIS_SQS_URL,
+      });
+      let response = await client.send(command);
 
       let responses = await Promise.all(sqsPromises);
     } catch (e) {
