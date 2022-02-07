@@ -1944,6 +1944,22 @@ export class AppAddedEvent extends SlackEvent {
             channelMessages.push(message);
           }
         }
+
+        let insertStatsSql =
+          "insert into SlackStats (SlackStatUUID, SlackChannelUUID, NumOfMessagesInYear, NumOfQualifiedQuestions, NumOfQuestionsAbove60, NumOfQuestionsAbove75) values (:statUUID, :channelUUID, :numOfMesages, NULL, NULL, NULL)";
+
+        let insertStatsParams = {
+          statUUID: ulid(),
+          channelUUID: channelUUID,
+          numOfMessages: channelMessages.length
+        }
+
+        let insertStatsResult = data.query(
+          insertStatsSql,
+          insertStatsParams
+        );
+        promises.push(insertStatsResult);
+
         sqsPromises = sqsPromises.concat(this.batchSendToSqs(channelMessages));
         // // TODO: Test if filtering below is filtering out non-parent messages
         // channelMessages = channelMessages.concat(

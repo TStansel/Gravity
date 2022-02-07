@@ -45,3 +45,16 @@ CREATE TABLE SlackQuestion(
     FOREIGN KEY (SlackChannelUUID) REFERENCES SlackChannel(SlackChannelUUID),
   	FOREIGN KEY (SlackUserUUID) REFERENCES SlackUser(SlackUserUUID)
 );
+
+CREATE TABLE SlackStats (
+  SlackStatUUID varchar(255) NOT NULL,
+  SlackChannelUUID varchar(255) NOT NULL,
+  NumOfMessagesInYear int NOT NULL,
+  NumOfQualifiedQuestions int,
+  NumOfQuestionsAbove60 int,
+  NumOfQuestionsAbove75 int,
+  PRIMARY KEY (SlackStatUUID),
+  FOREIGN KEY (SlackChannelUUID) REFERENCES SlackChannel(SlackChannelUUID)
+ );
+
+
