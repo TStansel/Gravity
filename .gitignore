@@ -5,3 +5,4 @@ ml/data
 ml/models
 .DS_Store
 osmosix/node_modules
+__pycache__
