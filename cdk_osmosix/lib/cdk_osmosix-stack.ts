@@ -1,4 +1,4 @@
-import { Duration, Stack, StackProps } from "aws-cdk-lib";
+import { aws_ecs, aws_ecs_patterns, Duration, Stack, StackProps } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import * as nodelambda from "aws-cdk-lib/aws-lambda-nodejs";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
