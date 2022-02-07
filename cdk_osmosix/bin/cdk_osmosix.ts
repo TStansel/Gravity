@@ -4,6 +4,7 @@ import * as cdk from 'aws-cdk-lib';
 import { CdkOsmosixStack } from '../lib/cdk_osmosix-stack';
 import { BuildConfig } from '../lib/build-config';
 import { Tags } from 'aws-cdk-lib';
+import { EcsStack } from '../lib/ecs_stack';
 
 const app = new cdk.App();
 
@@ -56,6 +57,8 @@ function Main() {
       account: buildConfig.AWSAccountID
     }
   }, buildConfig);
+
+  let ecsStack = new EcsStack(app, "ecsStack", {});
 }
 
 Main();
