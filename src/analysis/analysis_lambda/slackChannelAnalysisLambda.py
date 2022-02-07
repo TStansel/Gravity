@@ -31,7 +31,7 @@ def lambda_handler(event=None, context=None):
         sevenFiveSimilarityMatrix, questions)
     numOfQualified = len(questions)
 
-    writeToRDS(slackJson["statUUID"], numOfQualified,
+    writeToRDS(slackJson["statUUID"], str(numOfQualified),
                numSixtySimilar, numSevenFiveSimilar)
 
     custom_log("Analysis Logged", "DEBUG")
@@ -40,7 +40,7 @@ def lambda_handler(event=None, context=None):
 
 def writeToRDS(slackStatUUID, numOfQualified, numSixtySimilar, numSevenFiveSimilar):
     sqlStatement = """
-                  update NumOfQualifiedQuestions, PercentQuestionsAbove60, PercentQuestionsAbove75 from SlackStats
+                  update SlackStats
                   set NumOfQualifiedQuestions = :numOfQualified, PercentQuestionsAbove60 = :numSixtySimilar, PercentQuestionsAbove75 = :numSevenFiveSimilar
                   where SlackStatUUID = :slackStatUUID
                   """

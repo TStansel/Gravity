@@ -127,6 +127,7 @@ export class CdkOsmosixStack extends Stack {
       encryption: sqs.QueueEncryption.KMS_MANAGED,
       receiveMessageWaitTime: Duration.seconds(20), // This makes SQS long polling, check to make sure does not slow things down
       visibilityTimeout: Duration.seconds(600),
+      deliveryDelay: Duration.seconds(900)
     });
 
     const slackRerouteLambda = new nodelambda.NodejsFunction(
@@ -309,10 +310,9 @@ export class CdkOsmosixStack extends Stack {
           AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
           AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
           ENVIRONMENT: buildConfig.Environment,
-          DYNAMO_TABLE_NAME: dynamoMessageTable.tableName,
+          DYNAMO_TABLE_NAME: dynamoQuestionTable.tableName,
         },
         timeout: Duration.seconds(60),
-        role: myRole,
       }
     );
 
