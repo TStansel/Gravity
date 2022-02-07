@@ -51,8 +51,8 @@ CREATE TABLE SlackStats (
   SlackChannelUUID varchar(255) NOT NULL,
   NumOfMessagesInYear int NOT NULL,
   NumOfQualifiedQuestions int,
-  NumOfQuestionsAbove60 int,
-  NumOfQuestionsAbove75 int,
+  PercentQuestionsAbove60 int,
+  PercentQuestionsAbove75 int,
   PRIMARY KEY (SlackStatUUID),
   FOREIGN KEY (SlackChannelUUID) REFERENCES SlackChannel(SlackChannelUUID)
  );

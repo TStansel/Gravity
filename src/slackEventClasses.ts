@@ -1808,8 +1808,8 @@ export class AppAddedEvent extends SlackEvent {
         promises.push(insertChannelResult);
       } else {
         customLog("Channel already in DB", "DEBUG");
-        return { type: "success", value: "channel already in database" };
-        // channelUUID = getChannelResult.records[0].SlackChannelUUID;
+        //return { type: "success", value: "channel already in database" };
+        channelUUID = getChannelResult.records[0].SlackChannelUUID;
       }
 
       let cursor = null;
@@ -1984,7 +1984,7 @@ export class AppAddedEvent extends SlackEvent {
       } while (cursor !== null); // When done paginating cursor will be set to null
 
       let insertStatsSql =
-        "insert into SlackStats (SlackStatUUID, SlackChannelUUID, NumOfMessagesInYear, NumOfQualifiedQuestions, NumOfQuestionsAbove60, NumOfQuestionsAbove75) values (:statUUID, :channelUUID, :numOfMesages, NULL, NULL, NULL)";
+        "insert into SlackStats (SlackStatUUID, SlackChannelUUID, NumOfMessagesInYear, NumOfQualifiedQuestions, PercentQuestionsAbove60, PercentQuestionsAbove75) values (:statUUID, :channelUUID, :numOfMessages, NULL, NULL, NULL)";
       const statUUID = ulid();
       let insertStatsParams = {
         statUUID: statUUID,
@@ -1996,7 +1996,7 @@ export class AppAddedEvent extends SlackEvent {
       promises.push(insertStatsResult);
 
       const command = new SendMessageCommand({
-        MessageBody: JSON.stringify({ statUUID: statUUID, time: new Date() }),
+        MessageBody: JSON.stringify({ statUUID: statUUID, workspaceID: this.workspaceID, channelID: this.channelID }),
         QueueUrl: process.env.ANALYSIS_SQS_URL,
       });
       let response = await client.send(command);

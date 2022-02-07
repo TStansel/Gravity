@@ -143,8 +143,7 @@ export class CdkOsmosixStack extends Stack {
           REVERSE_PROXY_SQS_URL: reverseProxySqs.queueUrl,
           AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
           AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
-          ENVIRONMENT: buildConfig.Environment,
-          ANALYSIS_SQS_URL: analysisSqs.queueUrl
+          ENVIRONMENT: buildConfig.Environment
         },
         bundling: {
           minify: false,
@@ -157,6 +156,7 @@ export class CdkOsmosixStack extends Stack {
       }
     );
     reverseProxySqs.grantSendMessages(slackRerouteLambda);
+    
     dbSecret.grantRead(slackRerouteLambda);
 
     const api = new apigateway.LambdaRestApi(this, name("LambdaProxyApi"), {
@@ -185,6 +185,7 @@ export class CdkOsmosixStack extends Stack {
         handler: "lambdaHandler",
         environment: {
           PROCESS_EVENTS_ML_SQS_URL: processEventsMlSqs.queueUrl,
+          ANALYSIS_SQS_URL: analysisSqs.queueUrl,
           AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
           AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
           DYNAMO_TABLE_NAME: dynamoMessageTable.tableName,
@@ -211,6 +212,7 @@ export class CdkOsmosixStack extends Stack {
     dynamoMessageTable.grantReadWriteData(slackEventWork);
     slackEventWork.addEventSource(slackEventSqsSource);
     processEventsMlSqs.grantSendMessages(slackEventWork);
+    analysisSqs.grantSendMessages(slackEventWork);
 
     const mlOutputSqs = new sqs.Queue(this, name("mlOutputSqs"), {
       encryption: sqs.QueueEncryption.KMS_MANAGED,
@@ -296,27 +298,21 @@ export class CdkOsmosixStack extends Stack {
     );
     mlOutputLambda.addEventSource(mlOutputSqsSource);
 
-    const slackChannelAnalysisLambda = new nodelambda.NodejsFunction(
+    const slackChannelAnalysisLambda = new lambda.DockerImageFunction(
       this,
       name("slackChannelAnalysisLambda"),
       {
-        timeout: Duration.seconds(30),
-        entry: "../src/slackChannelAnalysisLambda.ts",
-        handler: "lambdaHandler",
-        bundling: {
-          minify: false,
-          sourceMap: true,
-          sourceMapMode: nodelambda.SourceMapMode.INLINE,
-          sourcesContent: false,
-          target: "es2020",
-          tsconfig: "../tsconfig.json",
-        },
+        code: lambda.DockerImageCode.fromImageAsset(
+          "../src/analysis/analysis_lambda"
+        ),
         environment: {
           AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
           AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
           ENVIRONMENT: buildConfig.Environment,
           DYNAMO_TABLE_NAME: dynamoMessageTable.tableName,
         },
+        timeout: Duration.seconds(60),
+        role: myRole,
       }
     );
 
