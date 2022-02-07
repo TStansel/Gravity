@@ -45,5 +45,3 @@ CREATE TABLE SlackQuestion(
     FOREIGN KEY (SlackChannelUUID) REFERENCES SlackChannel(SlackChannelUUID),
   	FOREIGN KEY (SlackUserUUID) REFERENCES SlackUser(SlackUserUUID)
 );
-
-
