@@ -1808,8 +1808,8 @@ export class AppAddedEvent extends SlackEvent {
         promises.push(insertChannelResult);
       } else {
         customLog("Channel already in DB", "DEBUG");
-        //return { type: "success", value: "channel already in database" };
-        channelUUID = getChannelResult.records[0].SlackChannelUUID;
+        return { type: "success", value: "channel already in database" };
+        //channelUUID = getChannelResult.records[0].SlackChannelUUID;
       }
 
       let cursor = null;
