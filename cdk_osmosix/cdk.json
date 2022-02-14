@@ -26,7 +26,22 @@
       "aws",
       "aws-cn"
     ],
+    "test": {
+      "AWSAccountID": "579534454884",
+      "AWSProfileName": "cdk-dev",
+      "AWSProfileRegion": "us-east-2",
 
+      "App": "config-1-context",
+      "Environment": "test",
+      "Version": "0.0.0",
+      "Build": "0",
+
+      "BuildParameters": {
+        "SlackSigningSecretArn": "arn:aws:secretsmanager:us-east-2:579534454884:secret:OSMOSIX_DEV_SIGNING_SECRET-5rg0ga",
+        "OsmosixClientSecretArn": "arn:aws:secretsmanager:us-east-2:579534454884:secret:OSMOSIX_DEV_CLIENT-Fm23o2",
+        "AuroraServerlessSecretArn": "arn:aws:secretsmanager:us-east-2:579534454884:secret:devosmosixOsmosixCdkCluster-0Ix8wZeC9BDE-etIY25"
+      }
+    },
     "dev": {
       "AWSAccountID": "579534454884",
       "AWSProfileName": "cdk-dev",

@@ -4,8 +4,10 @@ import * as cdk from 'aws-cdk-lib';
 import { CdkOsmosixStack } from '../lib/cdk_osmosix-stack';
 import { BuildConfig } from '../lib/build-config';
 import { Tags } from 'aws-cdk-lib';
+import { FEStack } from '../lib/fe_stack';
 
 const app = new cdk.App();
+let isTestEnv = false;
 
 function ensureString(object: { [name: string]: any }, propName: string): string {
   if (!object[propName] || object[propName].trim().length === 0) {
@@ -19,6 +21,10 @@ function getConfig(): BuildConfig {
   let env = app.node.tryGetContext('config');
   if (!env) {
     throw new Error("Context variable missing on CDK command. Pass in as -c config=XXX");
+  }
+
+  if (env === "test"){
+    isTestEnv = true;
   }
 
   let unparsedEnv = app.node.tryGetContext(env);
@@ -58,6 +64,23 @@ function Main() {
   }, buildConfig);
 }
 
+function TestStack(){
+  let buildConfig = getConfig();
+
+  Tags.of(app).add("App", buildConfig.App);
+  Tags.of(app).add("Environment", buildConfig.Environment);
+
+  let testStackName = "FEStack"; 
+  const testStack = new FEStack(app, testStackName, {
+    env: {
+      region: buildConfig.AWSProfileRegion,
+      account: buildConfig.AWSAccountID
+    }
+  }, buildConfig);
+}
+if(isTestEnv){
+  TestStack();
+}
 Main();
 // new CdkOsmosixStack(app, 'CdkOsmosixStack', {
 //   /* If you don't specify 'env', this stack will be environment-agnostic.
