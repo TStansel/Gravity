@@ -39,7 +39,7 @@
       "BuildParameters": {
         "SlackSigningSecretArn": "arn:aws:secretsmanager:us-east-2:579534454884:secret:OSMOSIX_DEV_SIGNING_SECRET-5rg0ga",
         "OsmosixClientSecretArn": "arn:aws:secretsmanager:us-east-2:579534454884:secret:OSMOSIX_DEV_CLIENT-Fm23o2",
-        "AuroraServerlessSecretArn": "arn:aws:secretsmanager:us-east-2:579534454884:secret:devosmosixOsmosixCdkCluster-0Ix8wZeC9BDE-etIY25"
+        "AuroraServerlessSecretArn": "arn:aws:secretsmanager:us-east-2:579534454884:secret:testosmosixOsmosixCdkCluste-RjODfBHjb2DO-qbSAYf"
       }
     },
     "dev": {
