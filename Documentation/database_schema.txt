@@ -40,6 +40,7 @@ CREATE TABLE SlackQuestion(
     SlackChannelUUID varchar(255) NOT NULL,
   	SlackUserUUID varchar(255),
     Ts varchar(255) NOT NULL,
+	Text varchar(3000) NOT NULL,
   	PRIMARY KEY (SlackQuestionUUID),
   	FOREIGN KEY (SlackAnswerUUID) REFERENCES SlackAnswer(SlackAnswerUUID),
     FOREIGN KEY (SlackChannelUUID) REFERENCES SlackChannel(SlackChannelUUID),

@@ -2067,18 +2067,22 @@ export class AppAddedMessageProcessing implements MachineLearningIsWorkable {
           SlackAnswerUUID,
           SlackChannelUUID,
           SlackUserUUID,
-          Ts)
+          Ts,
+          Text)
         values (:SlackQuestionUUID,
           NULL,
           (select SlackChannelUUID from SlackChannel where ChannelID = :slackChannelID limit 1),
           (select SlackUserUUID from SlackUser where SlackID = :slackID limit 1),
-          :Ts)`;
+          :Ts,
+          :Text)`;
 
       let insertQuestionResult = await data.query(insertQuestionSql, {
         SlackQuestionUUID: ulid(),
         slackChannelID: this.channelID,
         slackID: this.userID,
         Ts: this.messageID,
+        Text: this.text,
+        TimeStamp: ""
       });
     } catch (e) {
       return {
