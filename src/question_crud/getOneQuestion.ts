@@ -14,23 +14,24 @@ const data = require("data-api-client")({
 export const lambdaHandler = async (
   event: APIGatewayProxyEventV2
 ): Promise<APIGatewayProxyResultV2> => {
+  let getOneResult;
   try {
-    let verifiedEvent = Question.verifyGetEvent(event as unknown as JSON);
+    let verifiedEvent = Question.verifyGetOneEvent(event as unknown as JSON);
 
     if (verifiedEvent.type === "error") {
       customLog(verifiedEvent.error.message, "ERROR");
       return buildResponse(400, "Request is missing a property.");
     }
 
-    let getEvent = verifiedEvent.value;
+    let getOneEvent = verifiedEvent.value;
 
-    let getResult = await getEvent.get();
-    if (getResult.type === "error") {
-      customLog(getResult.error.message, "ERROR");
-      return buildResponse(500, getResult.error.message);
+    getOneResult = await getOneEvent.getOne();
+    if (getOneResult.type === "error") {
+      customLog(getOneResult.error.message, "ERROR");
+      return buildResponse(500, getOneResult.error.message);
     }
   } catch (error) {
     return buildResponse(401, "Access Denied");
   }
-  return buildResponse(200, "Success!");
+  return buildResponse(200, getOneResult.value);
 };

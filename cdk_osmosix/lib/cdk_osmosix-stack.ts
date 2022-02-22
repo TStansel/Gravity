@@ -221,11 +221,11 @@ export class CdkOsmosixStack extends Stack {
         new apigateway.LambdaIntegration(createQuestionLambda)
       );
 
-    const getQuestionLambda = new nodelambda.NodejsFunction(
+    const getOneQuestionLambda = new nodelambda.NodejsFunction(
       this,
-      name("GetQuestion"),
+      name("GetOneQuestion"),
       {
-        entry: "../src/question_crud/getQuestion.ts",
+        entry: "../src/question_crud/getOneQuestion.ts",
         handler: "lambdaHandler",
         environment: {
           AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
@@ -243,9 +243,35 @@ export class CdkOsmosixStack extends Stack {
       }
     );
 
-    const getQuestionEndpoint = api.root
-      .addResource("get-question")
-      .addMethod("GET", new apigateway.LambdaIntegration(getQuestionLambda));
+    const getOneQuestionEndpoint = api.root
+      .addResource("get-one-question")
+      .addMethod("GET", new apigateway.LambdaIntegration(getOneQuestionLambda));
+
+    const getAllQuestionsLambda = new nodelambda.NodejsFunction(
+      this,
+      name("GetAllQuestions"),
+      {
+        entry: "../src/question_crud/getAllQuestions.ts",
+        handler: "lambdaHandler",
+        environment: {
+          AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+          AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+          ENVIRONMENT: buildConfig.Environment,
+        },
+        bundling: {
+          minify: false,
+          sourceMap: true,
+          sourceMapMode: nodelambda.SourceMapMode.INLINE,
+          sourcesContent: false,
+          target: "es2020",
+          tsconfig: "../tsconfig.json",
+        },
+      }
+    );
+
+    const getAllQuestionsEndpoint = api.root
+      .addResource("get-all-questions")
+      .addMethod("GET", new apigateway.LambdaIntegration(getAllQuestionsLambda));
 
     const updateQuestionLambda = new nodelambda.NodejsFunction(
       this,
@@ -302,117 +328,114 @@ export class CdkOsmosixStack extends Stack {
         new apigateway.LambdaIntegration(deleteQuestionLambda)
       );
 
-      // CRUD Operations for Front End Answer
+    // CRUD Operations for Front End Answer
 
-      const createAnswerLambda = new nodelambda.NodejsFunction(
-        this,
-        name("CreateAnswer"),
-        {
-          entry: "../src/answer_crud/createAnswer.ts",
-          handler: "lambdaHandler",
-          environment: {
-            AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
-            AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
-            ENVIRONMENT: buildConfig.Environment,
-          },
-          bundling: {
-            minify: false,
-            sourceMap: true,
-            sourceMapMode: nodelambda.SourceMapMode.INLINE,
-            sourcesContent: false,
-            target: "es2020",
-            tsconfig: "../tsconfig.json",
-          },
-        }
+    const createAnswerLambda = new nodelambda.NodejsFunction(
+      this,
+      name("CreateAnswer"),
+      {
+        entry: "../src/answer_crud/createAnswer.ts",
+        handler: "lambdaHandler",
+        environment: {
+          AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+          AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+          ENVIRONMENT: buildConfig.Environment,
+        },
+        bundling: {
+          minify: false,
+          sourceMap: true,
+          sourceMapMode: nodelambda.SourceMapMode.INLINE,
+          sourcesContent: false,
+          target: "es2020",
+          tsconfig: "../tsconfig.json",
+        },
+      }
+    );
+
+    const createAnswerEndpoint = api.root
+      .addResource("create-answer")
+      .addMethod("POST", new apigateway.LambdaIntegration(createAnswerLambda));
+
+    const getAnswerLambda = new nodelambda.NodejsFunction(
+      this,
+      name("GetAnswer"),
+      {
+        entry: "../src/answer_crud/getAnswer.ts",
+        handler: "lambdaHandler",
+        environment: {
+          AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+          AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+          ENVIRONMENT: buildConfig.Environment,
+        },
+        bundling: {
+          minify: false,
+          sourceMap: true,
+          sourceMapMode: nodelambda.SourceMapMode.INLINE,
+          sourcesContent: false,
+          target: "es2020",
+          tsconfig: "../tsconfig.json",
+        },
+      }
+    );
+
+    const getAnswerEndpoint = api.root
+      .addResource("get-answer")
+      .addMethod("GET", new apigateway.LambdaIntegration(getAnswerLambda));
+
+    const updateAnswerLambda = new nodelambda.NodejsFunction(
+      this,
+      name("UpdateAnswer"),
+      {
+        entry: "../src/answer_crud/updateAnswer.ts",
+        handler: "lambdaHandler",
+        environment: {
+          AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+          AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+          ENVIRONMENT: buildConfig.Environment,
+        },
+        bundling: {
+          minify: false,
+          sourceMap: true,
+          sourceMapMode: nodelambda.SourceMapMode.INLINE,
+          sourcesContent: false,
+          target: "es2020",
+          tsconfig: "../tsconfig.json",
+        },
+      }
+    );
+
+    const updateAnswerEndpoint = api.root
+      .addResource("update-answer")
+      .addMethod("PUT", new apigateway.LambdaIntegration(updateAnswerLambda));
+
+    const deleteAnswerLambda = new nodelambda.NodejsFunction(
+      this,
+      name("DeleteAnswer"),
+      {
+        entry: "../src/answer_crud/deleteAnswer.ts",
+        handler: "lambdaHandler",
+        environment: {
+          AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+          AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+          ENVIRONMENT: buildConfig.Environment,
+        },
+        bundling: {
+          minify: false,
+          sourceMap: true,
+          sourceMapMode: nodelambda.SourceMapMode.INLINE,
+          sourcesContent: false,
+          target: "es2020",
+          tsconfig: "../tsconfig.json",
+        },
+      }
+    );
+
+    const deleteAnswerEndpoint = api.root
+      .addResource("delete-answer")
+      .addMethod(
+        "DELETE",
+        new apigateway.LambdaIntegration(deleteAnswerLambda)
       );
-  
-      const createAnswerEndpoint = api.root
-        .addResource("create-answer")
-        .addMethod(
-          "POST",
-          new apigateway.LambdaIntegration(createAnswerLambda)
-        );
-  
-      const getAnswerLambda = new nodelambda.NodejsFunction(
-        this,
-        name("GetAnswer"),
-        {
-          entry: "../src/answer_crud/getAnswer.ts",
-          handler: "lambdaHandler",
-          environment: {
-            AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
-            AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
-            ENVIRONMENT: buildConfig.Environment,
-          },
-          bundling: {
-            minify: false,
-            sourceMap: true,
-            sourceMapMode: nodelambda.SourceMapMode.INLINE,
-            sourcesContent: false,
-            target: "es2020",
-            tsconfig: "../tsconfig.json",
-          },
-        }
-      );
-  
-      const getAnswerEndpoint = api.root
-        .addResource("get-answer")
-        .addMethod("GET", new apigateway.LambdaIntegration(getAnswerLambda));
-  
-      const updateAnswerLambda = new nodelambda.NodejsFunction(
-        this,
-        name("UpdateAnswer"),
-        {
-          entry: "../src/answer_crud/updateAnswer.ts",
-          handler: "lambdaHandler",
-          environment: {
-            AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
-            AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
-            ENVIRONMENT: buildConfig.Environment,
-          },
-          bundling: {
-            minify: false,
-            sourceMap: true,
-            sourceMapMode: nodelambda.SourceMapMode.INLINE,
-            sourcesContent: false,
-            target: "es2020",
-            tsconfig: "../tsconfig.json",
-          },
-        }
-      );
-  
-      const updateAnswerEndpoint = api.root
-        .addResource("update-answer")
-        .addMethod("PUT", new apigateway.LambdaIntegration(updateAnswerLambda));
-  
-      const deleteAnswerLambda = new nodelambda.NodejsFunction(
-        this,
-        name("DeleteAnswer"),
-        {
-          entry: "../src/answer_crud/deleteAnswer.ts",
-          handler: "lambdaHandler",
-          environment: {
-            AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
-            AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
-            ENVIRONMENT: buildConfig.Environment,
-          },
-          bundling: {
-            minify: false,
-            sourceMap: true,
-            sourceMapMode: nodelambda.SourceMapMode.INLINE,
-            sourcesContent: false,
-            target: "es2020",
-            tsconfig: "../tsconfig.json",
-          },
-        }
-      );
-  
-      const deleteAnswerEndpoint = api.root
-        .addResource("delete-answer")
-        .addMethod(
-          "DELETE",
-          new apigateway.LambdaIntegration(deleteAnswerLambda)
-        );
 
     const processEventsMlSqs = new sqs.Queue(this, name("processEventsMlSqs"), {
       encryption: sqs.QueueEncryption.KMS_MANAGED,
