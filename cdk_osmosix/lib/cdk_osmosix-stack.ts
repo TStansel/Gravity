@@ -1,4 +1,10 @@
-import { aws_ecs, aws_ecs_patterns, Duration, Stack, StackProps } from "aws-cdk-lib";
+import {
+  aws_ecs,
+  aws_ecs_patterns,
+  Duration,
+  Stack,
+  StackProps,
+} from "aws-cdk-lib";
 import { Construct } from "constructs";
 import * as nodelambda from "aws-cdk-lib/aws-lambda-nodejs";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
@@ -14,7 +20,12 @@ import { BuildConfig } from "./build-config";
 // import * as sqs from 'aws-cdk-lib/aws-sqs';
 
 export class CdkOsmosixStack extends Stack {
-  constructor(scope: Construct, id: string, stackProps: StackProps, buildConfig: BuildConfig) {
+  constructor(
+    scope: Construct,
+    id: string,
+    stackProps: StackProps,
+    buildConfig: BuildConfig
+  ) {
     super(scope, id, stackProps);
 
     const isProd: boolean = buildConfig.Environment === "prod";
@@ -24,22 +35,42 @@ export class CdkOsmosixStack extends Stack {
     }
 
     const vpc = new ec2.Vpc(this, "dbVpc", {
-      natGateways: 1
+      natGateways: 1,
     });
 
-    const auroraCluster = new rds.ServerlessCluster(this, name("OsmosixCdkCluster"), {
-      engine: rds.DatabaseClusterEngine.AURORA_MYSQL,
-      vpc,
-      scaling: {
-        autoPause: Duration.hours(20),
-        minCapacity: rds.AuroraCapacityUnit.ACU_8,
-        maxCapacity: rds.AuroraCapacityUnit.ACU_32,
-      },
-      defaultDatabaseName: "osmosix",
-      enableDataApi: true, // Optional - will be automatically set if you call grantDataApiAccess()
-    });
-    
-    const dynamoQuestionTable = new dynamodb.Table(this, name("questionTable"), {
+    const auroraCluster = new rds.ServerlessCluster(
+      this,
+      name("OsmosixCdkCluster"),
+      {
+        engine: rds.DatabaseClusterEngine.AURORA_MYSQL,
+        vpc,
+        scaling: {
+          autoPause: Duration.hours(20),
+          minCapacity: rds.AuroraCapacityUnit.ACU_8,
+          maxCapacity: rds.AuroraCapacityUnit.ACU_32,
+        },
+        defaultDatabaseName: "osmosix",
+        enableDataApi: true, // Optional - will be automatically set if you call grantDataApiAccess()
+      }
+    );
+
+    const dynamoQuestionTable = new dynamodb.Table(
+      this,
+      name("questionTable"),
+      {
+        partitionKey: {
+          name: "workspaceID",
+          type: dynamodb.AttributeType.STRING,
+        },
+        sortKey: {
+          name: "channelID#ts",
+          type: dynamodb.AttributeType.STRING,
+        },
+        billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      }
+    );
+
+    const dynamoMessageTable = new dynamodb.Table(this, name("messageTable"), {
       partitionKey: {
         name: "workspaceID",
         type: dynamodb.AttributeType.STRING,
@@ -51,25 +82,11 @@ export class CdkOsmosixStack extends Stack {
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
     });
 
-    const dynamoMessageTable = new dynamodb.Table(this, name("messageTable"), {
-      partitionKey: {
-        name: "workspaceID",
-        type: dynamodb.AttributeType.STRING,
-      },
-      sortKey: {
-        name: "channelID#ts",
-        type: dynamodb.AttributeType.STRING
-      },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST
-    });
-
-    
     const slackSigningSecret = secretsmanager.Secret.fromSecretAttributes(
       this,
       name("osmosixSlackSigningSecret"),
       {
-        secretCompleteArn:
-          buildConfig.Parameters.SlackSigningSecretArn,
+        secretCompleteArn: buildConfig.Parameters.SlackSigningSecretArn,
       }
     );
 
@@ -77,8 +94,7 @@ export class CdkOsmosixStack extends Stack {
       this,
       name("devClientSecret"),
       {
-        secretCompleteArn:
-          buildConfig.Parameters.OsmosixClientSecretArn,
+        secretCompleteArn: buildConfig.Parameters.OsmosixClientSecretArn,
       }
     );
 
@@ -86,35 +102,38 @@ export class CdkOsmosixStack extends Stack {
       this,
       name("DbSecret"),
       {
-        secretCompleteArn:
-          buildConfig.Parameters.AuroraServerlessSecretArn,
+        secretCompleteArn: buildConfig.Parameters.AuroraServerlessSecretArn,
       }
     );
 
-    const oauthLambda = new nodelambda.NodejsFunction(this, name("oauthLambda"), {
-      entry: "../src/oauth.ts",
-      handler: "lambdaHandler",
-      timeout: Duration.seconds(30),
-      environment: {
-        OSMOSIX_CLIENT_ID: slackClientSecret
-          .secretValueFromJson("OSMOSIX_CLIENT_ID")
-          .toString(),
-        OSMOSIX_CLIENT_SECRET: slackClientSecret
-          .secretValueFromJson("OSMOSIX_CLIENT_SECRET")
-          .toString(),
-        AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
-        AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
-        ENVIRONMENT: buildConfig.Environment
-      },
-      bundling: {
-        minify: false,
-        sourceMap: true,
-        sourceMapMode: nodelambda.SourceMapMode.INLINE,
-        sourcesContent: false,
-        target: "es2020",
-        tsconfig: "../tsconfig.json",
-      },
-    });
+    const oauthLambda = new nodelambda.NodejsFunction(
+      this,
+      name("oauthLambda"),
+      {
+        entry: "../src/oauth.ts",
+        handler: "lambdaHandler",
+        timeout: Duration.seconds(30),
+        environment: {
+          OSMOSIX_CLIENT_ID: slackClientSecret
+            .secretValueFromJson("OSMOSIX_CLIENT_ID")
+            .toString(),
+          OSMOSIX_CLIENT_SECRET: slackClientSecret
+            .secretValueFromJson("OSMOSIX_CLIENT_SECRET")
+            .toString(),
+          AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+          AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+          ENVIRONMENT: buildConfig.Environment,
+        },
+        bundling: {
+          minify: false,
+          sourceMap: true,
+          sourceMapMode: nodelambda.SourceMapMode.INLINE,
+          sourcesContent: false,
+          target: "es2020",
+          tsconfig: "../tsconfig.json",
+        },
+      }
+    );
     dbSecret.grantRead(oauthLambda);
 
     const reverseProxySqs = new sqs.Queue(this, name("ReverseProxyQueue"), {
@@ -127,7 +146,7 @@ export class CdkOsmosixStack extends Stack {
       encryption: sqs.QueueEncryption.KMS_MANAGED,
       receiveMessageWaitTime: Duration.seconds(20), // This makes SQS long polling, check to make sure does not slow things down
       visibilityTimeout: Duration.seconds(600),
-      deliveryDelay: Duration.seconds(900)
+      deliveryDelay: Duration.seconds(900),
     });
 
     const slackRerouteLambda = new nodelambda.NodejsFunction(
@@ -140,11 +159,11 @@ export class CdkOsmosixStack extends Stack {
           SLACK_SIGNING_SECRET: slackSigningSecret
             .secretValueFromJson("OSMOSIX_SLACK_SIGNING_SECRET")
             .toString(),
-            
+
           REVERSE_PROXY_SQS_URL: reverseProxySqs.queueUrl,
           AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
           AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
-          ENVIRONMENT: buildConfig.Environment
+          ENVIRONMENT: buildConfig.Environment,
         },
         bundling: {
           minify: false,
@@ -157,7 +176,7 @@ export class CdkOsmosixStack extends Stack {
       }
     );
     reverseProxySqs.grantSendMessages(slackRerouteLambda);
-    
+
     dbSecret.grantRead(slackRerouteLambda);
 
     const api = new apigateway.LambdaRestApi(this, name("LambdaProxyApi"), {
@@ -171,6 +190,229 @@ export class CdkOsmosixStack extends Stack {
     const oauthEndpoint = api.root
       .addResource("oauth")
       .addMethod("GET", new apigateway.LambdaIntegration(oauthLambda));
+
+    // CRUD Operations for Front End Questions
+    const createQuestionLambda = new nodelambda.NodejsFunction(
+      this,
+      name("CreateQuestion"),
+      {
+        entry: "../src/question_crud/createQuestion.ts",
+        handler: "lambdaHandler",
+        environment: {
+          AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+          AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+          ENVIRONMENT: buildConfig.Environment,
+        },
+        bundling: {
+          minify: false,
+          sourceMap: true,
+          sourceMapMode: nodelambda.SourceMapMode.INLINE,
+          sourcesContent: false,
+          target: "es2020",
+          tsconfig: "../tsconfig.json",
+        },
+      }
+    );
+
+    const createQuestionEndpoint = api.root
+      .addResource("create-question")
+      .addMethod(
+        "POST",
+        new apigateway.LambdaIntegration(createQuestionLambda)
+      );
+
+    const getQuestionLambda = new nodelambda.NodejsFunction(
+      this,
+      name("GetQuestion"),
+      {
+        entry: "../src/question_crud/getQuestion.ts",
+        handler: "lambdaHandler",
+        environment: {
+          AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+          AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+          ENVIRONMENT: buildConfig.Environment,
+        },
+        bundling: {
+          minify: false,
+          sourceMap: true,
+          sourceMapMode: nodelambda.SourceMapMode.INLINE,
+          sourcesContent: false,
+          target: "es2020",
+          tsconfig: "../tsconfig.json",
+        },
+      }
+    );
+
+    const getQuestionEndpoint = api.root
+      .addResource("get-question")
+      .addMethod("GET", new apigateway.LambdaIntegration(getQuestionLambda));
+
+    const updateQuestionLambda = new nodelambda.NodejsFunction(
+      this,
+      name("UpdateQuestion"),
+      {
+        entry: "../src/question_crud/updateQuestion.ts",
+        handler: "lambdaHandler",
+        environment: {
+          AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+          AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+          ENVIRONMENT: buildConfig.Environment,
+        },
+        bundling: {
+          minify: false,
+          sourceMap: true,
+          sourceMapMode: nodelambda.SourceMapMode.INLINE,
+          sourcesContent: false,
+          target: "es2020",
+          tsconfig: "../tsconfig.json",
+        },
+      }
+    );
+
+    const updateQuestionEndpoint = api.root
+      .addResource("update-question")
+      .addMethod("PUT", new apigateway.LambdaIntegration(updateQuestionLambda));
+
+    const deleteQuestionLambda = new nodelambda.NodejsFunction(
+      this,
+      name("DeleteQuestion"),
+      {
+        entry: "../src/question_crud/deleteQuestion.ts",
+        handler: "lambdaHandler",
+        environment: {
+          AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+          AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+          ENVIRONMENT: buildConfig.Environment,
+        },
+        bundling: {
+          minify: false,
+          sourceMap: true,
+          sourceMapMode: nodelambda.SourceMapMode.INLINE,
+          sourcesContent: false,
+          target: "es2020",
+          tsconfig: "../tsconfig.json",
+        },
+      }
+    );
+
+    const deleteQuestionEndpoint = api.root
+      .addResource("delete-question")
+      .addMethod(
+        "DELETE",
+        new apigateway.LambdaIntegration(deleteQuestionLambda)
+      );
+
+      // CRUD Operations for Front End Answer
+
+      const createAnswerLambda = new nodelambda.NodejsFunction(
+        this,
+        name("CreateAnswer"),
+        {
+          entry: "../src/answer_crud/createAnswer.ts",
+          handler: "lambdaHandler",
+          environment: {
+            AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+            AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+            ENVIRONMENT: buildConfig.Environment,
+          },
+          bundling: {
+            minify: false,
+            sourceMap: true,
+            sourceMapMode: nodelambda.SourceMapMode.INLINE,
+            sourcesContent: false,
+            target: "es2020",
+            tsconfig: "../tsconfig.json",
+          },
+        }
+      );
+  
+      const createAnswerEndpoint = api.root
+        .addResource("create-answer")
+        .addMethod(
+          "POST",
+          new apigateway.LambdaIntegration(createAnswerLambda)
+        );
+  
+      const getAnswerLambda = new nodelambda.NodejsFunction(
+        this,
+        name("GetAnswer"),
+        {
+          entry: "../src/answer_crud/getAnswer.ts",
+          handler: "lambdaHandler",
+          environment: {
+            AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+            AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+            ENVIRONMENT: buildConfig.Environment,
+          },
+          bundling: {
+            minify: false,
+            sourceMap: true,
+            sourceMapMode: nodelambda.SourceMapMode.INLINE,
+            sourcesContent: false,
+            target: "es2020",
+            tsconfig: "../tsconfig.json",
+          },
+        }
+      );
+  
+      const getAnswerEndpoint = api.root
+        .addResource("get-answer")
+        .addMethod("GET", new apigateway.LambdaIntegration(getAnswerLambda));
+  
+      const updateAnswerLambda = new nodelambda.NodejsFunction(
+        this,
+        name("UpdateAnswer"),
+        {
+          entry: "../src/answer_crud/updateAnswer.ts",
+          handler: "lambdaHandler",
+          environment: {
+            AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+            AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+            ENVIRONMENT: buildConfig.Environment,
+          },
+          bundling: {
+            minify: false,
+            sourceMap: true,
+            sourceMapMode: nodelambda.SourceMapMode.INLINE,
+            sourcesContent: false,
+            target: "es2020",
+            tsconfig: "../tsconfig.json",
+          },
+        }
+      );
+  
+      const updateAnswerEndpoint = api.root
+        .addResource("update-answer")
+        .addMethod("PUT", new apigateway.LambdaIntegration(updateAnswerLambda));
+  
+      const deleteAnswerLambda = new nodelambda.NodejsFunction(
+        this,
+        name("DeleteAnswer"),
+        {
+          entry: "../src/answer_crud/deleteAnswer.ts",
+          handler: "lambdaHandler",
+          environment: {
+            AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+            AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+            ENVIRONMENT: buildConfig.Environment,
+          },
+          bundling: {
+            minify: false,
+            sourceMap: true,
+            sourceMapMode: nodelambda.SourceMapMode.INLINE,
+            sourcesContent: false,
+            target: "es2020",
+            tsconfig: "../tsconfig.json",
+          },
+        }
+      );
+  
+      const deleteAnswerEndpoint = api.root
+        .addResource("delete-answer")
+        .addMethod(
+          "DELETE",
+          new apigateway.LambdaIntegration(deleteAnswerLambda)
+        );
 
     const processEventsMlSqs = new sqs.Queue(this, name("processEventsMlSqs"), {
       encryption: sqs.QueueEncryption.KMS_MANAGED,
@@ -190,7 +432,7 @@ export class CdkOsmosixStack extends Stack {
           AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
           AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
           DYNAMO_TABLE_NAME: dynamoMessageTable.tableName,
-          ENVIRONMENT: buildConfig.Environment
+          ENVIRONMENT: buildConfig.Environment,
         },
         bundling: {
           minify: false,
@@ -239,7 +481,7 @@ export class CdkOsmosixStack extends Stack {
           ENDPOINT_NAME:
             "huggingface-pytorch-inference-2022-01-17-20-16-16-413",
           DYNAMO_TABLE_NAME: dynamoQuestionTable.tableName,
-          ENVIRONMENT: buildConfig.Environment
+          ENVIRONMENT: buildConfig.Environment,
         },
         timeout: Duration.seconds(60),
         role: myRole,

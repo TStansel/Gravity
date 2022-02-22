@@ -1,4 +1,10 @@
-import { aws_ecs, aws_ecs_patterns, Duration, Stack, StackProps } from "aws-cdk-lib";
+import {
+  aws_ecs,
+  aws_ecs_patterns,
+  Duration,
+  Stack,
+  StackProps,
+} from "aws-cdk-lib";
 import { Construct } from "constructs";
 import * as nodelambda from "aws-cdk-lib/aws-lambda-nodejs";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
@@ -13,7 +19,12 @@ import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import { BuildConfig } from "./build-config";
 
 export class FEStack extends Stack {
-  constructor(scope: Construct, id: string, stackProps: StackProps, buildConfig: BuildConfig) {
+  constructor(
+    scope: Construct,
+    id: string,
+    stackProps: StackProps,
+    buildConfig: BuildConfig
+  ) {
     super(scope, id, stackProps);
 
     const isProd: boolean = buildConfig.Environment === "prod";
@@ -23,22 +34,42 @@ export class FEStack extends Stack {
     }
 
     const vpc = new ec2.Vpc(this, "dbVpc", {
-      natGateways: 1
+      natGateways: 1,
     });
 
-    const auroraCluster = new rds.ServerlessCluster(this, name("OsmosixCdkCluster"), {
-      engine: rds.DatabaseClusterEngine.AURORA_MYSQL,
-      vpc,
-      scaling: {
-        autoPause: Duration.hours(20),
-        minCapacity: rds.AuroraCapacityUnit.ACU_8,
-        maxCapacity: rds.AuroraCapacityUnit.ACU_32,
-      },
-      defaultDatabaseName: "osmosix",
-      enableDataApi: true, // Optional - will be automatically set if you call grantDataApiAccess()
-    });
-    
-    const dynamoQuestionTable = new dynamodb.Table(this, name("questionTable"), {
+    const auroraCluster = new rds.ServerlessCluster(
+      this,
+      name("OsmosixCdkCluster"),
+      {
+        engine: rds.DatabaseClusterEngine.AURORA_MYSQL,
+        vpc,
+        scaling: {
+          autoPause: Duration.hours(20),
+          minCapacity: rds.AuroraCapacityUnit.ACU_8,
+          maxCapacity: rds.AuroraCapacityUnit.ACU_32,
+        },
+        defaultDatabaseName: "osmosix",
+        enableDataApi: true, // Optional - will be automatically set if you call grantDataApiAccess()
+      }
+    );
+
+    const dynamoQuestionTable = new dynamodb.Table(
+      this,
+      name("questionTable"),
+      {
+        partitionKey: {
+          name: "workspaceID",
+          type: dynamodb.AttributeType.STRING,
+        },
+        sortKey: {
+          name: "channelID#ts",
+          type: dynamodb.AttributeType.STRING,
+        },
+        billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      }
+    );
+
+    const dynamoMessageTable = new dynamodb.Table(this, name("messageTable"), {
       partitionKey: {
         name: "workspaceID",
         type: dynamodb.AttributeType.STRING,
@@ -50,25 +81,11 @@ export class FEStack extends Stack {
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
     });
 
-    const dynamoMessageTable = new dynamodb.Table(this, name("messageTable"), {
-      partitionKey: {
-        name: "workspaceID",
-        type: dynamodb.AttributeType.STRING,
-      },
-      sortKey: {
-        name: "channelID#ts",
-        type: dynamodb.AttributeType.STRING
-      },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST
-    });
-
-    
     const slackSigningSecret = secretsmanager.Secret.fromSecretAttributes(
       this,
       name("osmosixSlackSigningSecret"),
       {
-        secretCompleteArn:
-          buildConfig.Parameters.SlackSigningSecretArn,
+        secretCompleteArn: buildConfig.Parameters.SlackSigningSecretArn,
       }
     );
 
@@ -76,8 +93,7 @@ export class FEStack extends Stack {
       this,
       name("devClientSecret"),
       {
-        secretCompleteArn:
-          buildConfig.Parameters.OsmosixClientSecretArn,
+        secretCompleteArn: buildConfig.Parameters.OsmosixClientSecretArn,
       }
     );
 
@@ -85,35 +101,38 @@ export class FEStack extends Stack {
       this,
       name("DbSecret"),
       {
-        secretCompleteArn:
-          buildConfig.Parameters.AuroraServerlessSecretArn,
+        secretCompleteArn: buildConfig.Parameters.AuroraServerlessSecretArn,
       }
     );
 
-    const oauthLambda = new nodelambda.NodejsFunction(this, name("oauthLambda"), {
-      entry: "../src/oauth.ts",
-      handler: "lambdaHandler",
-      timeout: Duration.seconds(30),
-      environment: {
-        OSMOSIX_CLIENT_ID: slackClientSecret
-          .secretValueFromJson("OSMOSIX_CLIENT_ID")
-          .toString(),
-        OSMOSIX_CLIENT_SECRET: slackClientSecret
-          .secretValueFromJson("OSMOSIX_CLIENT_SECRET")
-          .toString(),
-        AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
-        AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
-        ENVIRONMENT: buildConfig.Environment
-      },
-      bundling: {
-        minify: false,
-        sourceMap: true,
-        sourceMapMode: nodelambda.SourceMapMode.INLINE,
-        sourcesContent: false,
-        target: "es2020",
-        tsconfig: "../tsconfig.json",
-      },
-    });
+    const oauthLambda = new nodelambda.NodejsFunction(
+      this,
+      name("oauthLambda"),
+      {
+        entry: "../src/oauth.ts",
+        handler: "lambdaHandler",
+        timeout: Duration.seconds(30),
+        environment: {
+          OSMOSIX_CLIENT_ID: slackClientSecret
+            .secretValueFromJson("OSMOSIX_CLIENT_ID")
+            .toString(),
+          OSMOSIX_CLIENT_SECRET: slackClientSecret
+            .secretValueFromJson("OSMOSIX_CLIENT_SECRET")
+            .toString(),
+          AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+          AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+          ENVIRONMENT: buildConfig.Environment,
+        },
+        bundling: {
+          minify: false,
+          sourceMap: true,
+          sourceMapMode: nodelambda.SourceMapMode.INLINE,
+          sourcesContent: false,
+          target: "es2020",
+          tsconfig: "../tsconfig.json",
+        },
+      }
+    );
     dbSecret.grantRead(oauthLambda);
 
     const reverseProxySqs = new sqs.Queue(this, name("ReverseProxyQueue"), {
@@ -126,7 +145,7 @@ export class FEStack extends Stack {
       encryption: sqs.QueueEncryption.KMS_MANAGED,
       receiveMessageWaitTime: Duration.seconds(20), // This makes SQS long polling, check to make sure does not slow things down
       visibilityTimeout: Duration.seconds(600),
-      deliveryDelay: Duration.seconds(900)
+      deliveryDelay: Duration.seconds(900),
     });
 
     const slackRerouteLambda = new nodelambda.NodejsFunction(
@@ -139,11 +158,11 @@ export class FEStack extends Stack {
           SLACK_SIGNING_SECRET: slackSigningSecret
             .secretValueFromJson("OSMOSIX_SLACK_SIGNING_SECRET")
             .toString(),
-            
+
           REVERSE_PROXY_SQS_URL: reverseProxySqs.queueUrl,
           AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
           AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
-          ENVIRONMENT: buildConfig.Environment
+          ENVIRONMENT: buildConfig.Environment,
         },
         bundling: {
           minify: false,
@@ -156,7 +175,7 @@ export class FEStack extends Stack {
       }
     );
     reverseProxySqs.grantSendMessages(slackRerouteLambda);
-    
+
     dbSecret.grantRead(slackRerouteLambda);
 
     const api = new apigateway.LambdaRestApi(this, name("LambdaProxyApi"), {
@@ -171,6 +190,34 @@ export class FEStack extends Stack {
       .addResource("oauth")
       .addMethod("GET", new apigateway.LambdaIntegration(oauthLambda));
 
+
+    // CRUD Operations for Question and Answer
+    const createQuestionLambda = new nodelambda.NodejsFunction(
+      this,
+      name("CreateQuestion"),
+      {
+        entry: "../src/createQuestion.ts",
+        handler: "lambdaHandler",
+        environment: {
+          AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+          AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+          ENVIRONMENT: buildConfig.Environment,
+        },
+        bundling: {
+          minify: false,
+          sourceMap: true,
+          sourceMapMode: nodelambda.SourceMapMode.INLINE,
+          sourcesContent: false,
+          target: "es2020",
+          tsconfig: "../tsconfig.json",
+        },
+      }
+    );
+    
+    const createQuestionEndpoint = api.root
+      .addResource("create-question")
+      .addMethod("POST", new apigateway.LambdaIntegration(createQuestionLambda));
+      
     const processEventsMlSqs = new sqs.Queue(this, name("processEventsMlSqs"), {
       encryption: sqs.QueueEncryption.KMS_MANAGED,
       receiveMessageWaitTime: Duration.seconds(20), // This makes SQS long polling, check to make sure does not slow things down
@@ -189,7 +236,7 @@ export class FEStack extends Stack {
           AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
           AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
           DYNAMO_TABLE_NAME: dynamoMessageTable.tableName,
-          ENVIRONMENT: buildConfig.Environment
+          ENVIRONMENT: buildConfig.Environment,
         },
         bundling: {
           minify: false,
@@ -238,7 +285,7 @@ export class FEStack extends Stack {
           ENDPOINT_NAME:
             "huggingface-pytorch-inference-2022-01-17-20-16-16-413",
           DYNAMO_TABLE_NAME: dynamoQuestionTable.tableName,
-          ENVIRONMENT: buildConfig.Environment
+          ENVIRONMENT: buildConfig.Environment,
         },
         timeout: Duration.seconds(60),
         role: myRole,
