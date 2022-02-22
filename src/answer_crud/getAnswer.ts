@@ -1,7 +1,5 @@
-import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
-import { ulid } from "ulid";
-import * as qs from "qs";
-import { buildResponse } from "../slackFunctions";
+import { Answer } from "../Answer";
+import { buildResponse, customLog } from "../slackFunctions";
 import {
   APIGatewayProxyEventV2,
   APIGatewayProxyResultV2,
@@ -17,10 +15,22 @@ export const lambdaHandler = async (
   event: APIGatewayProxyEventV2
 ): Promise<APIGatewayProxyResultV2> => {
   try {
-    //console.log(event);
-    
+    let verifiedEvent = Answer.verifyGetEvent(event as unknown as JSON);
+
+    if (verifiedEvent.type === "error") {
+      customLog(verifiedEvent.error.message, "ERROR");
+      return buildResponse(400, "Request is missing a property.");
+    }
+
+    let getEvent = verifiedEvent.value;
+
+    let getResult = await getEvent.get();
+    if (getResult.type === "error") {
+      customLog(getResult.error.message, "ERROR");
+      return buildResponse(500, getResult.error.message);
+    }
   } catch (error) {
     return buildResponse(401, "Access Denied");
   }
-  return buildResponse(200, "Successfully authenticated!");
+  return buildResponse(200, "Success!");
 };
