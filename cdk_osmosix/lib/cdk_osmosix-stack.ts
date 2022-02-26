@@ -271,7 +271,10 @@ export class CdkOsmosixStack extends Stack {
 
     const getAllQuestionsEndpoint = api.root
       .addResource("get-all-questions")
-      .addMethod("GET", new apigateway.LambdaIntegration(getAllQuestionsLambda));
+      .addMethod(
+        "GET",
+        new apigateway.LambdaIntegration(getAllQuestionsLambda)
+      );
 
     const updateQuestionLambda = new nodelambda.NodejsFunction(
       this,
@@ -326,6 +329,221 @@ export class CdkOsmosixStack extends Stack {
       .addMethod(
         "DELETE",
         new apigateway.LambdaIntegration(deleteQuestionLambda)
+      );
+
+    // CRUD Operations for Deck
+
+    const createDeckLambda = new nodelambda.NodejsFunction(
+      this,
+      name("CreateDeck"),
+      {
+        entry: "../src/deck_crud/createDeck.ts",
+        handler: "lambdaHandler",
+        environment: {
+          AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+          AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+          ENVIRONMENT: buildConfig.Environment,
+        },
+        bundling: {
+          minify: false,
+          sourceMap: true,
+          sourceMapMode: nodelambda.SourceMapMode.INLINE,
+          sourcesContent: false,
+          target: "es2020",
+          tsconfig: "../tsconfig.json",
+        },
+      }
+    );
+
+    const createDeckEndpoint = api.root
+      .addResource("create-deck")
+      .addMethod("POST", new apigateway.LambdaIntegration(createDeckLambda));
+
+    const getOneDeckLambda = new nodelambda.NodejsFunction(
+      this,
+      name("GetOneDeckn"),
+      {
+        entry: "../src/deck_crud/getOneDeck.ts",
+        handler: "lambdaHandler",
+        environment: {
+          AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+          AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+          ENVIRONMENT: buildConfig.Environment,
+        },
+        bundling: {
+          minify: false,
+          sourceMap: true,
+          sourceMapMode: nodelambda.SourceMapMode.INLINE,
+          sourcesContent: false,
+          target: "es2020",
+          tsconfig: "../tsconfig.json",
+        },
+      }
+    );
+
+    const getOneDeckEndpoint = api.root
+      .addResource("get-one-deck")
+      .addMethod("GET", new apigateway.LambdaIntegration(getOneDeckLambda));
+
+    const getAllDecksLambda = new nodelambda.NodejsFunction(
+      this,
+      name("GetAllDecks"),
+      {
+        entry: "../src/deck_crud/getAllDecks.ts",
+        handler: "lambdaHandler",
+        environment: {
+          AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+          AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+          ENVIRONMENT: buildConfig.Environment,
+        },
+        bundling: {
+          minify: false,
+          sourceMap: true,
+          sourceMapMode: nodelambda.SourceMapMode.INLINE,
+          sourcesContent: false,
+          target: "es2020",
+          tsconfig: "../tsconfig.json",
+        },
+      }
+    );
+
+    const getAllDecksEndpoint = api.root
+      .addResource("get-all-deck")
+      .addMethod("GET", new apigateway.LambdaIntegration(getAllDecksLambda));
+
+    const updateDeckLambda = new nodelambda.NodejsFunction(
+      this,
+      name("UpdateDeck"),
+      {
+        entry: "../src/deck_crud/updateDeck.ts",
+        handler: "lambdaHandler",
+        environment: {
+          AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+          AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+          ENVIRONMENT: buildConfig.Environment,
+        },
+        bundling: {
+          minify: false,
+          sourceMap: true,
+          sourceMapMode: nodelambda.SourceMapMode.INLINE,
+          sourcesContent: false,
+          target: "es2020",
+          tsconfig: "../tsconfig.json",
+        },
+      }
+    );
+
+    const updateDeckEndpoint = api.root
+      .addResource("update-deck")
+      .addMethod("PUT", new apigateway.LambdaIntegration(updateDeckLambda));
+
+    const deleteDeckLambda = new nodelambda.NodejsFunction(
+      this,
+      name("DeleteDeck"),
+      {
+        entry: "../src/deck_crud/deleteDeck.ts",
+        handler: "lambdaHandler",
+        environment: {
+          AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+          AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+          ENVIRONMENT: buildConfig.Environment,
+        },
+        bundling: {
+          minify: false,
+          sourceMap: true,
+          sourceMapMode: nodelambda.SourceMapMode.INLINE,
+          sourcesContent: false,
+          target: "es2020",
+          tsconfig: "../tsconfig.json",
+        },
+      }
+    );
+
+    const deleteDeckEndpoint = api.root
+      .addResource("delete-deck")
+      .addMethod("DELETE", new apigateway.LambdaIntegration(deleteDeckLambda));
+
+    // Create, Read, and Delete Operations for Export (Update is not needed)
+
+    const createExportLambda = new nodelambda.NodejsFunction(
+      this,
+      name("CreateExport"),
+      {
+        entry: "../src/export_crud/createExport.ts",
+        handler: "lambdaHandler",
+        environment: {
+          AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+          AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+          ENVIRONMENT: buildConfig.Environment,
+        },
+        bundling: {
+          minify: false,
+          sourceMap: true,
+          sourceMapMode: nodelambda.SourceMapMode.INLINE,
+          sourcesContent: false,
+          target: "es2020",
+          tsconfig: "../tsconfig.json",
+        },
+      }
+    );
+
+    const createExportEndpoint = api.root
+      .addResource("create-export")
+      .addMethod("POST", new apigateway.LambdaIntegration(createExportLambda));
+
+    const getAllExportsLambda = new nodelambda.NodejsFunction(
+      this,
+      name("GetAllExports"),
+      {
+        entry: "../src/export_crud/getAllExports.ts",
+        handler: "lambdaHandler",
+        environment: {
+          AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+          AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+          ENVIRONMENT: buildConfig.Environment,
+        },
+        bundling: {
+          minify: false,
+          sourceMap: true,
+          sourceMapMode: nodelambda.SourceMapMode.INLINE,
+          sourcesContent: false,
+          target: "es2020",
+          tsconfig: "../tsconfig.json",
+        },
+      }
+    );
+
+    const getAllExportsEndpoint = api.root
+      .addResource("get-all-exports")
+      .addMethod("GET", new apigateway.LambdaIntegration(getAllExportsLambda));
+
+    const deleteExportLambda = new nodelambda.NodejsFunction(
+      this,
+      name("DeleteExport"),
+      {
+        entry: "../src/export_crud/deleteExport.ts",
+        handler: "lambdaHandler",
+        environment: {
+          AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+          AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+          ENVIRONMENT: buildConfig.Environment,
+        },
+        bundling: {
+          minify: false,
+          sourceMap: true,
+          sourceMapMode: nodelambda.SourceMapMode.INLINE,
+          sourcesContent: false,
+          target: "es2020",
+          tsconfig: "../tsconfig.json",
+        },
+      }
+    );
+
+    const deleteExportEndpoint = api.root
+      .addResource("delete-export")
+      .addMethod(
+        "DELETE",
+        new apigateway.LambdaIntegration(deleteExportLambda)
       );
 
     const processEventsMlSqs = new sqs.Queue(this, name("processEventsMlSqs"), {
