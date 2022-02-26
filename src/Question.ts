@@ -1,3 +1,4 @@
+import { time } from "console";
 import { ulid } from "ulid";
 import { Result, ResultError, ResultSuccess } from "./slackEventClasses";
 const data = require("data-api-client")({
@@ -8,25 +9,28 @@ const data = require("data-api-client")({
 
 export class Question {
   constructor(
-    public questionUUID: string | null,
-    public answerUUID: string | null,
-    public channelID: string | null,
-    public ts: string | null,
-    public text: string | null
+    public questionULID: string | null,
+    public deckULID: string | null,
+    public timestamp: string | null,
+    public questionText: string | null,
+    public answerText: string | null,
+    public upvotes: number | null
   ) {
-    this.questionUUID = questionUUID;
-    this.answerUUID = answerUUID;
-    this.channelID = channelID;
-    this.ts = ts;
-    this.text = text;
+    this.questionULID = questionULID;
+    this.deckULID = deckULID;
+    this.timestamp = timestamp;
+    this.questionText = questionText;
+    this.answerText = answerText;
+    this.upvotes = upvotes;
   }
 
   static verifyCreateEvent(json: JSON): Result<Question> {
     if (
-      !json.hasOwnProperty("answerUUID") &&
-      !json.hasOwnProperty("channelID") &&
-      !json.hasOwnProperty("ts") &&
-      !json.hasOwnProperty("text")
+      !json.hasOwnProperty("deckULID") &&
+      !json.hasOwnProperty("timestamp") &&
+      !json.hasOwnProperty("questionText") &&
+      !json.hasOwnProperty("answerText") &&
+      !json.hasOwnProperty("upvotes")
     ) {
       return {
         type: "error",
@@ -37,18 +41,19 @@ export class Question {
       type: "success",
       value: new Question(
         ulid(),
-        json["answerUUID" as keyof JSON] as string,
-        json["channelID" as keyof JSON] as string,
-        json["ts" as keyof JSON] as string,
-        json["text" as keyof JSON] as string
+        json["deckULID" as keyof JSON] as string,
+        json["timestamp" as keyof JSON] as string,
+        json["questionText" as keyof JSON] as string,
+        json["answerText" as keyof JSON] as string,
+        json["upvotes" as keyof JSON] as unknown as number
       ),
     };
   }
 
   static verifyGetOneEvent(json: JSON): Result<Question> {
     if (
-      !json.hasOwnProperty("channelID") &&
-      !json.hasOwnProperty("questionUUID")
+      !json.hasOwnProperty("deckULID") &&
+      !json.hasOwnProperty("questionULID")
     ) {
       return {
         type: "error",
@@ -58,9 +63,10 @@ export class Question {
     return {
       type: "success",
       value: new Question(
-        json["questionUUID" as keyof JSON] as string,
+        json["questionULID" as keyof JSON] as string,
+        json["deckULID" as keyof JSON] as string,
         null,
-        json["channelID" as keyof JSON] as string,
+        null,
         null,
         null
       ),
@@ -68,7 +74,7 @@ export class Question {
   }
 
   static verifyGetAllEvent(json: JSON): Result<Question> {
-    if (!json.hasOwnProperty("channelID")) {
+    if (!json.hasOwnProperty("deckULID")) {
       return {
         type: "error",
         error: new Error("Event is missing a property."),
@@ -78,8 +84,9 @@ export class Question {
       type: "success",
       value: new Question(
         null,
+        json["deckULID" as keyof JSON] as string,
         null,
-        json["channelID" as keyof JSON] as string,
+        null,
         null,
         null
       ),
@@ -88,10 +95,13 @@ export class Question {
 
   static verifyUpdateEvent(json: JSON): Result<Question> {
     if (
-      !json.hasOwnProperty("questionUUID") &&
-      !json.hasOwnProperty("channelID") &&
-      !json.hasOwnProperty("ts") &&
-      !json.hasOwnProperty("text")
+      // This is currently an update all attributes of the question 
+      !json.hasOwnProperty("questionULID") &&
+      !json.hasOwnProperty("deckULID") &&
+      !json.hasOwnProperty("timestamp") &&
+        !json.hasOwnProperty("questionText") &&
+        !json.hasOwnProperty("answerText") &&
+        !json.hasOwnProperty("upvotes")
     ) {
       return {
         type: "error",
@@ -101,17 +111,18 @@ export class Question {
     return {
       type: "success",
       value: new Question(
-        json["questionUUID" as keyof JSON] as string,
-        null,
-        json["channelID" as keyof JSON] as string,
-        json["ts" as keyof JSON] as string,
-        json["text" as keyof JSON] as string
+        json["questionULID" as keyof JSON] as string,
+        json["deckULID" as keyof JSON] as string,
+        (json["timestamp" as keyof JSON] as string) || null,
+        (json["questionText" as keyof JSON] as string) || null,
+        (json["answerText" as keyof JSON] as string) || null,
+        (json["upvotes" as keyof JSON] as unknown as number) || null
       ),
     };
   }
 
   static verifyDeleteEvent(json: JSON): Result<Question> {
-    if (!json.hasOwnProperty("questionUUID")) {
+    if (!json.hasOwnProperty("questionULID")) {
       return {
         type: "error",
         error: new Error("Event is missing a property."),
@@ -120,7 +131,8 @@ export class Question {
     return {
       type: "success",
       value: new Question(
-        json["questionUUID" as keyof JSON] as string,
+        json["questionULID" as keyof JSON] as string,
+        null,
         null,
         null,
         null,
@@ -131,23 +143,26 @@ export class Question {
 
   async create(): Promise<Result<ResultError>> {
     try {
-      let insertQuestionSql = `insert into Question (QuestionUUID,
-          AnswerUUID,
-          SlackChannelUUID,
-          Ts,
-          Text)
-        values (:QuestionUUID,
-          :AnswerUUID,
-          (select SlackChannelUUID from SlackChannel where ChannelID = :slackChannelID limit 1).
-          :Ts,
-          :Text)`;
+      let insertQuestionSql = `insert into Question (QuestionULID,
+          DeckULID,
+          Timestamp,
+          QuestionText,
+          AnswerText,
+          Upvotes)
+        values (:QuestionULID,
+          :DeckULID,
+          :Timestamp,
+          :QuestionText,
+          :AnswerText,
+          :Upvotes)`;
 
       let insertQuestionResult = await data.query(insertQuestionSql, {
-        QuestionUUID: ulid(),
-        AnswerUUID: this.answerUUID,
-        slackChannelID: this.channelID,
-        Ts: this.ts,
-        Text: this.text,
+        QuestionULID: ulid(),
+        DeckULID: this.deckULID,
+        Timestamp: this.timestamp,
+        QuestionText: this.questionText,
+        AnswerText: this.answerText,
+        Upvotes: this.upvotes,
       });
       return {
         type: "success",
@@ -163,10 +178,10 @@ export class Question {
 
   async getOne(): Promise<Result<string>> {
     try {
-      let getQuestionSql = `select * from Question where QuestionUUID = :questionUUID`;
+      let getQuestionSql = `select * from Question where QuestionULID = :questionULID`;
 
       let getQuestionResult = await data.query(getQuestionSql, {
-        QuestionUUID: this.questionUUID,
+        QuestionULID: this.questionULID,
       });
       return {
         type: "success",
@@ -183,10 +198,10 @@ export class Question {
   async getAll(): Promise<Result<string>> {
     try {
       let getQuestionsSql = `select * from Question 
-      where ChannelUUID = (select SlackChannelUUID from SlackChannel where ChannelID = :slackChannelID limit 1)`;
+      where DeckULID = (:DeckULID`;
 
       let getQuestionsResult = await data.query(getQuestionsSql, {
-        channelID: this.channelID,
+        DeckULID: this.deckULID,
       });
       return {
         type: "success",
@@ -203,13 +218,15 @@ export class Question {
   async update(): Promise<Result<ResultError>> {
     try {
       let updateQuestionSql = `update Question 
-      set Question.Text = :Text, Question.Ts = :Ts
-      where Question.QuestionUUID = :QuestionUUID`;
+    set Question.QuestionText = :QuestionText, Question.AnswerText = :AnswerText, Question.Upvotes = :Upvotes, Question.Timestamp = :Timestamp
+      where Question.QuestionULID = :QuestionULID`;
 
       let updateQuestionResult = await data.query(updateQuestionSql, {
-        QuestionUUID: this.questionUUID,
-        Text: this.text,
-        Ts: this.ts,
+        QuestionULID: this.questionULID,
+        QuestionText: this.questionText,
+        AnswerText: this.answerText,
+        Upvotes: this.upvotes,
+        Timestamp: this.timestamp,
       });
       return {
         type: "success",
@@ -226,10 +243,10 @@ export class Question {
   async delete(): Promise<Result<ResultError>> {
     try {
       let deleteQuestionSql = `delete from Question 
-      where QuestionUUID = :QuestionUUID`;
+      where QuestionULID = :QuestionULID`;
 
       let deleteQuestionResult = await data.query(deleteQuestionSql, {
-        QuestionUUID: this.questionUUID,
+        QuestionULID: this.questionULID,
       });
       return {
         type: "success",
