@@ -331,6 +331,244 @@ export class CdkOsmosixStack extends Stack {
         new apigateway.LambdaIntegration(deleteQuestionLambda)
       );
 
+      // CRUD Operations for Company
+
+    const createCompanyLambda = new nodelambda.NodejsFunction(
+      this,
+      name("CreateCompany"),
+      {
+        entry: "../src/company_crud/createCompany.ts",
+        handler: "lambdaHandler",
+        environment: {
+          AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+          AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+          ENVIRONMENT: buildConfig.Environment,
+        },
+        bundling: {
+          minify: false,
+          sourceMap: true,
+          sourceMapMode: nodelambda.SourceMapMode.INLINE,
+          sourcesContent: false,
+          target: "es2020",
+          tsconfig: "../tsconfig.json",
+        },
+      }
+    );
+
+    const createCompanyEndpoint = api.root
+      .addResource("create-company")
+      .addMethod("POST", new apigateway.LambdaIntegration(createCompanyLambda));
+
+    const getCompanyLambda = new nodelambda.NodejsFunction(
+      this,
+      name("GetCompany"),
+      {
+        entry: "../src/company_crud/getCompany.ts",
+        handler: "lambdaHandler",
+        environment: {
+          AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+          AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+          ENVIRONMENT: buildConfig.Environment,
+        },
+        bundling: {
+          minify: false,
+          sourceMap: true,
+          sourceMapMode: nodelambda.SourceMapMode.INLINE,
+          sourcesContent: false,
+          target: "es2020",
+          tsconfig: "../tsconfig.json",
+        },
+      }
+    );
+
+    const getCompanykEndpoint = api.root
+      .addResource("get-company")
+      .addMethod("GET", new apigateway.LambdaIntegration(getCompanyLambda));
+
+    const updateCompanyLambda = new nodelambda.NodejsFunction(
+      this,
+      name("UpdateCompanyk"),
+      {
+        entry: "../src/company_crud/updateCompany.ts",
+        handler: "lambdaHandler",
+        environment: {
+          AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+          AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+          ENVIRONMENT: buildConfig.Environment,
+        },
+        bundling: {
+          minify: false,
+          sourceMap: true,
+          sourceMapMode: nodelambda.SourceMapMode.INLINE,
+          sourcesContent: false,
+          target: "es2020",
+          tsconfig: "../tsconfig.json",
+        },
+      }
+    );
+
+    const updateCompanyEndpoint = api.root
+      .addResource("update-company")
+      .addMethod("PUT", new apigateway.LambdaIntegration(updateCompanyLambda));
+
+    const deleteCompanyLambda = new nodelambda.NodejsFunction(
+      this,
+      name("DeleteCompany"),
+      {
+        entry: "../src/company_crud/deleteCompany.ts",
+        handler: "lambdaHandler",
+        environment: {
+          AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+          AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+          ENVIRONMENT: buildConfig.Environment,
+        },
+        bundling: {
+          minify: false,
+          sourceMap: true,
+          sourceMapMode: nodelambda.SourceMapMode.INLINE,
+          sourcesContent: false,
+          target: "es2020",
+          tsconfig: "../tsconfig.json",
+        },
+      }
+    );
+
+    const deleteCompanyEndpoint = api.root
+      .addResource("delete-company")
+      .addMethod("DELETE", new apigateway.LambdaIntegration(deleteCompanyLambda));
+
+      // CRUD Operations for Admin
+
+    const createAdminLambda = new nodelambda.NodejsFunction(
+      this,
+      name("CreateAdmin"),
+      {
+        entry: "../src/admin_crud/createAdmin.ts",
+        handler: "lambdaHandler",
+        environment: {
+          AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+          AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+          ENVIRONMENT: buildConfig.Environment,
+        },
+        bundling: {
+          minify: false,
+          sourceMap: true,
+          sourceMapMode: nodelambda.SourceMapMode.INLINE,
+          sourcesContent: false,
+          target: "es2020",
+          tsconfig: "../tsconfig.json",
+        },
+      }
+    );
+
+    const createAdminEndpoint = api.root
+      .addResource("create-admin")
+      .addMethod("POST", new apigateway.LambdaIntegration(createAdminLambda));
+
+    const getOneAdminLambda = new nodelambda.NodejsFunction(
+      this,
+      name("GetOneAdmin"),
+      {
+        entry: "../src/admin_crud/getOneAdmin.ts",
+        handler: "lambdaHandler",
+        environment: {
+          AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+          AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+          ENVIRONMENT: buildConfig.Environment,
+        },
+        bundling: {
+          minify: false,
+          sourceMap: true,
+          sourceMapMode: nodelambda.SourceMapMode.INLINE,
+          sourcesContent: false,
+          target: "es2020",
+          tsconfig: "../tsconfig.json",
+        },
+      }
+    );
+
+    const getOneAdminEndpoint = api.root
+      .addResource("get-one-admin")
+      .addMethod("GET", new apigateway.LambdaIntegration(getOneAdminLambda));
+
+    const getAllAdminsLambda = new nodelambda.NodejsFunction(
+      this,
+      name("GetAllAdmins"),
+      {
+        entry: "../src/admin_crud/getAllAdmins.ts",
+        handler: "lambdaHandler",
+        environment: {
+          AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+          AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+          ENVIRONMENT: buildConfig.Environment,
+        },
+        bundling: {
+          minify: false,
+          sourceMap: true,
+          sourceMapMode: nodelambda.SourceMapMode.INLINE,
+          sourcesContent: false,
+          target: "es2020",
+          tsconfig: "../tsconfig.json",
+        },
+      }
+    );
+
+    const getAllAdminsEndpoint = api.root
+      .addResource("get-all-admin")
+      .addMethod("GET", new apigateway.LambdaIntegration(getAllAdminsLambda));
+
+    const updateAdminLambda = new nodelambda.NodejsFunction(
+      this,
+      name("UpdateAdmin"),
+      {
+        entry: "../src/admin_crud/updateAdmin.ts",
+        handler: "lambdaHandler",
+        environment: {
+          AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+          AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+          ENVIRONMENT: buildConfig.Environment,
+        },
+        bundling: {
+          minify: false,
+          sourceMap: true,
+          sourceMapMode: nodelambda.SourceMapMode.INLINE,
+          sourcesContent: false,
+          target: "es2020",
+          tsconfig: "../tsconfig.json",
+        },
+      }
+    );
+
+    const updateAdminEndpoint = api.root
+      .addResource("update-admin")
+      .addMethod("PUT", new apigateway.LambdaIntegration(updateAdminLambda));
+
+    const deleteAdminLambda = new nodelambda.NodejsFunction(
+      this,
+      name("DeleteAdmin"),
+      {
+        entry: "../src/admin_crud/deleteAdmin.ts",
+        handler: "lambdaHandler",
+        environment: {
+          AURORA_RESOURCE_ARN: auroraCluster.clusterArn,
+          AURORA_SECRET_ARN: dbSecret.secretFullArn?.toString() as string,
+          ENVIRONMENT: buildConfig.Environment,
+        },
+        bundling: {
+          minify: false,
+          sourceMap: true,
+          sourceMapMode: nodelambda.SourceMapMode.INLINE,
+          sourcesContent: false,
+          target: "es2020",
+          tsconfig: "../tsconfig.json",
+        },
+      }
+    );
+
+    const deleteAdminEndpoint = api.root
+      .addResource("delete-admin")
+      .addMethod("DELETE", new apigateway.LambdaIntegration(deleteAdminLambda));
+
     // CRUD Operations for Deck
 
     const createDeckLambda = new nodelambda.NodejsFunction(

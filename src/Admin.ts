@@ -6,23 +6,20 @@ const data = require("data-api-client")({
   database: "osmosix", // set a default database
 });
 
-export class Deck {
+export class Admin {
   constructor(
-    public deckULID: string | null,
-    public companyULID: string | null,
     public adminULID: string | null,
-    public name: string | null
+    public companyULID: string | null,
+    public name: string | null,
   ) {
-    this.deckULID = deckULID;
-    this.companyULID = companyULID;
     this.adminULID = adminULID;
+    this.companyULID = companyULID;
     this.name = name;
   }
 
-  static verifyCreateEvent(json: JSON): Result<Deck> {
+  static verifyCreateEvent(json: JSON): Result<Admin> {
     if (
       !json.hasOwnProperty("companyULID") &&
-      !json.hasOwnProperty("adminULID") &&
       !json.hasOwnProperty("name")
     ) {
       return {
@@ -32,78 +29,18 @@ export class Deck {
     }
     return {
       type: "success",
-      value: new Deck(
+      value: new Admin(
         ulid(),
         json["companyULID" as keyof JSON] as string,
-        json["adminULID" as keyof JSON] as string,
-        json["name" as keyof JSON] as string
-      ),
-    };
-  }
-
-  static verifyGetOneEvent(json: JSON): Result<Deck> {
-    if (!json.hasOwnProperty("deckULID")) {
-      return {
-        type: "error",
-        error: new Error("Event is missing a property."),
-      };
-    }
-    return {
-      type: "success",
-      value: new Deck(
-        json["deckULID" as keyof JSON] as string,
-        null,
-        null,
-        null
-      ),
-    };
-  }
-
-  static verifyGetAllEvent(json: JSON): Result<Deck> {
-    if (
-      !json.hasOwnProperty("deckULID") &&
-      !json.hasOwnProperty("companyULID")
-    ) {
-      return {
-        type: "error",
-        error: new Error("Event is missing a property."),
-      };
-    }
-    return {
-      type: "success",
-      value: new Deck(
-        json["deckULID" as keyof JSON] as string,
-        json["companyULID" as keyof JSON] as string,
-        null,
-        null
-      ),
-    };
-  }
-
-  static verifyUpdateEvent(json: JSON): Result<Deck> {
-    if (
-      // This is currently an update all attributes of the question
-      !json.hasOwnProperty("deckULID") &&
-      !json.hasOwnProperty("name")
-    ) {
-      return {
-        type: "error",
-        error: new Error("Event is missing a property."),
-      };
-    }
-    return {
-      type: "success",
-      value: new Deck(
-        json["deckULID" as keyof JSON] as string,
         json["name" as keyof JSON] as string,
-        null,
-        null
       ),
     };
   }
 
-  static verifyDeleteEvent(json: JSON): Result<Deck> {
-    if (!json.hasOwnProperty("deckULID")) {
+  static verifyGetOneEvent(json: JSON): Result<Admin> {
+    if (
+      !json.hasOwnProperty("adminULID")
+    ) {
       return {
         type: "error",
         error: new Error("Event is missing a property."),
@@ -111,9 +48,63 @@ export class Deck {
     }
     return {
       type: "success",
-      value: new Deck(
-        json["deckULID" as keyof JSON] as string,
+      value: new Admin(
+        json["adminULID" as keyof JSON] as string,
         null,
+        null
+      ),
+    };
+  }
+
+  static verifyGetAllEvent(json: JSON): Result<Admin> {
+    if (!json.hasOwnProperty("adminULID") && !json.hasOwnProperty("companyULID")) {
+      return {
+        type: "error",
+        error: new Error("Event is missing a property."),
+      };
+    }
+    return {
+      type: "success",
+      value: new Admin(
+        json["adminULID" as keyof JSON] as string,
+        json["companyULID" as keyof JSON] as string,
+        null
+      ),
+    };
+  }
+
+  static verifyUpdateEvent(json: JSON): Result<Admin> {
+    if (
+      // This is currently an update all attributes of the question 
+      !json.hasOwnProperty("adminULID") &&
+      !json.hasOwnProperty("name") 
+    ) {
+      return {
+        type: "error",
+        error: new Error("Event is missing a property."),
+      };
+    }
+    return {
+      type: "success",
+      value: new Admin(
+        json["adminULID" as keyof JSON] as string,
+        (json["name" as keyof JSON] as string),
+        null
+      ),
+    };
+  }
+
+  static verifyDeleteEvent(json: JSON): Result<Admin> {
+    if (!json.hasOwnProperty("adminULID")) {
+      return {
+        type: "error",
+        error: new Error("Event is missing a property."),
+      };
+    }
+    return {
+      type: "success",
+      value: new Admin(
+        json["adminULID" as keyof JSON] as string,
         null,
         null
       ),
@@ -122,51 +113,36 @@ export class Deck {
 
   async create(): Promise<Result<ResultError>> {
     try {
-      let insertDeckSql = `insert into Deck (DeckULID,
+      let insertSql = `insert into Admin (AdminULID,
           CompanyULID,
           Name)
-        values (:DeckULID,
+        values (:AdminULID,
           :CompanyULID,
           :Name)`;
 
-      this.deckULID = ulid();
-      let insertDeckResult = await data.query(insertDeckSql, {
-        DeckULID: this.deckULID,
+      let insertResult = await data.query(insertSql, {
+        AdminULID: ulid(),
         CompanyULID: this.companyULID,
-        Name: this.name,
+        Name: this.name
       });
-
-      let insertAdminDeckSql = `insert into AdminDeck (AdminDeckULID,
-        AdminULID,
-        DeckULID)
-      values (:AdminDeckULID,
-        :AdminULID,
-        :DeckULID)`;
-
-      let insertAdminDeckResult = await data.query(insertAdminDeckSql, {
-        AdminDeckULID: ulid(),
-        AdminULID: this.adminULID,
-        DeckULID: this.deckULID,
-      });
-
       return {
         type: "success",
-        value: insertDeckResult,
+        value: insertResult,
       };
     } catch (e) {
       return {
         type: "error",
-        error: new Error("Create Deck call failed: " + e),
+        error: new Error("Create Admin call failed: " + e),
       };
     }
   }
 
   async getOne(): Promise<Result<string>> {
     try {
-      let getOneSql = `select * from Deck where DeckULID = :DeckULID`;
+      let getOneSql = `select * from Admin where AdminULID = :AdminULID`;
 
       let getOneResult = await data.query(getOneSql, {
-        DeckULID: this.deckULID,
+        AdminULID: this.adminULID,
       });
       return {
         type: "success",
@@ -175,14 +151,14 @@ export class Deck {
     } catch (e) {
       return {
         type: "error",
-        error: new Error("Get One Deck call failed: " + e),
+        error: new Error("Get One Admin call failed: " + e),
       };
     }
   }
 
   async getAll(): Promise<Result<string>> {
     try {
-      let getAllSql = `select * from Deck 
+      let getAllSql = `select * from Admin 
       where CompanyULID = (:CompanyULID`;
 
       let getAllResult = await data.query(getAllSql, {
@@ -195,20 +171,20 @@ export class Deck {
     } catch (e) {
       return {
         type: "error",
-        error: new Error("Get All Deck call failed: " + e),
+        error: new Error("Get All Admin call failed: " + e),
       };
     }
   }
 
   async update(): Promise<Result<ResultError>> {
     try {
-      let udpateSql = `update Deck 
-    set Deck.Name = :Name
-      where Deck.DeckULID = :DeckULID`;
+      let udpateSql = `update Admin 
+    set Admin.Name = :Name
+      where Admin.AdminULID = :AdminULID`;
 
       let udpateResult = await data.query(udpateSql, {
-        DeckULID: this.deckULID,
-        Name: this.name,
+        AdminULID: this.adminULID,
+        Name: this.name
       });
       return {
         type: "success",
@@ -217,18 +193,18 @@ export class Deck {
     } catch (e) {
       return {
         type: "error",
-        error: new Error("Update Deck call failed: " + e),
+        error: new Error("Update Admin call failed: " + e),
       };
     }
   }
 
   async delete(): Promise<Result<ResultError>> {
     try {
-      let deleteSql = `delete from Deck 
-      where DeckULID = :DeckULID`;
+      let deleteSql = `delete from Admin 
+      where AdminULID = :AdminULID`;
 
       let deleteResult = await data.query(deleteSql, {
-        DeckULID: this.deckULID,
+        AdminULID: this.adminULID,
       });
       return {
         type: "success",
@@ -237,7 +213,7 @@ export class Deck {
     } catch (e) {
       return {
         type: "error",
-        error: new Error("Delete Deck call failed: " + e),
+        error: new Error("Delete Admin call failed: " + e),
       };
     }
   }
