@@ -1,5 +1,5 @@
 # Gravity
-Gravity is a slack app that uses machine learning to take each new question asked in Slack and compare it to previously asked questions, looking for a possible answer to reccomend for the new question. Our assumption being that enough repetitive questions exist that Gravity would be used quite often. 
+Gravity is a slack app that uses machine learning to take each new question asked in Slack and compare it to previously asked questions, look for a possible answer to reccomend for the new question. Our assumption being that enough repetitive questions exist that Gravity would be used quite often. 
 
 We learned a few things that lead us to shut down Gravity: most people prefer to ask questions to a teammate or manager, in bigger slack channels most questions while semantically similar have different answers each time, and there just aren't enough repetitive questions asked in channels.
 
